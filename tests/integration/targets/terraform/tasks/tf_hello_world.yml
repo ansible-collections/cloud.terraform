@@ -1,0 +1,26 @@
+---
+
+- name: Create terraform project directory (hello world)
+  ansible.builtin.file:
+    path: "{{ terraform_project_dir }}/hello_world"
+    state: directory
+    mode: 0755
+
+- name: copy terraform files to work space
+  ansible.builtin.copy:
+    src: "hello_world/{{ item }}"
+    dest: "{{ terraform_project_dir }}/hello_world/{{ item }}"
+  with_items:
+    - main.tf
+
+- name: Start terraform plan 
+  community.general.terraform:
+    project_path: "{{ terraform_project_dir }}/hello_world"
+    binary_path: "{{ terraform_binary_path }}"
+    force_init: yes
+    state: present
+  register: terraform_result
+
+- assert:
+    that: terraform_result is not failed
+

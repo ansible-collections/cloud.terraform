@@ -1,0 +1,34 @@
+---
+
+- name: Create terraform project directory (test checkmode)
+  ansible.builtin.file:
+    path: "{{ terraform_project_dir }}/write_file"
+    state: directory
+    mode: 0755
+
+- name: copy terraform files to work space
+  ansible.builtin.copy:
+    src: "write_file/{{ item }}"
+    dest: "{{ terraform_project_dir }}/write_file/{{ item }}"
+  with_items:
+    - main.tf
+
+- name: Start terraform plan with enabled checkmode
+  community.general.terraform:
+    project_path: "{{ terraform_project_dir }}/write_file"
+    binary_path: "{{ terraform_binary_path }}"
+    force_init: yes
+    state: present
+  register: terraform_init_result
+  check_mode: yes
+
+- assert:
+    that: terraform_init_result is not failed
+
+- name: Check if test file exitsts (it should not)
+  stat:
+    path: "{{ terraform_project_dir }}/write_file/terraform_test.txt"
+  register: stat_res
+
+- assert:
+    that: not stat_res.stat.exists

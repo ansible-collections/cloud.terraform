@@ -3,15 +3,14 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-
 # This block checks and registers Terraform version of the binary found in path.
 
 - name: Check for existing Terraform in path
   block:
   - name: Check if terraform is present in path
-    ansible.builtin.command: "command -v terraform"
+    ansible.builtin.command: "which terraform"
     register: terraform_binary_path
-    ignore_errors: true
+    ignore_errors: false
 
   - name: Check Terraform version
     ansible.builtin.command: terraform version
@@ -22,31 +21,6 @@
     ansible.builtin.set_fact:
       terraform_version_installed: "{{ terraform_version_output.stdout | regex_search('(?!Terraform.*v)([0-9]+\\.[0-9]+\\.[0-9]+)') }}"
     when: terraform_version_output.changed
-
-# This block handles the tasks of installing the Terraform binary. This happens if there is no existing
-# terraform in $PATH OR version does not match `terraform_version`.
-
-- name: Execute Terraform install tasks
-  block:
-
-  - name: Install Terraform
-    ansible.builtin.debug:
-      msg: "Installing terraform {{ terraform_version }}, found: {{ terraform_version_installed | default('no terraform binary found') }}."
-
-  - name: Ensure unzip is present
-    ansible.builtin.package:
-      name: unzip
-      state: present
-
-  - name: Install Terraform binary
-    ansible.builtin.unarchive:
-      src: "{{ terraform_url }}"
-      dest: "{{ remote_tmp_dir }}"
-      mode: 0755
-      remote_src: yes
-      validate_certs: "{{ validate_certs }}"
-
-  when: terraform_version_installed is not defined or terraform_version_installed != terraform_version
 
 # This sets `terraform_binary_path` to coalesced output of first non-empty string in this order:
 # path from the 'Check if terraform is present in path' task, and lastly, the fallback path.
@@ -63,5 +37,22 @@
   loop_control:
     index_var: provider_index
 
+- name: Cleanup terraform project directory
+  ansible.builtin.file:
+    path: "{{ terraform_project_dir }}"
+    state: absent
+
+- name: Say hello to terraform
+  ansible.builtin.include_tasks: tf_hello_world.yml
+
 - name: Test Complex Varibles
   ansible.builtin.include_tasks: complex_variables.yml
+
+- name: Test checkmode
+  ansible.builtin.include_tasks: test_checkmode.yml
+
+- name: Test present mode
+  ansible.builtin.include_tasks: test_present_mode.yml
+
+- name: Test absent mode
+  ansible.builtin.include_tasks: test_absent_mode.yml
