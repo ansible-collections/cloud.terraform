@@ -16,6 +16,9 @@ terraform_url: "https://releases.hashicorp.com/terraform/{{ terraform_version }}
 # Controls whether the unarchive task will validate TLS certs of the Terraform binary host
 validate_certs: yes
 
+# For now this is the /tmp folder
+remote_tmp_dir: '/tmp'
+
 # Directory where Terraform tests will be created
 terraform_project_dir: "{{ remote_tmp_dir }}/tf_provider_test"
 
