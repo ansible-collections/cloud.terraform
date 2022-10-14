@@ -7,7 +7,6 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-
 DOCUMENTATION = r'''
 ---
 module: terraform
@@ -17,9 +16,10 @@ description:
        resource information back into Ansible.
 options:
   state:
-    choices: ['planned', 'present', 'absent']
+    choices: ['present', 'absent', 'planned']
     description:
       - Goal state of given stage/project
+      - Option `planned` is deprecated
     type: str
     default: present
   binary_path:
@@ -360,41 +360,29 @@ def create_workspace(bin_path, project_path, workspace):
 def select_workspace(bin_path, project_path, workspace):
     _workspace_cmd(bin_path, project_path, 'select', workspace)
 
-
 def remove_workspace(bin_path, project_path, workspace):
     _workspace_cmd(bin_path, project_path, 'delete', workspace)
 
 
-def build_plan(command, project_path, variables_args, state_file, targets, state, apply_args, plan_path=None):
+def build_plan(command, project_path, variables_args, state_file, targets, state, check_mode, apply_args, plan_path=None):
     if plan_path is None:
         f, plan_path = tempfile.mkstemp(suffix='.tfplan')
 
-    local_command = command[:]
-
-    plan_command = [command[0], 'plan']
-
-    if state == "planned":
-        for c in local_command[1:]:
-            plan_command.append(c)
-
-    if state == "present":
-        for a in apply_args:
-            local_command.remove(a)
-        for c in local_command[1:]:
-            plan_command.append(c)
-
-    plan_command.extend(['-input=false', '-no-color', '-detailed-exitcode', '-out', plan_path])
+    plan_command = [command[0], 'plan', '-lock=true', '-input=false', '-no-color', '-detailed-exitcode', '-out', plan_path]
 
     for t in targets:
         plan_command.extend(['-target', t])
 
     plan_command.extend(_state_args(state_file))
 
+    apply_command = plan_command[:-3].copy() # Remove outfile and detailed-exitcode option
+    apply_command[1] = 'apply'
+
     rc, out, err = module.run_command(plan_command + variables_args, cwd=project_path)
 
     if rc == 0:
         # no changes
-        return plan_path, False, out, err, plan_command if state == 'planned' else command
+        return plan_path, False, out, err, plan_command if check_mode else apply_command
     elif rc == 1:
         # failure to plan
         module.fail_json(
@@ -407,7 +395,7 @@ def build_plan(command, project_path, variables_args, state_file, targets, state
         )
     elif rc == 2:
         # changes, but successful
-        return plan_path, True, out, err, plan_command if state == 'planned' else command
+        return plan_path, True, out, err, plan_command if check_mode else apply_command
 
     module.fail_json(msg='Terraform plan failed with unexpected exit code {rc}.\nSTDOUT: {out}\nSTDERR: {err}\nCOMMAND: {cmd} {args}'.format(
         rc=rc,
@@ -454,7 +442,6 @@ def main():
     plugin_paths = module.params.get('plugin_paths')
     workspace = module.params.get('workspace')
     purge_workspace = module.params.get('purge_workspace')
-    state = module.params.get('state')
     variables = module.params.get('variables') or {}
     complex_vars = module.params.get('complex_vars')
     variables_files = module.params.get('variables_files')
@@ -467,6 +454,20 @@ def main():
     overwrite_init = module.params.get('overwrite_init')
     check_destroy = module.params.get('check_destroy')
     provider_upgrade = module.params.get('provider_upgrade')
+    state = module.params.get('state')
+
+
+    if state == 'planned':
+        computed_check_mode = True
+        computed_state = 'present'
+        module.deprecate(
+                'The value `planned` for the parameter "state" is deprecated. This will be an error in the future',
+                version='6.0.0',
+                collection_name='community.general'
+        )
+    else:
+        computed_check_mode = module.check_mode
+        computed_state = state
 
     if bin_path is not None:
         command = [bin_path]
@@ -493,12 +494,12 @@ def main():
         else:
             select_workspace(command[0], project_path, workspace)
 
-    if state == 'present':
+    if computed_state == 'present':
         command.extend(APPLY_ARGS)
-    elif state == 'absent':
+    elif computed_state == 'absent':
         command.extend(DESTROY_ARGS)
 
-    if state == 'present' and module.params.get('parallelism') is not None:
+    if computed_state == 'present' and module.params.get('parallelism') is not None:
         command.append('-parallelism=%d' % module.params.get('parallelism'))
 
     def format_args(vars):
@@ -594,22 +595,26 @@ def main():
 
     out, err = '', ''
 
-    if state == 'absent':
+    if computed_state == 'absent':
         command.extend(variables_args)
-    elif state == 'present' and plan_file:
+    elif plan_file:
         if any([os.path.isfile(project_path + "/" + plan_file), os.path.isfile(plan_file)]):
             command.append(plan_file)
         else:
             module.fail_json(msg='Could not find plan_file "{0}", check the path and try again.'.format(plan_file))
     else:
-        plan_file, needs_application, out, err, command = build_plan(command, project_path, variables_args, state_file,
-                                                                     module.params.get('targets'), state, APPLY_ARGS, plan_file)
-        if state == 'present' and check_destroy and '- destroy' in out:
+        plan_file, needs_application, out, err, command = build_plan(command=command, project_path=project_path, variables_args=variables_args, state_file=state_file,
+                                                                     targets=module.params.get('targets'), state=computed_state, check_mode=computed_check_mode, apply_args=APPLY_ARGS,
+                                                                     plan_path=plan_file)
+
+        if computed_state == 'present' and check_destroy and '- destroy' in out:
             module.fail_json(msg="Aborting command because it would destroy some resources. "
                                  "Consider switching the 'check_destroy' to false to suppress this error")
         command.append(plan_file)
 
-    if needs_application and not module.check_mode and state != 'planned':
+
+    if needs_application and not computed_check_mode:
+
         rc, out, err = module.run_command(command, check_rc=False, cwd=project_path)
         if rc != 0:
             if workspace_ctx["current"] != workspace:
@@ -619,7 +624,7 @@ def main():
                              stderr_lines=err.splitlines(),
                              cmd=' '.join(command))
         # checks out to decide if changes were made during execution
-        if ' 0 added, 0 changed' not in out and not state == "absent" or ' 0 destroyed' not in out:
+        if ' 0 added, 0 changed' not in out and not computed_state == "absent" or ' 0 destroyed' not in out:
             changed = True
 
     outputs_command = [command[0], 'output', '-no-color', '-json'] + _state_args(state_file)
@@ -638,10 +643,10 @@ def main():
     # Restore the Terraform workspace found when running the module
     if workspace_ctx["current"] != workspace:
         select_workspace(command[0], project_path, workspace_ctx["current"])
-    if state == 'absent' and workspace != 'default' and purge_workspace is True:
+    if computed_state == 'absent' and workspace != 'default' and purge_workspace is True:
         remove_workspace(command[0], project_path, workspace)
 
-    module.exit_json(changed=changed, state=state, workspace=workspace, outputs=outputs, stdout=out, stderr=err, command=' '.join(command))
+    module.exit_json(changed=changed, state=computed_state, workspace=workspace, outputs=outputs, stdout=out, stderr=err, command=' '.join(command))
 
 
 if __name__ == '__main__':
