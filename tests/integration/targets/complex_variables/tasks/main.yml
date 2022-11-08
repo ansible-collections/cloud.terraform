@@ -5,14 +5,14 @@
 
 - name: Create terraform project directory (complex variables)
   ansible.builtin.file:
-    path: "{{ terraform_project_dir }}/complex_vars"
+    path: "/tmp/complex_vars"
     state: directory
     mode: 0755
 
 - name: copy terraform files to work space
   ansible.builtin.copy:
-    src: "complex_variables/{{ item }}"
-    dest: "{{ terraform_project_dir }}/complex_vars/{{ item }}"
+    src: "{{ item }}"
+    dest: "/tmp/complex_vars/{{ item }}"
   with_items:
     - main.tf
     - variables.tf
@@ -21,8 +21,7 @@
 # terraform null_resource
 - name: test complex variables
   cloud.terraform.terraform:
-    project_path: "{{ terraform_project_dir }}/complex_vars"
-    binary_path: "{{ terraform_binary_path }}"
+    project_path: "/tmp/complex_vars"
     force_init: yes
     complex_vars: true
     variables:

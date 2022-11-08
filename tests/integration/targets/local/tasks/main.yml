@@ -5,30 +5,6 @@
 
 # This block checks and registers Terraform version of the binary found in path.
 
-- name: Check for existing Terraform in path
-  block:
-    - name: Check if terraform is present in path
-      ansible.builtin.command: "which terraform"
-      register: terraform_binary_path
-      ignore_errors: false
-
-    - name: Check Terraform version
-      ansible.builtin.command: terraform version
-      register: terraform_version_output
-      when: terraform_binary_path.rc == 0
-
-    - name: Set terraform version
-      ansible.builtin.set_fact:
-        terraform_version_installed: "{{ terraform_version_output.stdout | regex_search('(?!Terraform.*v)([0-9]+\\.[0-9]+\\.[0-9]+)') }}"
-      when: terraform_version_output.changed
-
-# This sets `terraform_binary_path` to coalesced output of first non-empty string in this order:
-# path from the 'Check if terraform is present in path' task, and lastly, the fallback path.
-
-- name: Set path to terraform binary
-  ansible.builtin.set_fact:
-    terraform_binary_path: "{{ terraform_binary_path.stdout or remote_tmp_dir ~ '/terraform' }}"
-
 - name: Loop over provider upgrade test tasks
   ansible.builtin.include_tasks: test_provider_upgrade.yml
   vars:
@@ -44,9 +20,6 @@
 
 - name: Say hello to terraform
   ansible.builtin.include_tasks: tf_hello_world.yml
-
-- name: Test Complex Varibles
-  ansible.builtin.include_tasks: complex_variables.yml
 
 - name: Test checkmode
   ansible.builtin.include_tasks: test_checkmode.yml
