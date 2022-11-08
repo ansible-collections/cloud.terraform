@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from ansible_collections.cloud.terraform.plugins.modules.cloud.misc import terraform
+from ansible_collections.cloud.terraform.plugins.modules import terraform
 from ansible_collections.cloud.terraform.tests.unit.plugins.modules.utils import set_module_args
 
 
