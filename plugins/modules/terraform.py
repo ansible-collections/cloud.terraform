@@ -371,12 +371,12 @@ def remove_workspace(bin_path, project_path, workspace):
     _workspace_cmd(bin_path, project_path, 'delete', workspace)
 
 
-def build_plan(command, project_path, variables_args, state_file, targets, state, check_mode, apply_args,
+def build_plan(terraform_binary, project_path, variables_args, state_file, targets, state, check_mode, apply_args,
                plan_path=None):
     if plan_path is None:
         f, plan_path = tempfile.mkstemp(suffix='.tfplan')
 
-    plan_command = [command[0], 'plan', '-lock=true', '-input=false', '-no-color', '-detailed-exitcode', '-out',
+    plan_command = [terraform_binary, 'plan', '-lock=true', '-input=false', '-no-color', '-detailed-exitcode', '-out',
                     plan_path]
 
     for t in targets:
@@ -479,11 +479,12 @@ def main():
         computed_state = state
 
     if bin_path is not None:
-        command = [bin_path]
+        terraform_binary = bin_path
     else:
-        command = [module.get_bin_path('terraform', required=True)]
+        terraform_binary = module.get_bin_path('terraform', required=True)
+    command = [terraform_binary]
 
-    checked_version = get_version(command[0])
+    checked_version = get_version(terraform_binary)
 
     if LooseVersion(checked_version) < LooseVersion('0.15.0'):
         DESTROY_ARGS = ('destroy', '-no-color', '-force')
@@ -494,15 +495,15 @@ def main():
 
     if force_init:
         if overwrite_init or not os.path.isfile(os.path.join(project_path, ".terraform", "terraform.tfstate")):
-            init_plugins(command[0], project_path, backend_config, backend_config_files, init_reconfigure,
+            init_plugins(terraform_binary, project_path, backend_config, backend_config_files, init_reconfigure,
                          provider_upgrade, plugin_paths)
 
-    workspace_ctx = get_workspace_context(command[0], project_path)
+    workspace_ctx = get_workspace_context(terraform_binary, project_path)
     if workspace_ctx["current"] != workspace:
         if workspace not in workspace_ctx["all"]:
-            create_workspace(command[0], project_path, workspace)
+            create_workspace(terraform_binary, project_path, workspace)
         else:
-            select_workspace(command[0], project_path, workspace)
+            select_workspace(terraform_binary, project_path, workspace)
 
     if computed_state == 'present':
         command.extend(APPLY_ARGS)
@@ -589,7 +590,7 @@ def main():
         for f in variables_files:
             variables_args.extend(['-var-file', f])
 
-    preflight_validation(command[0], project_path, checked_version, variables_args)
+    preflight_validation(terraform_binary, project_path, checked_version, variables_args)
 
     if module.params.get('lock') is not None:
         if module.params.get('lock'):
@@ -615,14 +616,17 @@ def main():
         else:
             module.fail_json(msg='Could not find plan_file "{0}", check the path and try again.'.format(plan_file))
     else:
-        plan_file, needs_application, out, err, command = build_plan(command=command, project_path=project_path,
-                                                                     variables_args=variables_args,
-                                                                     state_file=state_file,
-                                                                     targets=module.params.get('targets'),
-                                                                     state=computed_state,
-                                                                     check_mode=computed_check_mode,
-                                                                     apply_args=APPLY_ARGS,
-                                                                     plan_path=plan_file)
+        plan_file, needs_application, out, err, command = build_plan(
+            terraform_binary=terraform_binary,
+            project_path=project_path,
+            variables_args=variables_args,
+            state_file=state_file,
+            targets=module.params.get('targets'),
+            state=computed_state,
+            check_mode=computed_check_mode,
+            apply_args=APPLY_ARGS,
+            plan_path=plan_file
+        )
 
         if computed_state == 'present' and check_destroy and '- destroy' in out:
             module.fail_json(msg="Aborting command because it would destroy some resources. "
@@ -634,7 +638,7 @@ def main():
         rc, out, err = module.run_command(command, check_rc=False, cwd=project_path)
         if rc != 0:
             if workspace_ctx["current"] != workspace:
-                select_workspace(command[0], project_path, workspace_ctx["current"])
+                select_workspace(terraform_binary, project_path, workspace_ctx["current"])
             module.fail_json(msg=err.rstrip(), rc=rc, stdout=out,
                              stdout_lines=out.splitlines(), stderr=err,
                              stderr_lines=err.splitlines(),
@@ -643,7 +647,7 @@ def main():
         if ' 0 added, 0 changed' not in out and computed_state != "absent" or ' 0 destroyed' not in out:
             changed = True
 
-    outputs_command = [command[0], 'output', '-no-color', '-json'] + _state_args(state_file)
+    outputs_command = [terraform_binary, 'output', '-no-color', '-json'] + _state_args(state_file)
     rc, outputs_text, outputs_err = module.run_command(outputs_command, cwd=project_path)
     if rc == 1:
         module.warn(
@@ -660,9 +664,9 @@ def main():
 
     # Restore the Terraform workspace found when running the module
     if workspace_ctx["current"] != workspace:
-        select_workspace(command[0], project_path, workspace_ctx["current"])
+        select_workspace(terraform_binary, project_path, workspace_ctx["current"])
     if computed_state == 'absent' and workspace != 'default' and purge_workspace is True:
-        remove_workspace(command[0], project_path, workspace)
+        remove_workspace(terraform_binary, project_path, workspace)
 
     module.exit_json(changed=changed, state=computed_state, workspace=workspace, outputs=outputs, stdout=out,
                      stderr=err, command=' '.join(command))
