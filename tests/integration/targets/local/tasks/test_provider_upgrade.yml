@@ -23,7 +23,7 @@
 # versions, so that we can verify that provider upgrades during init work as intended.
 
 - name: Init Terraform configuration with pinned provider version
-  community.general.terraform:
+  cloud.terraform.terraform:
     project_path: "{{ terraform_provider_hcl.dest | dirname }}"
     binary_path: "{{ terraform_binary_path }}"
     force_init: yes

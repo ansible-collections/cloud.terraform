@@ -4,6 +4,7 @@
 
 # Make coding more python3-ish
 from __future__ import (absolute_import, division, print_function)
+
 __metaclass__ = type
 
 '''
@@ -28,7 +29,6 @@ except ImportError:
         from mock import *
     except ImportError:
         print('You need the mock library installed on python2.x to run tests')
-
 
 # Prior to 3.4.4, mock_open cannot handle binary read_data
 if sys.version_info >= (3,) and sys.version_info < (3, 4, 4):
@@ -66,6 +66,7 @@ if sys.version_info >= (3,) and sys.version_info < (3, 4, 4):
         `read_data` is a string for the `read` methoddline`, and `readlines` of the
         file handle to return.  This is an empty string by default.
         """
+
         def _readlines_side_effect(*args, **kwargs):
             if handle.readlines.return_value is not None:
                 return handle.readlines.return_value

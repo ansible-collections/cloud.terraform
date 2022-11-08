@@ -1,0 +1,8 @@
+.venv/
+.idea/
+output/
+
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl

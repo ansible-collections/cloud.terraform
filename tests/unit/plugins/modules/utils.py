@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from __future__ import (absolute_import, division, print_function)
+
 __metaclass__ = type
 
 import json
 
-from ansible_collections.community.general.tests.unit.compat import unittest
-from ansible_collections.community.general.tests.unit.compat.mock import patch
+from ansible_collections.cloud.terraform.tests.unit.compat import unittest
+from ansible_collections.cloud.terraform.tests.unit.compat.mock import patch
 from ansible.module_utils import basic
 from ansible.module_utils.common.text.converters import to_bytes
 
