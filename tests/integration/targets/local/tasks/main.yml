@@ -18,9 +18,6 @@
     path: "{{ terraform_project_dir }}"
     state: absent
 
-- name: Say hello to terraform
-  ansible.builtin.include_tasks: tf_hello_world.yml
-
 - name: Test checkmode
   ansible.builtin.include_tasks: test_checkmode.yml
 
