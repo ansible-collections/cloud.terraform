@@ -36,8 +36,8 @@
 - name: Terraform in present check mode
   cloud.terraform.terraform:
     project_path: "{{ test_basedir }}"
-    force_init: yes
     state: present
+    force_init: true
   register: terraform_result
   check_mode: true
 - assert:
@@ -52,8 +52,8 @@
 - name: Terraform in present non-check mode
   cloud.terraform.terraform:
     project_path: "{{ test_basedir }}"
-    force_init: yes
     state: present
+    force_init: true
   register: terraform_result
   check_mode: false
 - assert:
@@ -67,7 +67,6 @@
 - name: Terraform in present non-check mode (idempotency)
   cloud.terraform.terraform:
     project_path: "{{ test_basedir }}"
-    force_init: yes
     state: present
   register: terraform_result
   check_mode: false
@@ -82,7 +81,6 @@
 - name: Terraform in absent check mode
   cloud.terraform.terraform:
     project_path: "{{ test_basedir }}"
-    force_init: yes
     state: absent
   register: terraform_result
   check_mode: true
@@ -97,7 +95,6 @@
 - name: Terraform in absent non-check mode
   cloud.terraform.terraform:
     project_path: "{{ test_basedir }}"
-    force_init: yes
     state: absent
   register: terraform_result
   check_mode: false
