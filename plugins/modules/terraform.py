@@ -635,7 +635,6 @@ def main():
     if variables_files:
         for f in variables_files:
             variables_args.extend(['-var-file', f])
-    final_apply_command.extend(variables_args)
 
     # only use an existing plan file if we're not in the deprecated "planned" mode
     if plan_file and state != "planned":
