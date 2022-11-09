@@ -22,7 +22,7 @@
 - name: test complex variables
   cloud.terraform.terraform:
     project_path: "/tmp/complex_vars"
-    force_init: yes
+    force_init: true
     complex_vars: true
     variables:
       dictionaries:
