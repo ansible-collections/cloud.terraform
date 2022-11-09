@@ -4,3 +4,6 @@ yamllint==1.28.0
 pytest==7.2.0
 pytest-forked==1.4.0
 pytest-xdist==3.0.2
+python-dotenv[cli]==0.21.0
+boto3==1.26.5
+awscli==1.27.5
