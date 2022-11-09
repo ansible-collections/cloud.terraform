@@ -1,0 +1,66 @@
+---
+# Copyright (c) Ansible Project
+# GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- set_fact:
+    test_basedir: "/tmp/state_planned/"
+
+- name: Clean the test directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: absent
+
+- name: Create terraform project directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: directory
+    mode: 0755
+
+- name: Copy terraform files to work space
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ test_basedir }}/{{ item }}"
+  loop:
+    - write_file.tf
+
+- &stat_result_file
+  name: Run stat on the result file
+  stat:
+    path: "{{ test_basedir }}/terraform_test.txt"
+  register: stat
+- name: The test file must not exist
+  assert:
+    that: not stat.stat.exists
+
+- &stat_plan_file
+  name: Run stat on the result file
+  stat:
+    path: "{{ test_basedir }}/my-first-plan.tfplan"
+  register: stat
+- name: The plan file must not exist
+  assert:
+    that: not stat.stat.exists
+
+- name: Terraform in planned mode
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: planned
+    plan_file: "my-first-plan.tfplan"
+    force_init: true
+  register: terraform_result
+  check_mode: true
+- assert:
+    that:
+      - terraform_result is not failed
+      - terraform_result is changed
+
+- *stat_result_file
+- name: The test file must not exist
+  assert:
+    that: not stat.stat.exists
+
+- *stat_plan_file
+- name: The plan file must exist
+  assert:
+    that: stat.stat.exists

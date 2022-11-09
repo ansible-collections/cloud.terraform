@@ -19,8 +19,9 @@ options:
   state:
     choices: ['present', 'absent', 'planned']
     description:
-      - Goal state of given stage/project
-      - Option `planned` is deprecated
+      - Goal state of given stage/project.
+      - Option `planned` is deprecated.
+        Its function is equivalent to running the module in check mode.
     type: str
     default: present
   binary_path:
@@ -63,7 +64,8 @@ options:
     description:
       - The path to an existing Terraform plan file to apply. If this is not
         specified, Ansible will build a new TF plan and execute it.
-        Note that this option is required if 'state' has the 'planned' value.
+      - Note that this option is required if 'state' has the 'planned' value.
+        In this case, the plan file is only generated, but not applied.
     type: path
   state_file:
     description:
@@ -635,7 +637,8 @@ def main():
             variables_args.extend(['-var-file', f])
     final_apply_command.extend(variables_args)
 
-    if plan_file:
+    # only use an existing plan file if we're not in the deprecated "planned" mode
+    if plan_file and state != "planned":
         if not any([os.path.isfile(project_path + "/" + plan_file), os.path.isfile(plan_file)]):
             module.fail_json(msg='Could not find plan_file "{0}", check the path and try again.'.format(plan_file))
 
@@ -650,6 +653,10 @@ def main():
             targets=module.params.get('targets'),
             state=computed_state
         )
+
+        # if we have an explicit plan file specified, copy over the temporary one
+        if plan_file:
+            module.preserved_copy(new_plan_file, project_path + "/" + plan_file)
 
         if computed_state == 'present' and plan_result_any_destroyed and check_destroy:
             module.fail_json(msg="Aborting command because it would destroy some resources. "
