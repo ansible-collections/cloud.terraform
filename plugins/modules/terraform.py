@@ -651,7 +651,7 @@ def main():
             state=computed_state
         )
 
-        if computed_state == 'present' and plan_result_any_destroyed:
+        if computed_state == 'present' and plan_result_any_destroyed and check_destroy:
             module.fail_json(msg="Aborting command because it would destroy some resources. "
                                  "Consider switching the 'check_destroy' to false to suppress this error")
 
