@@ -3,3 +3,5 @@ collections:
     version: 6.0.0
   - name: steampunk.aws
     version: 0.9.0
+  - name: azure.azcollection
+    version: 1.14.0

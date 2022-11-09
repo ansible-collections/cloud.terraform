@@ -7,3 +7,7 @@ pytest-xdist==3.0.2
 python-dotenv[cli]==0.21.0
 boto3==1.26.5
 awscli==1.27.5
+
+# this gets installed as part of the collection requirements to avoid dependency conflicts
+# the readme installs this without dependencies to prevent conflicts
+# azure-cli==2.34.0
