@@ -29,5 +29,9 @@ aws configure set region                eu-north-1
 az login
 az account set --subscription <id>
 
-dotenv -f cloud-credentials.env run -- ansible-test integration [target]
+# GCP login
+gcloud auth application-default login
+gcloud auth application-default set-quota-project <id>
+
+ansible-test integration [target]
 ```
