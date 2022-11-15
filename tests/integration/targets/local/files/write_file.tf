@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     local = {
-      source = "hashicorp/local"
+      source  = "hashicorp/local"
       version = "2.2.3"
     }
   }
@@ -12,7 +12,6 @@ provider "local" {
 }
 
 resource "local_file" "foo" {
-    content  = "This file was written by terraform!"
-    filename = "${path.module}/terraform_test.txt"
+  content  = "This file was written by terraform!"
+  filename = "${path.module}/terraform_test.txt"
 }
-
