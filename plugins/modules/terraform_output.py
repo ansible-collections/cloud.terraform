@@ -19,6 +19,16 @@ options:
     description:
       - The path to the root of the Terraform directory with the .tfstate file.
     type: path
+  name:
+    description:
+      - Name of an individual output in the state file to list.
+    type: str
+  format:
+    description:
+      - A flag to specify the output format. Defaults to -json.
+      - I(name) must be provided when using -raw option.
+    choices: [ json, raw ]
+    type: str
   binary_path:
     description:
       - The path of a terraform binary to use, relative to the 'service_path' unless you supply an absolute path.
@@ -35,16 +45,27 @@ author: "Polona Mihalič (@PolonaM)"
 EXAMPLES = """
 - name: List outputs from terraform.tfstate in project_dir
   cloud.terraform.terraform_output:
-    project_path: '{{ project_dir }}'
+    project_path: project_dir
 
 - name: List outputs from selected state file in project_dir
   cloud.terraform.terraform_output:
-    state_file: '{{ state_file }}'
+    state_file: state_file
 
 - name: List outputs from terraform.tfstate in project_dir, use different Terraform version
   cloud.terraform.terraform_output:
-    project_path: '{{ project_dir }}'
-    binary_path: '{{ terraform_binary }}'
+    project_path: project_dir
+    binary_path: terraform_binary
+
+- name: List value of an individual output from terraform.tfstate in project_dir
+  cloud.terraform.terraform_output:
+    project_path: project_dir
+    name: individual_output
+
+- name: List value of an individual output in raw format
+  cloud.terraform.terraform_output:
+    project_path: project_dir
+    name: individual_output
+    format: raw
 """
 
 RETURN = """
@@ -90,10 +111,14 @@ def _state_args(state_file):
     return []
 
 
-def get_outputs(terraform_binary, project_path, state_file):
-    outputs_command = [terraform_binary, "output", "-no-color", "-json"] + _state_args(
-        state_file
-    )
+def get_outputs(terraform_binary, project_path, state_file, format, name=None):
+    outputs_command = [
+        terraform_binary,
+        "output",
+        "-no-color",
+        f"-{format}",
+        f"{name}" if name else "",
+    ] + _state_args(state_file)
     rc, outputs_text, outputs_err = module.run_command(
         outputs_command, cwd=project_path
     )
@@ -114,8 +139,9 @@ def get_outputs(terraform_binary, project_path, state_file):
             command=" ".join(outputs_command),
         )
     else:
+        if format == "raw":
+            return outputs_text
         outputs = json.loads(outputs_text)
-
     return outputs
 
 
@@ -124,14 +150,19 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             project_path=dict(type="path"),
+            name=dict(type="str"),
+            format=dict(type="str", choices=["json", "raw"], default="json"),
             binary_path=dict(type="path"),
             state_file=dict(type="path"),
         ),
+        required_if=[("format", "raw", ("name",))],
     )
 
     project_path = module.params.get("project_path")
     bin_path = module.params.get("binary_path")
     state_file = module.params.get("state_file")
+    name = module.params.get("name")
+    format = module.params.get("format")
 
     if bin_path is not None:
         terraform_binary = bin_path
@@ -142,6 +173,8 @@ def main():
         terraform_binary=terraform_binary,
         project_path=project_path,
         state_file=state_file,
+        name=name,
+        format=format,
     )
 
     module.exit_json(outputs=outputs)
