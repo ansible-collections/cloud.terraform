@@ -16,6 +16,14 @@ pip install --no-deps "azure-cli==$(pip freeze | grep azure-cli-core | sed -E "s
 
 ## Testing
 
+Sanity and unit tests are run as normal:
+
+```shell
+ansible-test sanity
+ansible-test units
+antsibull-docs lint-collection-docs .
+```
+
 To run integration tests, install `terraform` and ensure it is in your `PATH`.
 If you want to run cloud integration tests, ensure you log in to the clouds:
 
@@ -33,5 +41,6 @@ az account set --subscription <id>
 gcloud auth application-default login
 gcloud auth application-default set-quota-project <id>
 
+# useful test target groups: cloud, non-cloud
 ansible-test integration [target]
 ```
