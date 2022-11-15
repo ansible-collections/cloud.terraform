@@ -41,6 +41,5 @@ az account set --subscription <id>
 gcloud auth application-default login
 gcloud auth application-default set-quota-project <id>
 
-# useful test target groups: cloud, non-cloud
-ansible-test integration [target]
+ansible-test integration [target] [--exclude aws|azure|gcp]
 ```
