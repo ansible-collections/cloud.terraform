@@ -1,0 +1,120 @@
+---
+argument_specs:
+  main:
+    short_description: Clone a Git repository and apply a plan from it.
+    options:
+      repo_url:
+        description: The URL of the repository to clone.
+        type: str
+        required: true
+        version_added: 1.0.0
+      repo_dir:
+        description: The directory to clone the Git repository into.
+        type: str
+        required: true
+        version_added: 1.0.0
+      version:
+        description: The ref of the repository to use. Defaults to the remote HEAD.
+        type: str
+        required: false
+        version_added: 1.0.0
+      plan_file:
+        description: The plan file to use. This must exist.
+        type: str
+        required: true
+        version_added: 1.0.0
+
+      git_options:
+        description: |
+          Options to configure ansible.builtin.git.
+          Names correspond to module arguments.
+          See ansible.builtin.git documentation for details.
+        type: dict
+        required: false
+        version_added: 1.0.0
+        options:
+          accept_hostkey:
+            type: bool
+            required: false
+            version_added: 1.0.0
+          accept_newhostkey:
+            type: bool
+            required: false
+            version_added: 1.0.0
+          depth:
+            type: int
+            required: false
+            version_added: 1.0.0
+          executable:
+            type: str
+            required: false
+            version_added: 1.0.0
+          force:
+            type: bool
+            required: false
+            version_added: 1.0.0
+          gpg_whitelist:
+            type: list
+            elements: str
+            required: false
+            version_added: 1.0.0
+          key_file:
+            type: str
+            required: false
+            version_added: 1.0.0
+          remote:
+            type: str
+            required: false
+            version_added: 1.0.0
+          separate_git_dir:
+            type: str
+            required: false
+            version_added: 1.0.0
+          ssh_opts:
+            type: str
+            required: false
+            version_added: 1.0.0
+          track_submodules:
+            type: bool
+            required: false
+            version_added: 1.0.0
+          verify_commit:
+            type: bool
+            required: false
+            version_added: 1.0.0
+      terraform_options:
+        options:
+          state_file:
+            description: An optional state file to use, overriding the default.
+            type: str
+            required: false
+            version_added: 1.0.0
+          force_init:
+            type: bool
+            required: false
+            version_added: 1.0.0
+          binary_path:
+            type: str
+            required: false
+            version_added: 1.0.0
+          plugin_paths:
+            type: list
+            elements: path
+            required: false
+            version_added: 1.0.0
+          workspace:
+            type: str
+            required: false
+            version_added: 1.0.0
+          lock:
+            type: bool
+            required: false
+            version_added: 1.0.0
+          lock_timeout:
+            type: int
+            required: false
+            version_added: 1.0.0
+          parallelism:
+            type: int
+            required: false
+            version_added: 1.0.0
