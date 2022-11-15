@@ -13,7 +13,7 @@ jobs:
     name: Sanity (Ⓐ${{ matrix.ansible }})
     strategy:
       matrix:
-        ansible: &supported_ansible_versions
+        ansible:
           - stable-2.13
           - stable-2.14
     runs-on: ubuntu-latest
@@ -30,7 +30,9 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        ansible: *supported_ansible_versions
+        ansible:
+          - stable-2.13
+          - stable-2.14
     steps:
       - name: >-
           Perform unit testing against
@@ -46,7 +48,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ansible: *supported_ansible_versions
+        ansible:
+          - stable-2.13
+          - stable-2.14
         python:
           - '3.8'
           - '3.9'
