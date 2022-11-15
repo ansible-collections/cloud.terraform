@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 - set_fact:
-    test_basedir: "/tmp/terraform_output/"
+    test_basedir: "/tmp/terraform_output"
 
 - name: Clean the test directory
   ansible.builtin.file: &clean-test-directory
@@ -59,21 +59,45 @@
       - terraform_output.outputs.my_output.type == "string"
       - terraform_output.outputs.my_output.value == "file generated"
 
-- name: Copy terraform state file
-  ansible.builtin.copy:
-    src: "{{ test_basedir }}/terraform.tfstate"
-    dest: "{{ test_basedir }}/coppied_terraform.tfstate"
-
-- name: Terraform checkout - specified state file
+- name: Terraform checkout - list only selected output in json format
   cloud.terraform.terraform_output:
-    state_file: "{{ test_basedir }}/coppied_terraform.tfstate"
+    project_path: "{{ test_basedir }}"
+    name: my_output
+    format: json
   register: terraform_output
 - assert:
     that:
       - terraform_output is not changed
-      - terraform_output.outputs.my_output.sensitive == false
-      - terraform_output.outputs.my_output.type == "string"
-      - terraform_output.outputs.my_output.value == "file generated"
+      - terraform_output.outputs == "file generated"
+
+- name: Terraform checkout - list only selected output in raw format
+  cloud.terraform.terraform_output:
+    project_path: "{{ test_basedir }}"
+    format: raw
+    name: my_output
+  register: terraform_output
+- assert:
+    that:
+      - terraform_output is not changed
+      - terraform_output.outputs == "file generated"
+
+# - name: Copy terraform state file
+#   ansible.builtin.copy:
+#     src: "{{ test_basedir }}/terraform.tfstate"
+#     remote_src: yes
+#     dest: "{{ test_basedir }}/coppied_terraform.tfstate"
+#   register: my_dest
+
+# - name: Terraform checkout - specified state file
+#   cloud.terraform.terraform_output:
+#     state_file: "{{ my_dest.dest }}"
+#   register: terraform_output
+# - assert:
+#     that:
+#       - terraform_output is not changed
+#       - terraform_output.outputs.my_output.sensitive == false
+#       - terraform_output.outputs.my_output.type == "string"
+#       - terraform_output.outputs.my_output.value == "file generated"
 
 - name: Delete results
   cloud.terraform.terraform:
@@ -88,6 +112,3 @@
 - name: The test file must not exist
   assert:
     that: not stat.stat.exists
-
-- name: Clean the test directory
-  ansible.builtin.file: *clean-test-directory
