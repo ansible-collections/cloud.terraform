@@ -1,5 +1,7 @@
 # cloud.terraform
 
+The `cloud.terraform` collection supports running Terraform in sync with Ansible.
+
 ## Development
 
 ```shell

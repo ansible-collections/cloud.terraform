@@ -1,0 +1,9 @@
+major_changes:
+  - Check mode now works as intended and produces correct "changed" output and results.
+minor_changes:
+  - Slight code reorganization to always run terraform plan, and then optionally apply the generated plan.
+bugfixes:
+  - Several integration tests were added to test end-to-end behaviour.
+  - Integration tests to test support of AWS, Azure and GCP.
+deprecated_features:
+  - "state=planned is deprecated. Use check_mode=true at the module level instead."
