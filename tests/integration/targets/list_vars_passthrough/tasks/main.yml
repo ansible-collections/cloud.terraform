@@ -1,0 +1,81 @@
+- set_fact:
+    test_basedir: "/tmp/list_vars_passthrough/"
+
+- name: Clean the test directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: absent
+
+- name: Create terraform project directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: directory
+    mode: 0755
+
+- name: Copy terraform files to work space
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ test_basedir }}/{{ item }}"
+  loop:
+    - main.tf
+
+- &stat
+  name: Run stat on the result file
+  stat:
+    path: "{{ test_basedir }}/out.txt"
+  register: stat
+- name: The test file must not exist
+  assert:
+    that: not stat.stat.exists
+
+- name: Test with complex vars disabled
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: present
+    force_init: true
+    variables:
+      vms: "{{ vms }}"
+    complex_vars: false
+  vars:
+    vms:
+      - "asdf"
+      - "qwer"
+  register: terraform_output
+  ignore_errors: true
+
+- *stat
+- name: The test file must not exist after a failure
+  assert:
+    that:
+      - not stat.stat.exists
+      - terraform_output is failed
+
+- name: Test with complex vars enabled
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: present
+    force_init: true
+    variables:
+      vms: "{{ vms }}"
+    complex_vars: true
+  vars:
+    vms:
+      - "asdf"
+      - "qwer"
+  register: terraform_output
+
+- *stat
+- name: The test file must exist
+  assert:
+    that:
+      - stat.stat.exists
+
+- ansible.builtin.slurp:
+    src: "{{ test_basedir }}/out.txt"
+  register: slurp
+- debug:
+    msg: ">{{ slurp.content | b64decode }}<"
+- name: Verify file contents
+  assert:
+    that:
+      - (slurp.content | b64decode) == '["asdf","qwer"]\n'
