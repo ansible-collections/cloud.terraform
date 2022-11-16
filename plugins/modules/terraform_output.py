@@ -166,7 +166,12 @@ def main():
             binary_path=dict(type="path"),
             state_file=dict(type="path"),
         ),
-        required_if=[("format", "raw", ("name",))],
+        required_if=[
+            ("format", "raw", ("name",))
+        ],
+        required_one_of=[
+            ("project_path", "state_file")
+        ]
     )
 
     project_path = module.params.get("project_path")
