@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+# language=yaml
 DOCUMENTATION = r"""
 ---
 module: terraform_output
@@ -28,6 +29,7 @@ options:
       - A flag to specify the output format. Defaults to -json.
       - I(name) must be provided when using -raw option.
     choices: [ json, raw ]
+    default: json
     type: str
   binary_path:
     description:
@@ -42,6 +44,7 @@ requirements: [ "terraform" ]
 author: "Polona Mihalič (@PolonaM)"
 """
 
+# language=yaml
 EXAMPLES = """
 - name: List outputs from terraform.tfstate in project_dir
   cloud.terraform.terraform_output:
@@ -68,11 +71,12 @@ EXAMPLES = """
     format: raw
 """
 
+# language=yaml
 RETURN = """
 outputs:
-  type: complex # DICT?
+  type: dict
   description: A dictionary of all the TF outputs by their assigned name. Use C(.outputs.MyOutputName.value) to access the value.
-  returned: on success
+  returned: when name is not specified
   sample: '{"bukkit_arn": {"sensitive": false, "type": "string", "value": "arn:aws:s3:::tf-test-bukkit"}'
   contains:
     sensitive:
@@ -87,16 +91,19 @@ outputs:
       type: str
       returned: always
       description: The value of the output as interpolated by Terraform
+value:
+  type: str
+  description: A single value requested by the module using the "name" parameter
+  sample: "myvalue"
+  returned: when name is specified
 """
 
 import os
 import json
-from ansible.module_utils.six import integer_types
 
 from ansible.module_utils.basic import AnsibleModule
 
-
-module = None
+module = None  # type: AnsibleModule
 
 
 def _state_args(state_file):
@@ -111,35 +118,34 @@ def _state_args(state_file):
     return []
 
 
-def get_outputs(terraform_binary, project_path, state_file, format, name=None):
+def get_outputs(terraform_binary, project_path, state_file, output_format, name=None):
     outputs_command = [
         terraform_binary,
         "output",
         "-no-color",
-        f"-{format}",
-        f"{name}" if name else "",
-    ] + _state_args(state_file)
+        f"-{output_format}"
+    ]
+    outputs_command += ([f"{name}"] if name else []) + _state_args(state_file)
     rc, outputs_text, outputs_err = module.run_command(
         outputs_command, cwd=project_path
     )
     if rc == 1:
         module.warn(
             "Could not get Terraform outputs. "
-            "This usually means none have been defined.\nstdout: {0}\nstderr: {1}".format(
-                outputs_text, outputs_err
+            "This usually means none have been defined.\ncommand: {0}\nstdout: {1}\nstderr: {2}".format(
+                outputs_command, outputs_text, outputs_err
             )
         )
         outputs = {}
     elif rc != 0:
         module.fail_json(
-            msg="Failure when getting Terraform outputs. "
-            "Exited {0}.\nstdout: {1}\nstderr: {2}".format(
+            msg="Failure when getting Terraform outputs. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
                 rc, outputs_text, outputs_err
             ),
             command=" ".join(outputs_command),
         )
     else:
-        if format == "raw":
+        if output_format == "raw":
             return outputs_text
         outputs = json.loads(outputs_text)
     return outputs
@@ -162,7 +168,7 @@ def main():
     bin_path = module.params.get("binary_path")
     state_file = module.params.get("state_file")
     name = module.params.get("name")
-    format = module.params.get("format")
+    output_format = module.params.get("format")
 
     if bin_path is not None:
         terraform_binary = bin_path
@@ -174,10 +180,13 @@ def main():
         project_path=project_path,
         state_file=state_file,
         name=name,
-        format=format,
+        output_format=output_format,
     )
 
-    module.exit_json(outputs=outputs)
+    if name:
+        module.exit_json(value=outputs)
+    else:
+        module.exit_json(outputs=outputs)
 
 
 if __name__ == "__main__":

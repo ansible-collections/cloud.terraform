@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 - set_fact:
-    test_basedir: "/tmp/terraform_output"
+    test_basedir: "/tmp/terraform_output/"
 
 - name: Clean the test directory
-  ansible.builtin.file: &clean-test-directory
+  ansible.builtin.file:
     path: "{{ test_basedir }}"
     state: absent
 
@@ -22,53 +22,44 @@
     src: "{{ item }}"
     dest: "{{ test_basedir }}/{{ item }}"
   loop:
-    - write_file.tf
+    - outputs.tf
 
-- &stat
-  name: Run stat on the result file
-  stat:
-    path: "{{ test_basedir }}/terraform_test.txt"
-  register: stat
-- name: The test file must not exist
-  assert:
-    that: not stat.stat.exists
+- name: Init terraform files
+  ansible.builtin.shell: |
+    cd {{ test_basedir }}
+    terraform init
+    terraform apply -auto-approve
+    terraform apply -auto-approve -state mycustomstate.tfstate
 
-- name: Run Terraform module
-  cloud.terraform.terraform:
-    project_path: "{{ test_basedir }}"
-    state: present
-    force_init: true
-  register: terraform_result
-  check_mode: false
-- assert:
-    that:
-      - terraform_result is changed
-- *stat
-- name: The test file must exist
-  assert:
-    that: stat.stat.exists
-
-- name: Terraform checkout - default state file
+- name: Terraform checkout - default state file + implicit json
   cloud.terraform.terraform_output:
     project_path: "{{ test_basedir }}"
   register: terraform_output
-- assert:
+- assert: &json_assert
     that:
       - terraform_output is not changed
       - terraform_output.outputs.my_output.sensitive == false
       - terraform_output.outputs.my_output.type == "string"
       - terraform_output.outputs.my_output.value == "file generated"
+      - terraform_output.value is not defined
+
+- name: Terraform checkout - default state file + explicit json
+  cloud.terraform.terraform_output:
+    project_path: "{{ test_basedir }}"
+    format: json
+  register: terraform_output
+- assert: *json_assert
 
 - name: Terraform checkout - list only selected output in json format
   cloud.terraform.terraform_output:
     project_path: "{{ test_basedir }}"
     name: my_output
-    format: json
   register: terraform_output
 - assert:
     that:
       - terraform_output is not changed
-      - terraform_output.outputs == "file generated"
+      - terraform_output.outputs is not defined
+      - terraform_output.value == "file generated"
 
 - name: Terraform checkout - list only selected output in raw format
   cloud.terraform.terraform_output:
@@ -79,25 +70,20 @@
 - assert:
     that:
       - terraform_output is not changed
-      - terraform_output.outputs == "file generated"
+      - terraform_output.outputs is not defined
+      - terraform_output.value == "file generated"
 
-# - name: Copy terraform state file
-#   ansible.builtin.copy:
-#     src: "{{ test_basedir }}/terraform.tfstate"
-#     remote_src: yes
-#     dest: "{{ test_basedir }}/coppied_terraform.tfstate"
-#   register: my_dest
-
-# - name: Terraform checkout - specified state file
-#   cloud.terraform.terraform_output:
-#     state_file: "{{ my_dest.dest }}"
-#   register: terraform_output
-# - assert:
-#     that:
-#       - terraform_output is not changed
-#       - terraform_output.outputs.my_output.sensitive == false
-#       - terraform_output.outputs.my_output.type == "string"
-#       - terraform_output.outputs.my_output.value == "file generated"
+- name: Terraform checkout - specified state file
+  cloud.terraform.terraform_output:
+    state_file: "{{ test_basedir }}/mycustomstate.tfstate"
+  register: terraform_output
+- assert:
+    that:
+      - terraform_output is not changed
+      - terraform_output.outputs.my_output.sensitive == false
+      - terraform_output.outputs.my_output.type == "string"
+      - terraform_output.outputs.my_output.value == "file generated"
+      - terraform_output.value is not defined
 
 - name: Delete results
   cloud.terraform.terraform:
@@ -108,7 +94,3 @@
 - assert:
     that:
       - terraform_result is changed
-- *stat
-- name: The test file must not exist
-  assert:
-    that: not stat.stat.exists
