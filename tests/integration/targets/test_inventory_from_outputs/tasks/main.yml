@@ -1,0 +1,54 @@
+- set_fact:
+    test_basedir: "/tmp/test_inventory_from_outputs/"
+
+- name: Clean the test directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: absent
+
+- name: Create terraform project directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: directory
+    mode: 0755
+
+- name: Copy terraform files to work space
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ test_basedir }}/{{ item }}"
+  loop:
+    - create_inventory.tf
+
+- name: Init terraform files
+  ansible.builtin.shell: |
+    cd {{ test_basedir }}
+    terraform init
+    terraform apply -auto-approve
+
+- name: Create the inventory
+  ansible.builtin.include_role:
+    name: cloud.terraform.inventory_from_outputs
+  vars:
+    project_path: "{{ test_basedir }}"
+    mapping_variables:
+      host_list: myvar_hostlist
+      name: myvar_name
+      ip: myvar_ip
+      user: myvar_user
+      group: myvar_group
+
+- name: Group assertions
+  assert:
+    that:
+      - groups.my_group1 is defined
+      - (groups.my_group1 | length) == 2
+      - "'my_name1' in groups.my_group1"
+      - "'my_name3' in groups.my_group1"
+      - (groups.ungrouped | length) == 0
+
+- name: Host assertions
+  assert:
+    that:
+      - "'my_name2' in hostvars"
+      - hostvars.my_name2.ansible_host == "my_ip2"
+      - hostvars.my_name2.ansible_user == "my_user"
