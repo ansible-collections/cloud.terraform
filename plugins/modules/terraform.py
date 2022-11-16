@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+# language=yaml
 DOCUMENTATION = r'''
 ---
 module: terraform
@@ -24,17 +25,20 @@ options:
         Its function is equivalent to running the module in check mode.
     type: str
     default: present
+    version_added: 1.0.0
   binary_path:
     description:
       - The path of a terraform binary to use, relative to the 'service_path'
         unless you supply an absolute path.
     type: path
+    version_added: 1.0.0
   project_path:
     description:
       - The path to the root of the Terraform directory with the
         vars.tf/main.tf/etc to use.
     type: path
     required: true
+    version_added: 1.0.0
   plugin_paths:
     description:
       - List of paths containing Terraform plugin executable files.
@@ -47,12 +51,13 @@ options:
         See the examples below for a tree output of an example plugin directory.
     type: list
     elements: path
-    version_added: 3.0.0
+    version_added: 1.0.0
   workspace:
     description:
       - The terraform workspace to work with.
     type: str
     default: default
+    version_added: 1.0.0
   purge_workspace:
     description:
       - Only works with state = absent
@@ -60,6 +65,7 @@ options:
       - The 'default' workspace will not be deleted.
     default: false
     type: bool
+    version_added: 1.0.0
   plan_file:
     description:
       - The path to an existing Terraform plan file to apply. If this is not
@@ -67,12 +73,14 @@ options:
       - Note that this option is required if 'state' has the 'planned' value.
         In this case, the plan file is only generated, but not applied.
     type: path
+    version_added: 1.0.0
   state_file:
     description:
       - The path to an existing Terraform state file to use when building plan.
         If this is not specified, the default C(terraform.tfstate) will be used.
       - This option is ignored when plan is specified.
     type: path
+    version_added: 1.0.0
   variables_files:
     description:
       - The path to a variables file for Terraform to fill into the TF
@@ -81,6 +89,7 @@ options:
     type: list
     elements: path
     aliases: [ 'variables_file' ]
+    version_added: 1.0.0
   variables:
     description:
       - A group of key-values pairs to override template variables or those in variables files.
@@ -93,6 +102,7 @@ options:
       - Ansible booleans are mapped to terraform booleans.
       - "B(Note) passwords passed as variables will be visible in the log output. Make sure to use I(no_log=true) in production!"
     type: dict
+    version_added: 1.0.0
   complex_vars:
     description:
       - Enable/disable capability to handle complex variable structures for C(terraform).
@@ -101,24 +111,27 @@ options:
       - When disabled, supports only simple variables (strings, integers, and floats), and passes them on unquoted.
     type: bool
     default: false
-    version_added: 5.7.0
+    version_added: 1.0.0
   targets:
     description:
       - A list of specific resources to target in this plan/application. The
         resources selected here will also auto-include any dependencies.
     type: list
     elements: str
+    version_added: 1.0.0
   lock:
     description:
       - Enable statefile locking, if you use a service that accepts locks (such
         as S3+DynamoDB) to store your statefile.
     type: bool
     default: true
+    version_added: 1.0.0
   lock_timeout:
     description:
       - How long to maintain the lock on the statefile, if you use a service
         that accepts locks (such as S3+DynamoDB).
     type: int
+    version_added: 1.0.0
   force_init:
     description:
       - To avoid duplicating infra, if a state file can't be found this will
@@ -126,53 +139,56 @@ options:
         you intend to provision an entirely new Terraform deployment.
     default: false
     type: bool
+    version_added: 1.0.0
   overwrite_init:
     description:
       - Run init even if C(.terraform/terraform.tfstate) already exists in I(project_path).
     default: true
     type: bool
-    version_added: '3.2.0'
+    version_added: 1.0.0
   backend_config:
     description:
       - A group of key-values to provide at init stage to the -backend-config parameter.
     type: dict
+    version_added: 1.0.0
   backend_config_files:
     description:
       - The path to a configuration file to provide at init state to the -backend-config parameter.
         This can accept a list of paths to multiple configuration files.
     type: list
     elements: path
-    version_added: '0.2.0'
+    version_added: 1.0.0
   provider_upgrade:
     description:
       - Allows Terraform init to upgrade providers to versions specified in the project's version constraints.
     default: false
     type: bool
-    version_added: 4.8.0
+    version_added: 1.0.0
   init_reconfigure:
     description:
       - Forces backend reconfiguration during init.
     default: false
     type: bool
-    version_added: '1.3.0'
+    version_added: 1.0.0
   check_destroy:
     description:
       - Apply only when no resources are destroyed. Note that this only prevents "destroy" actions,
         but not "destroy and re-create" actions. This option is ignored when I(state=absent).
     type: bool
     default: false
-    version_added: '3.3.0'
+    version_added: 1.0.0
   parallelism:
     description:
       - Restrict concurrent operations when Terraform applies the plan.
     type: int
-    version_added: '3.8.0'
+    version_added: 1.0.0
 notes:
    - To just run a C(terraform plan), use check mode.
 requirements: [ "terraform" ]
 author: "Ryan Scott Brown (@ryansb)"
 '''
 
+# language=yaml
 EXAMPLES = """
 - name: Basic deploy of a service
   cloud.terraform.terraform:
@@ -241,6 +257,7 @@ EXAMPLES = """
 #                     └── terraform-provider-vsphere_v1.26.0_x4
 """
 
+# language=yaml
 RETURN = """
 outputs:
   type: complex
