@@ -20,10 +20,12 @@ options:
     description:
       - The path to the root of the Terraform directory with the .tfstate file.
     type: path
+    version_added: 1.0.0
   name:
     description:
       - Name of an individual output in the state file to list.
     type: str
+    version_added: 1.0.0
   format:
     description:
       - A flag to specify the output format. Defaults to -json.
@@ -31,15 +33,18 @@ options:
     choices: [ json, raw ]
     default: json
     type: str
+    version_added: 1.0.0
   binary_path:
     description:
       - The path of a terraform binary to use, relative to the 'service_path' unless you supply an absolute path.
     type: path
+    version_added: 1.0.0
   state_file:
     description:
       - Absolute path to an existing Terraform state file whose outputs will be listed.
       - If this is not specified, the default C(terraform.tfstate) in the directory I(project_path) will be used.
     type: path
+    version_added: 1.0.0
 requirements: [ "terraform" ]
 author: "Polona Mihalič (@PolonaM)"
 """
