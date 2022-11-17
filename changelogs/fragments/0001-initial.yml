@@ -1,5 +1,8 @@
 major_changes:
   - Check mode now works as intended and produces correct "changed" output and results.
+  - Added the terraform_output module which parses values from terraform outputs.
+  - Added the git_plan role to apply a Terraform plan stored in a Git repository.
+  - Added the inventory_from_outputs role to construct an in-memory inventory from Terraform outputs.
 minor_changes:
   - Slight code reorganization to always run terraform plan, and then optionally apply the generated plan.
 bugfixes:
