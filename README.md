@@ -2,6 +2,8 @@
 
 The `cloud.terraform` collection supports running Terraform in sync with Ansible.
 
+This collection requires Ansible Core 2.13 or later and thus Python 3.8 or later.
+
 ## Development
 
 ```shell
