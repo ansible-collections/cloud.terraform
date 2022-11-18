@@ -1,2 +1,6 @@
 ---
 requires_ansible: ">= 2.13.0"
+action_groups:
+  terraform:
+    - terraform
+    - terraform_output
