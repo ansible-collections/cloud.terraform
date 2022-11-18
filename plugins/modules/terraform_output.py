@@ -36,7 +36,7 @@ options:
     version_added: 1.0.0
   binary_path:
     description:
-      - The path of a terraform binary to use, relative to the 'service_path' unless you supply an absolute path.
+      - The path of a terraform binary to use.
     type: path
     version_added: 1.0.0
   state_file:
