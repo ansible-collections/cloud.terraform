@@ -1,1 +1,22 @@
-releases: {}
+ancestor: null
+releases:
+  1.0.0:
+    changes:
+      bugfixes:
+      - Integration tests to test support of AWS, Azure and GCP.
+      - Several integration tests were added to test end-to-end behaviour.
+      deprecated_features:
+      - state=planned is deprecated. Use check_mode=true at the module level instead.
+      major_changes:
+      - Added the git_plan role to apply a Terraform plan stored in a Git repository.
+      - Added the inventory_from_outputs role to construct an in-memory inventory
+        from Terraform outputs.
+      - Added the terraform_output module which parses values from terraform outputs.
+      - Check mode now works as intended and produces correct "changed" output and
+        results.
+      minor_changes:
+      - Slight code reorganization to always run terraform plan, and then optionally
+        apply the generated plan.
+    fragments:
+    - 0001-initial.yml
+    release_date: '2022-11-22'
