@@ -28,7 +28,7 @@ options:
     version_added: 1.0.0
   format:
     description:
-      - A flag to specify the output format. Defaults to -json.
+      - A flag to specify the output format. Defaults to C(json).
       - I(name) must be provided when using -raw option.
     choices: [ json, raw ]
     default: json
