@@ -1,0 +1,35 @@
+---
+- name: Fetch git repository
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ repo_dir }}"
+    version: "{{ version | default(omit) }}"
+    clone: true
+    # optional config
+    accept_hostkey: "{{ git_options.accept_hostkey | default(omit) }}"
+    accept_newhostkey: "{{ git_options.accept_newhostkey | default(omit) }}"
+    depth: "{{ git_options.depth | default(omit) }}"
+    executable: "{{ git_options.executable | default(omit) }}"
+    force: "{{ git_options.force | default(omit) }}"
+    gpg_whitelist: "{{ git_options.gpg_whitelist | default(omit) }}"
+    key_file: "{{ git_options.key_file | default(omit) }}"
+    remote: "{{ git_options.remote | default(omit) }}"
+    separate_git_dir: "{{ git_options.separate_git_dir | default(omit) }}"
+    ssh_opts: "{{ git_options.ssh_opts | default(omit) }}"
+    track_submodules: "{{ git_options.track_submodules | default(omit) }}"
+    verify_commit: "{{ git_options.verify_commit | default(omit) }}"
+
+- name: Apply plan
+  cloud.terraform.terraform:
+    project_path: "{{ repo_dir }}"
+    plan_file: "{{ plan_file }}"
+    state: present  # applying a plan doesn't have a switch for this
+    # optional config
+    state_file: "{{ terraform_options.state_file | default(omit) }}"
+    force_init: "{{ terraform_options.force_init | default(omit) }}"
+    binary_path: "{{ terraform_options.binary_path | default(omit) }}"
+    plugin_paths: "{{ terraform_options.plugin_paths | default(omit) }}"
+    workspace: "{{ terraform_options.workspace | default(omit) }}"
+    lock: "{{ terraform_options.lock | default(omit) }}"
+    lock_timeout: "{{ terraform_options.lock_timeout | default(omit) }}"
+    parallelism: "{{ terraform_options.parallelism | default(omit) }}"

@@ -1,3 +1,13 @@
+.idea/
+output/
+
+tests/integration/inventory
+
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
 /tests/output/
 /changelogs/.plugin-cache.yaml
 

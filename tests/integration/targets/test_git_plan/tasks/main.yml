@@ -1,0 +1,60 @@
+- set_fact:
+    test_basedir: "/tmp/test_git_plan/"
+
+- name: Clean the test directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: absent
+
+- name: Create terraform project directories
+  ansible.builtin.file:
+    path: "{{ test_basedir }}/{{ item }}/"
+    state: directory
+    mode: 0755
+  loop:
+    - origin
+    - repo
+
+- name: Copy terraform files to work space
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ test_basedir }}/origin/"
+  loop:
+    - write_file.tf
+
+- name: Make a repository
+  ansible.builtin.shell: |
+    set -eu
+    cd {{ test_basedir }}/origin/
+    terraform init
+    terraform plan -out myplan.tfplan
+    git init
+    echo ".terraform*" > .gitignore
+    git add .
+    git commit -m "Initial commit."
+    git branch targetbranch
+
+- &stat
+  name: Run stat on the result file
+  stat:
+    path: "{{ test_basedir }}/repo/terraform_test.txt"
+  register: stat
+- name: The test file must not exist
+  assert:
+    that: not stat.stat.exists
+
+- name: Call the role
+  ansible.builtin.include_role:
+    name: cloud.terraform.git_plan
+  vars:
+    repo_url: "file://{{ test_basedir }}/origin/"
+    repo_dir: "{{ test_basedir }}/repo/"
+    version: targetbranch
+    plan_file: myplan.tfplan
+    terraform_options:
+      force_init: true
+
+- *stat
+- name: The test file must exist
+  assert:
+    that: stat.stat.exists

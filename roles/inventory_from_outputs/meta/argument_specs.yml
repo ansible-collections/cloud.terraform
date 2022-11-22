@@ -1,0 +1,54 @@
+---
+argument_specs:
+  main:
+    short_description: Create an in-memory inventory from Terraform outputs.
+    options:
+      project_path:
+        description:
+          - The path to the root of the Terraform directory with the .tfstate file.
+          - Mutually exclusive with state_file.
+        type: path
+        version_added: 1.0.0
+      state_file:
+        description:
+          - An absolute path to an existing Terraform state file.
+          - Mutually exclusive with project_path.
+        type: path
+        version_added: 1.0.0
+      mapping_variables:
+        description: Names that define the mapping between Terraform output variables and inventory host variables.
+        type: dict
+        version_added: 1.0.0
+        required: true
+        options:
+          host_list:
+            description:
+              - The Terraform variable that contains the list of hosts to be processed into the in-memory inventory.
+              - Other keys in the mapping_variables parameter refer to properties of the items of this list.
+            type: str
+            required: true
+            version_added: 1.0.0
+          name:
+            description: The Terraform variable that contains the name of the resulting inventory host.
+            type: str
+            required: true
+            version_added: 1.0.0
+          ip:
+            description:
+              - The Terraform variable that contains the IP or hostname of the resulting inventory host.
+              - Maps directly to ansible_host.
+            type: str
+            required: true
+            version_added: 1.0.0
+          user:
+            description:
+              - The Terraform variable that contains the username of the resulting inventory host.
+              - Maps directly to ansible_user.
+            type: str
+            required: true
+            version_added: 1.0.0
+          group:
+            description: The Terraform variable that contains the group the resulting host will be a member of.
+            type: str
+            required: true
+            version_added: 1.0.0

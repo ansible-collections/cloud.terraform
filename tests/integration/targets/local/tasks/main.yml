@@ -1,0 +1,107 @@
+---
+# Copyright (c) Ansible Project
+# GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- set_fact:
+    test_basedir: "/tmp/write_file/"
+
+- name: Clean the test directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: absent
+
+- name: Create terraform project directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: directory
+    mode: 0755
+
+- name: Copy terraform files to work space
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ test_basedir }}/{{ item }}"
+  loop:
+    - write_file.tf
+
+- &stat
+  name: Run stat on the result file
+  stat:
+    path: "{{ test_basedir }}/terraform_test.txt"
+  register: stat
+- name: The test file must not exist
+  assert:
+    that: not stat.stat.exists
+
+- name: Terraform in present check mode
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: present
+    force_init: true
+  register: terraform_result
+  check_mode: true
+- assert:
+    that:
+      - terraform_result is not failed
+      - terraform_result is changed
+- *stat
+- name: The test file must not exist
+  assert:
+    that: not stat.stat.exists
+
+- name: Terraform in present non-check mode
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: present
+    force_init: true
+  register: terraform_result
+  check_mode: false
+- assert:
+    that:
+      - terraform_result is changed
+- *stat
+- name: The test file must exist
+  assert:
+    that: stat.stat.exists
+
+- name: Terraform in present non-check mode (idempotency)
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: present
+  register: terraform_result
+  check_mode: false
+- assert:
+    that:
+      - terraform_result is not changed
+- *stat
+- name: The test file must exist
+  assert:
+    that: stat.stat.exists
+
+- name: Terraform in absent check mode
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: absent
+  register: terraform_result
+  check_mode: true
+- assert:
+    that:
+      - terraform_result is changed
+- *stat
+- name: The test file must exist
+  assert:
+    that: stat.stat.exists
+
+- name: Terraform in absent non-check mode
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: absent
+  register: terraform_result
+  check_mode: false
+- assert:
+    that:
+      - terraform_result is changed
+- *stat
+- name: The test file must not exist
+  assert:
+    that: not stat.stat.exists

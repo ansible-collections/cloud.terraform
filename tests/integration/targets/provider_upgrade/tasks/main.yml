@@ -1,0 +1,19 @@
+---
+# Copyright (c) Ansible Project
+# GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# This block checks and registers Terraform version of the binary found in path.
+
+- name: Loop over provider upgrade test tasks
+  ansible.builtin.include_tasks: test_provider_upgrade.yml
+  vars:
+    tf_provider: "{{ terraform_provider_versions[provider_index] }}"
+  loop: "{{ terraform_provider_versions }}"
+  loop_control:
+    index_var: provider_index
+
+- name: Cleanup terraform project directory
+  ansible.builtin.file:
+    path: "{{ terraform_project_dir }}"
+    state: absent
