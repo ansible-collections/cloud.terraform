@@ -5,11 +5,14 @@ name: terraform
 version: 1.0.0
 readme: README.md
 authors:
-  - TODO
-description: TODO
+  - Ansible (https://github.com/ansible)
+description: Terraform collection for Ansible.
 license_file: LICENSE
 tags:
-  - todo
+  - terraform
+  - cloud
+  - infrastructure
+  - cluster
 repository: https://github.com/ansible-collections/cloud.terraform
 homepage: https://github.com/ansible-collections/cloud.terraform
 issues: https://github.com/ansible-collections/cloud.terraform/issues
