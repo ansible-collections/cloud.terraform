@@ -1,21 +1,54 @@
-# cloud.terraform
+# Terraform Collection for Ansible Automation Platform
 
 The `cloud.terraform` collection supports running Terraform in sync with Ansible.
 
+## Ansible version compatibility
+
 This collection requires Ansible Core 2.13 or later and thus Python 3.8 or later.
 
-## Development
+## Included content
+<!--start collection content-->
+### Modules
+Name | Description
+--- | ---
+[cloud.terraform.terraform](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_module.rst)|Manages a Terraform deployment (and plans)
+[cloud.terraform.terraform_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_output_module.rst)|Returns Terraform module outputs.
 
-```shell
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip wheel
-pip install -r requirements.txt
-ANSIBLE_COLLECTIONS_PATH="../../" ansible-galaxy collection install -r requirements.yml
+<!--end collection content-->
 
-# second pass for requirements in collections
-pip install -r  ../../azure/azcollection/requirements-azure.txt
-pip install --no-deps "azure-cli==$(pip freeze | grep azure-cli-core | sed -E "s/.*?==(.*)/\1/")"
+## Installing this collection
+
+You can install the cloud.terraform collection with the Ansible Galaxy CLI:
+
+    ansible-galaxy collection install cloud.terraform
+
+You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
+
+```yaml
+---
+collections:
+  - name: cloud.terraform
+```
+
+A specific version of the collection can be installed by using the `version` keyword in the `requirements.yml` file:
+
+```yaml
+---
+collections:
+  - name: cloud.terraform
+    version: 1.0.0
+```
+
+## Using this collection
+
+You can either call modules by their Fully Qualified Collection Name (FQCN), such as `cloud.terraform.terraform`, or you can call modules by their short name if you list the `cloud.terraform` collection in the playbook's `collections` keyword:
+
+```yaml
+---
+  - name: Basic deploy of a service
+    cloud.terraform.terraform:
+      project_path: '{{ project_dir }}'
+      state: present
 ```
 
 ## Testing
@@ -47,3 +80,10 @@ gcloud auth application-default set-quota-project <id>
 
 ansible-test integration [target] [--exclude aws|azure|gcp]
 ```
+
+## Licensing
+
+GNU General Public License v3.0 or later.
+
+See [LICENCE](https://github.com/ansible-collections/cloud.terraform/blob/main/LICENSE) to see the full text.
+
