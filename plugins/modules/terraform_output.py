@@ -29,7 +29,7 @@ options:
   format:
     description:
       - A flag to specify the output format. Defaults to C(json).
-      - I(name) must be provided when using -raw option.
+      - I(name) must be provided when using C(raw) option.
     choices: [ json, raw ]
     default: json
     type: str
