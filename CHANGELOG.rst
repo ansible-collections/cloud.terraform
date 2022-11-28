@@ -5,6 +5,14 @@ The cloud.terraform collection Release Notes
 .. contents:: Topics
 
 
+v1.0.1
+======
+
+Minor Changes
+-------------
+
+- Fix README.md to include requires_ansible section. (https://github.com/ansible-collections/cloud.terraform/pull/5)
+
 v1.0.0
 ======
 

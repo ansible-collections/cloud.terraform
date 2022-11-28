@@ -20,3 +20,10 @@ releases:
     fragments:
     - 0001-initial.yml
     release_date: '2022-11-22'
+  1.0.1:
+    changes:
+      minor_changes:
+      - Fix README.md to include requires_ansible section. (https://github.com/ansible-collections/cloud.terraform/pull/5)
+    fragments:
+    - fix_readme.yaml
+    release_date: '2022-11-28'

@@ -1,3 +1,0 @@
----
-minor_changes:
-  - Fix README.md to include requires_ansible section. (https://github.com/ansible-collections/cloud.terraform/pull/5)
