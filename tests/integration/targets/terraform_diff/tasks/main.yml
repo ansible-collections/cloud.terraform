@@ -1,0 +1,93 @@
+---
+# Copyright (c) Ansible Project
+# GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- set_fact:
+    test_basedir: "/tmp/terraform_diff/"
+
+- name: Clean the test directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: absent
+
+- name: Create terraform project directory
+  ansible.builtin.file:
+    path: "{{ test_basedir }}"
+    state: directory
+    mode: 0755
+
+- name: Copy terraform files to work space
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ test_basedir }}/{{ item }}"
+  loop:
+    - write_file.tf
+    - secret.tfvars
+
+- name: Terraform init and apply
+  cloud.terraform.terraform: &init_and_apply
+    project_path: "{{ test_basedir }}"
+    state: present
+    variables_files:
+      - secret.tfvars
+    force_init: true
+  register: terraform_result
+- assert:
+    that:
+      - terraform_result is not failed
+      - terraform_result is changed
+
+- name: Terraform init and apply - idempotence
+  cloud.terraform.terraform: *init_and_apply
+  register: terraform_result
+- assert:
+    that:
+      - terraform_result is not failed
+      - terraform_result is not changed
+
+- name: Copy updated terraform module
+  ansible.builtin.copy:
+    src: write_file_updated.tf
+    dest: "{{ test_basedir }}/write_file.tf"
+
+- name: Terraform plan
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: present
+    variables_files:
+      - secret.tfvars
+  register: terraform_result
+  check_mode: true
+- assert:
+    that:
+      - terraform_result is not failed
+      - terraform_result is changed
+      - terraform_result.diff.before["values"].outputs.my_output.value == "sensitive_content"
+      - not terraform_result.diff.after["values"].outputs.my_output.value
+      - terraform_result.diff.before["values"].outputs.my_another_output.value == "not_sensitive_value"
+      - not terraform_result.diff.after["values"].outputs.my_another_output.value
+      - terraform_result.diff.before["values"].root_module.resources[0]["values"].filename == "./not_sensitive_file_name.txt"
+      - not terraform_result.diff.after["values"].root_module.resources[0]["values"].filename
+      - not terraform_result.diff.before["values"].root_module.resources[0]["values"].content
+      - not terraform_result.diff.after["values"].root_module.resources[0]["values"].content
+
+- name: Terraform apply updates
+  cloud.terraform.terraform:
+    project_path: "{{ test_basedir }}"
+    state: present
+    variables_files:
+      - secret.tfvars
+  register: terraform_result
+- assert:
+    that:
+      - terraform_result is not failed
+      - terraform_result is changed
+      - terraform_result.diff.before["values"].outputs.my_output.value == "sensitive_content"
+      - not terraform_result.diff.after["values"].outputs.my_output.value
+      - terraform_result.diff.before["values"].outputs.my_another_output.value == "not_sensitive_value"
+      - not terraform_result.diff.after["values"].outputs.my_another_output.value
+      - terraform_result.diff.before["values"].root_module.resources[0]["values"].filename == "./not_sensitive_file_name.txt"
+      - not terraform_result.diff.after["values"].root_module.resources[0]["values"].filename
+      - not terraform_result.diff.before["values"].root_module.resources[0]["values"].content
+      - not terraform_result.diff.after["values"].root_module.resources[0]["values"].content
