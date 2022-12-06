@@ -16,7 +16,7 @@ jobs:
         ansible:
           - stable-2.13
           - stable-2.14
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1
@@ -25,7 +25,7 @@ jobs:
           testing-type: sanity
 
   units:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: Units (Ⓐ${{ matrix.ansible }})
     strategy:
       fail-fast: true
@@ -43,7 +43,7 @@ jobs:
           testing-type: units
 
   integration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: I (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }}+tf${{ matrix.terraform }})
     strategy:
       fail-fast: false

@@ -13,7 +13,7 @@ jobs:
     name: Lint extra docsite docs and links
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Check out code
         uses: actions/checkout@v3
