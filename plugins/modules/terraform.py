@@ -473,6 +473,157 @@ def get_outputs(terraform_binary, project_path, state_file):
     return outputs
 
 
+# needs init
+def get_providers_schema(terraform_binary, project_path):
+    command = [
+        terraform_binary,
+        "providers",
+        "schema",
+        "-json",
+    ]  # in the command we have "providers schema", in the schema we have "provider_schemas"
+    rc, text, err = module.run_command(command, cwd=project_path)
+    if rc == 1:
+        module.warn(
+            "Could not get provider schemas. "
+            "\nstdout: {0}\nstderr: {1}".format(text, err)
+        )
+        provider_schemas = {}
+    elif rc != 0:
+        module.fail_json(
+            msg="Failure when getting provider schemas. "
+            "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
+            command=" ".join(command),
+        )
+    else:
+        provider_schemas = json.loads(text)
+    return provider_schemas
+
+
+def is_attribute_sensitive_in_providers_schema(provider_schemas, resource, attribute):
+    for provider_schema in provider_schemas[
+        "provider_schemas"
+    ]:
+        for resource_schema_key, resource_schema_value in (
+            provider_schemas["provider_schemas"]
+            .get(provider_schema)
+            .get("resource_schemas")
+            .items()
+        ):
+            if resource_schema_key == resource["type"]:
+                sensitive = resource_schema_value["block"]["attributes"][attribute].get(
+                    "sensitive", False
+                )  # sensitive exists only when it is True
+                return sensitive
+
+
+def is_attribute_in_sensitive_values(resource, attribute):
+    return attribute in resource["sensitive_values"]
+
+
+def filter_resource_attributes(state_file, provider_schemas):
+    # using .get() in case there is no existing .tfstate before apply
+    for resource in state_file.get("values", {}).get("root_module", {}).get("resources", {}):
+        attributes_to_remove = []
+        for attribute in resource.get("values", {}):
+            if is_attribute_sensitive_in_providers_schema(
+                provider_schemas, resource, attribute
+            ) or is_attribute_in_sensitive_values(resource, attribute):
+                attributes_to_remove.append(attribute)
+        for attribute in attributes_to_remove:
+            resource["values"][attribute] = None
+    return state_file
+
+
+def filter_outputs(state_file):
+    outputs_to_remove = []
+    # using .get() in case there is no existing .tfstate before apply
+    for output_key, output_value in state_file.get("values", {}).get("outputs", {}).items():
+        if output_value.get("sensitive", False):
+            outputs_to_remove.append(output_key)
+
+    for output in outputs_to_remove:
+        state_file["values"]["outputs"][output]["value"] = None
+
+    return state_file
+
+
+# this will not produce error if there is no init before the command
+def get_state_content(
+    terraform_binary, project_path, state_file, provider_schemas, sanitized
+):
+    command = [
+        terraform_binary,
+        "show",
+        "-json",
+        state_file,  # can be absolute path to state file or name of the state file in project_dir
+    ]
+    rc, text, err = module.run_command(command, cwd=project_path)
+    if rc == 1:
+        module.warn(
+            "Could not get Terraform state file. "
+            "\nstdout: {0}\nstderr: {1}".format(text, err)
+        )
+        state_file = {}
+    elif rc != 0:
+        module.fail_json(
+            msg="Failure when getting Terraform state file. "
+            "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
+            command=" ".join(command),
+        )
+    else:
+        state_file = json.loads(text)
+
+        if sanitized:
+            state_file = filter_resource_attributes(state_file, provider_schemas)
+            state_file = filter_outputs(state_file)
+
+    return state_file
+
+
+def get_state_content_from_plan(
+    terraform_binary, project_path, plan, provider_schemas, sanitized
+):
+    command = [
+        terraform_binary,
+        "show",
+        "-json",
+        plan,
+    ]
+    rc, text, err = module.run_command(command, cwd=project_path)
+    if rc == 1:
+        module.warn(
+            "Could not get Terraform state from plan file. "
+            "\nstdout: {0}\nstderr: {1}".format(text, err)
+        )
+        plan = {}
+    elif rc != 0:
+        module.fail_json(
+            msg="Failure when getting Terraform state from plan file. "
+            "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
+            command=" ".join(command),
+        )
+    else:
+        plan = json.loads(text)
+        plan = {
+            key: value
+            for key, value in plan.items()
+            if key
+            in [
+                "format_version",
+                "terraform_version",
+                "planned_values",
+            ]
+        }
+        # renaming planned_values to values for filtering
+        plan["values"] = plan.pop("planned_values")
+
+        if sanitized:
+            plan = filter_resource_attributes(plan, provider_schemas)
+            plan = filter_outputs(plan)
+
+    return plan
+
+
 def main():
     global module
     module = AnsibleModule(
@@ -567,6 +718,11 @@ def main():
         if overwrite_init or not os.path.isfile(os.path.join(project_path, ".terraform", "terraform.tfstate")):
             init_plugins(terraform_binary, project_path, backend_config, backend_config_files, init_reconfigure,
                          provider_upgrade, plugin_paths)
+
+    provider_schemas = get_providers_schema(terraform_binary, project_path)
+    initial_state = get_state_content(
+        terraform_binary, project_path, state_file, provider_schemas, sanitized=True
+    )
 
     workspace_ctx = get_workspace_context(terraform_binary, project_path)
     if workspace_ctx["current"] != workspace:
@@ -686,6 +842,10 @@ def main():
 
     preflight_validation(terraform_binary, project_path, checked_version, variables_args)
 
+    planned_state = get_state_content_from_plan(
+        terraform_binary, project_path, plan_file_to_apply, provider_schemas, sanitized=True
+    )
+
     if plan_file_needs_application and not computed_check_mode:
         apply_stdout, apply_stderr = execute_plan(
             terraform_binary=terraform_binary,
@@ -697,6 +857,13 @@ def main():
 
         out = apply_stdout
         err = apply_stderr
+        applied_state = get_state_content(
+            terraform_binary, project_path, state_file, provider_schemas, sanitized=True
+        )
+
+        final_state = applied_state
+    else:
+        final_state = planned_state
 
     outputs = get_outputs(
         terraform_binary=terraform_binary,
@@ -710,7 +877,9 @@ def main():
     if computed_state == 'absent' and workspace != 'default' and purge_workspace is True:
         remove_workspace(terraform_binary, project_path, workspace)
 
-    module.exit_json(changed=plan_file_needs_application, state=computed_state, workspace=workspace, outputs=outputs,
+    diff = dict(before=initial_state, after=final_state)
+
+    module.exit_json(changed=plan_file_needs_application, diff=diff, state=computed_state, workspace=workspace, outputs=outputs,
                      stdout=out, stderr=err, command=' '.join(final_apply_command))
 
 
