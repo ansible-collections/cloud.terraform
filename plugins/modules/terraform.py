@@ -116,6 +116,7 @@ options:
       - A list of specific resources to target in this plan/application. The
         resources selected here will also auto-include any dependencies.
     type: list
+    default: []
     elements: str
     version_added: 1.0.0
   lock:
