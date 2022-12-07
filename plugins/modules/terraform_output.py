@@ -105,48 +105,59 @@ value:
 
 import os
 import json
+from typing import Optional, List, Union, cast, Callable, Tuple
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.cloud.terraform.plugins.module_utils.types import (
+    TJsonBareValue,
+    TJsonObject,
+    AnsibleRunCommandType,
+)
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 
-module = None  # type: AnsibleModule
 
-
-def _state_args(state_file):
-    if state_file and os.path.exists(state_file):
-        return ["-state", state_file]
-    if state_file and not os.path.exists(state_file):
-        module.fail_json(msg='Could not find state_file "{0}", check the path and try again.'.format(state_file))
+def _state_args(state_file: Optional[str]) -> List[str]:
+    if state_file is not None:
+        if os.path.exists(state_file):
+            return ["-state", state_file]
+        else:
+            raise TerraformError('Could not find state_file "{0}", check the path and try again.'.format(state_file))
     return []
 
 
-def get_outputs(terraform_binary, project_path, state_file, output_format, name=None):
+def get_outputs(
+    run_command_fp: AnsibleRunCommandType,
+    terraform_binary: str,
+    project_path: Optional[str],
+    state_file: Optional[str],
+    output_format: str,
+    name: Optional[str] = None,
+) -> Union[TJsonObject, TJsonBareValue]:
     outputs_command = [terraform_binary, "output", "-no-color", "-{0}".format(output_format)]
     outputs_command += _state_args(state_file) + ([name] if name else [])
-    rc, outputs_text, outputs_err = module.run_command(outputs_command, cwd=project_path)
+    rc, outputs_text, outputs_err = run_command_fp(outputs_command, cwd=project_path)
     if rc == 1:
-        module.warn(
+        message = (
             "Could not get Terraform outputs. "
             "This usually means none have been defined.\ncommand: {0}\nstdout: {1}\nstderr: {2}".format(
                 outputs_command, outputs_text, outputs_err
             )
         )
-        outputs = {}
+        raise TerraformWarning(message)
     elif rc != 0:
-        module.fail_json(
-            msg="Failure when getting Terraform outputs. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
-                rc, outputs_text, outputs_err
-            ),
-            command=" ".join(outputs_command),
+        message = "Failure when getting Terraform outputs. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
+            rc, outputs_text, outputs_err
         )
+        raise TerraformError(message, command=" ".join(outputs_command))
     else:
         if output_format == "raw":
-            return outputs_text
-        outputs = json.loads(outputs_text)
-    return outputs
+            return cast(TJsonObject, outputs_text)
+        else:
+            outputs = cast(TJsonObject, json.loads(outputs_text))
+            return outputs
 
 
-def main():
-    global module
+def main() -> None:
     module = AnsibleModule(
         argument_spec=dict(
             project_path=dict(type="path"),
@@ -159,24 +170,30 @@ def main():
         required_one_of=[("project_path", "state_file")],
     )
 
-    project_path = module.params.get("project_path")
-    bin_path = module.params.get("binary_path")
-    state_file = module.params.get("state_file")
-    name = module.params.get("name")
-    output_format = module.params.get("format")
+    project_path: Optional[str] = module.params.get("project_path")
+    bin_path: Optional[str] = module.params.get("binary_path")
+    state_file: Optional[str] = module.params.get("state_file")
+    name: Optional[str] = module.params.get("name")
+    output_format: str = module.params.get("format")
 
     if bin_path is not None:
         terraform_binary = bin_path
     else:
         terraform_binary = module.get_bin_path("terraform", required=True)
 
-    outputs = get_outputs(
-        terraform_binary=terraform_binary,
-        project_path=project_path,
-        state_file=state_file,
-        name=name,
-        output_format=output_format,
-    )
+    try:
+        outputs = get_outputs(
+            module.run_command,
+            terraform_binary=terraform_binary,
+            project_path=project_path,
+            state_file=state_file,
+            name=name,
+            output_format=output_format,
+        )
+    except TerraformWarning as e:
+        module.warn(e.message)
+    except TerraformError as e:
+        e.fail_json(module)
 
     if name:
         module.exit_json(value=outputs)
