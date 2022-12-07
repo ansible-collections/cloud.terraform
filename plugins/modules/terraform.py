@@ -291,12 +291,11 @@ command:
 import os
 import json
 import tempfile
+from ansible.module_utils.compat.version import LooseVersion
 from ansible.module_utils.six.moves import shlex_quote
 from ansible.module_utils.six import integer_types
-
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.cloud.terraform.plugins.module_utils.version import LooseVersion
 
 module = None  # type: AnsibleModule
 
