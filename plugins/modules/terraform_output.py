@@ -115,25 +115,14 @@ def _state_args(state_file):
     if state_file and os.path.exists(state_file):
         return ["-state", state_file]
     if state_file and not os.path.exists(state_file):
-        module.fail_json(
-            msg='Could not find state_file "{0}", check the path and try again.'.format(
-                state_file
-            )
-        )
+        module.fail_json(msg='Could not find state_file "{0}", check the path and try again.'.format(state_file))
     return []
 
 
 def get_outputs(terraform_binary, project_path, state_file, output_format, name=None):
-    outputs_command = [
-        terraform_binary,
-        "output",
-        "-no-color",
-        "-{0}".format(output_format)
-    ]
+    outputs_command = [terraform_binary, "output", "-no-color", "-{0}".format(output_format)]
     outputs_command += _state_args(state_file) + ([name] if name else [])
-    rc, outputs_text, outputs_err = module.run_command(
-        outputs_command, cwd=project_path
-    )
+    rc, outputs_text, outputs_err = module.run_command(outputs_command, cwd=project_path)
     if rc == 1:
         module.warn(
             "Could not get Terraform outputs. "
@@ -166,12 +155,8 @@ def main():
             binary_path=dict(type="path"),
             state_file=dict(type="path"),
         ),
-        required_if=[
-            ("format", "raw", ("name",))
-        ],
-        required_one_of=[
-            ("project_path", "state_file")
-        ]
+        required_if=[("format", "raw", ("name",))],
+        required_one_of=[("project_path", "state_file")],
     )
 
     project_path = module.params.get("project_path")

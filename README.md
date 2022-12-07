@@ -78,6 +78,7 @@ az account set --subscription <id>
 gcloud auth application-default login
 gcloud auth application-default set-quota-project <id>
 
+black --check --diff .
 ansible-test integration [target] [--exclude aws|azure|gcp]
 ```
 
