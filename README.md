@@ -79,6 +79,7 @@ gcloud auth application-default login
 gcloud auth application-default set-quota-project <id>
 
 black --check --diff .
+MYPYPATH="$(realpath "$PWD/../../../")" mypy -p ansible_collections.cloud.terraform.plugins
 ansible-test integration [target] [--exclude aws|azure|gcp]
 ```
 
