@@ -1,0 +1,3 @@
+---
+major_changes:
+  - Terraform output lookup module added (https://github.com/ansible-collections/cloud.terraform/pull/12).
