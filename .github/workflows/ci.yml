@@ -29,6 +29,30 @@ jobs:
       - name: Run collection docs linter
         run: antsibull-docs lint-collection-docs .
 
+  formatting:
+    name: Formatting (black)
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install black
+        shell: bash
+        run: |
+          set -eux
+          cat requirements.txt | grep "black==" | xargs pip install
+
+      - name: Run black
+        shell: bash
+        run: |
+          set -eux
+          black --check --diff .
+
   sanity:
     name: Sanity (Ⓐ${{ matrix.ansible }})
     strategy:
