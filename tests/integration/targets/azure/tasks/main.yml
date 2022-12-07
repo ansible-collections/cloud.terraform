@@ -4,21 +4,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 - set_fact:
-    test_basedir: "/tmp/terraform_azure/"
+    test_basedir: "{{ test_basedir | default(output_dir) }}"
     resource_id: "{{ '00' | community.general.random_mac | hash('md5') }}"
     resource_group_name: "cloud.terraform_integration_resource_group"
     resource_group_location: "northeurope"
-
-- name: Clean the test directory
-  ansible.builtin.file:
-    path: "{{ test_basedir }}"
-    state: absent
-
-- name: Create terraform project directory
-  ansible.builtin.file:
-    path: "{{ test_basedir }}"
-    state: directory
-    mode: 0755
 
 - name: Copy terraform files to workspace
   ansible.builtin.copy:

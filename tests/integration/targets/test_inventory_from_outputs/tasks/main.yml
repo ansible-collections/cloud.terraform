@@ -1,16 +1,5 @@
 - set_fact:
-    test_basedir: "/tmp/test_inventory_from_outputs/"
-
-- name: Clean the test directory
-  ansible.builtin.file:
-    path: "{{ test_basedir }}"
-    state: absent
-
-- name: Create terraform project directory
-  ansible.builtin.file:
-    path: "{{ test_basedir }}"
-    state: directory
-    mode: 0755
+    test_basedir: "{{ test_basedir | default(output_dir) }}"
 
 - name: Copy terraform files to work space
   ansible.builtin.copy:

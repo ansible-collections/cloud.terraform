@@ -1,10 +1,5 @@
 - set_fact:
-    test_basedir: "/tmp/test_git_plan/"
-
-- name: Clean the test directory
-  ansible.builtin.file:
-    path: "{{ test_basedir }}"
-    state: absent
+    test_basedir: "{{ test_basedir | default(output_dir) }}"
 
 - name: Create terraform project directories
   ansible.builtin.file:
