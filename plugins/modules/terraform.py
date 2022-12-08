@@ -289,36 +289,56 @@ command:
   sample: terraform apply ...
 """
 
+import dataclasses
 import os
 import json
 import tempfile
+from typing import List, Optional, Dict, Tuple, Union, cast, Callable
+
 from ansible.module_utils.compat.version import LooseVersion
 from ansible.module_utils.six.moves import shlex_quote
 from ansible.module_utils.six import integer_types
 from ansible.module_utils.basic import AnsibleModule
 
+from ansible_collections.cloud.terraform.plugins.module_utils.types import (
+    AnyJsonType,
+    TJsonBareValue,
+    TJsonObject,
+    AnsibleRunCommandType,
+)
+from ansible_collections.cloud.terraform.plugins.module_utils.models import (
+    TerraformWorkspaceContext,
+    TerraformShow,
+    TerraformProviderSchemaCollection,
+    TerraformRootModuleResource,
+)
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
+
 
 module = None  # type: AnsibleModule
 
 
-def get_version(bin_path):
+def get_version(bin_path: str) -> str:
     extract_version = module.run_command([bin_path, "version", "-json"])
-    terraform_version = (json.loads(extract_version[1]))["terraform_version"]
+    terraform_version = cast(str, (json.loads(extract_version[1]))["terraform_version"])
     return terraform_version
 
 
-def preflight_validation(bin_path, project_path, version, variables_args=None, plan_file=None):
+def preflight_validation(
+    bin_path: str, project_path: str, version: str, variables_args: List[str], plan_file: Optional[str] = None
+) -> Tuple[int, str, str]:
     if project_path is None or "/" not in project_path:
-        module.fail_json(msg="Path for Terraform project can not be None or ''.")
+        raise TerraformError("Path for Terraform project can not be None or ''.")
+
     if not os.path.exists(bin_path):
-        module.fail_json(
-            msg="Path for Terraform binary '{0}' doesn't exist on this host - check the path and try again please.".format(
+        raise TerraformError(
+            "Path for Terraform binary '{0}' doesn't exist on this host - check the path and try again please.".format(
                 bin_path
             )
         )
     if not os.path.isdir(project_path):
-        module.fail_json(
-            msg="Path for Terraform project '{0}' doesn't exist on this host - check the path and try again please.".format(
+        raise TerraformError(
+            "Path for Terraform project '{0}' doesn't exist on this host - check the path and try again please.".format(
                 project_path
             )
         )
@@ -326,19 +346,27 @@ def preflight_validation(bin_path, project_path, version, variables_args=None, p
         rc, out, err = module.run_command([bin_path, "validate"] + variables_args, check_rc=True, cwd=project_path)
     else:
         rc, out, err = module.run_command([bin_path, "validate"], check_rc=True, cwd=project_path)
+    return rc, out, err
 
 
-def _state_args(state_file):
+def _state_args(state_file: Optional[str]) -> List[str]:
     if state_file and os.path.exists(state_file):
         return ["-state", state_file]
     if state_file and not os.path.exists(state_file):
-        module.fail_json(msg='Could not find state_file "{0}", check the path and try again.'.format(state_file))
+        raise TerraformError('Could not find state_file "{0}", check the path and try again.'.format(state_file))
     return []
 
 
 def init_plugins(
-    bin_path, project_path, backend_config, backend_config_files, init_reconfigure, provider_upgrade, plugin_paths
-):
+    run_command_fp: AnsibleRunCommandType,
+    bin_path: str,
+    project_path: str,
+    backend_config: Dict[str, str],
+    backend_config_files: str,
+    init_reconfigure: bool,
+    provider_upgrade: bool,
+    plugin_paths: List[str],
+) -> Tuple[int, str, str]:
     command = [bin_path, "init", "-input=false", "-no-color"]
     if backend_config:
         for key, val in backend_config.items():
@@ -353,45 +381,48 @@ def init_plugins(
     if plugin_paths:
         for plugin_path in plugin_paths:
             command.extend(["-plugin-dir", plugin_path])
-    rc, out, err = module.run_command(command, check_rc=True, cwd=project_path)
+    return run_command_fp(command, check_rc=True, cwd=project_path)
 
 
-def get_workspace_context(bin_path, project_path):
-    workspace_ctx = {"current": "default", "all": []}
+def get_workspace_context(bin_path: str, project_path: str) -> TerraformWorkspaceContext:
     command = [bin_path, "workspace", "list", "-no-color"]
     rc, out, err = module.run_command(command, cwd=project_path)
+    current_workspace = "default"
+    all_workspaces: List[str] = []
     if rc != 0:
-        module.warn("Failed to list Terraform workspaces:\n{0}".format(err))
+        raise TerraformWarning("Failed to list Terraform workspaces:\n{0}".format(err))
     for item in out.split("\n"):
         stripped_item = item.strip()
         if not stripped_item:
             continue
         elif stripped_item.startswith("* "):
-            workspace_ctx["current"] = stripped_item.replace("* ", "")
+            current_workspace = stripped_item.replace("* ", "")
         else:
-            workspace_ctx["all"].append(stripped_item)
-    return workspace_ctx
+            all_workspaces.append(stripped_item)
+    return TerraformWorkspaceContext(current=current_workspace, all=all_workspaces)
 
 
-def _workspace_cmd(bin_path, project_path, action, workspace):
+def _workspace_cmd(bin_path: str, project_path: str, action: str, workspace: str) -> Tuple[int, str, str]:
     command = [bin_path, "workspace", action, workspace, "-no-color"]
     rc, out, err = module.run_command(command, check_rc=True, cwd=project_path)
     return rc, out, err
 
 
-def create_workspace(bin_path, project_path, workspace):
-    _workspace_cmd(bin_path, project_path, "new", workspace)
+def create_workspace(bin_path: str, project_path: str, workspace: str) -> Tuple[int, str, str]:
+    return _workspace_cmd(bin_path, project_path, "new", workspace)
 
 
-def select_workspace(bin_path, project_path, workspace):
-    _workspace_cmd(bin_path, project_path, "select", workspace)
+def select_workspace(bin_path: str, project_path: str, workspace: str) -> Tuple[int, str, str]:
+    return _workspace_cmd(bin_path, project_path, "select", workspace)
 
 
-def remove_workspace(bin_path, project_path, workspace):
-    _workspace_cmd(bin_path, project_path, "delete", workspace)
+def remove_workspace(bin_path: str, project_path: str, workspace: str) -> Tuple[int, str, str]:
+    return _workspace_cmd(bin_path, project_path, "delete", workspace)
 
 
-def build_plan(terraform_binary, project_path, variables_args, state_file, targets, state):
+def build_plan(
+    terraform_binary: str, project_path: str, variables_args: List[str], state_file: str, targets: List[str], state: str
+) -> Tuple[str, bool, bool, str, str]:
     f, plan_file_path = tempfile.mkstemp(suffix=".tfplan")
 
     plan_command = [
@@ -418,8 +449,8 @@ def build_plan(terraform_binary, project_path, variables_args, state_file, targe
         changed = False
     elif rc == 1:
         # failure to plan
-        module.fail_json(
-            msg="Terraform plan could not be created\nSTDOUT: {out}\nSTDERR: {err}\nCOMMAND: {cmd} {args}".format(
+        raise TerraformError(
+            "Terraform plan could not be created\nSTDOUT: {out}\nSTDERR: {err}\nCOMMAND: {cmd} {args}".format(
                 out=stdout,
                 err=stderr,
                 cmd=" ".join(plan_command),
@@ -430,8 +461,9 @@ def build_plan(terraform_binary, project_path, variables_args, state_file, targe
         # changes, but successful
         changed = True
     else:
-        module.fail_json(
-            msg="Terraform plan failed with unexpected exit code {rc}.\nSTDOUT: {out}\nSTDERR: {err}\nCOMMAND: {cmd} {args}".format(
+        raise TerraformError(
+            "Terraform plan failed with unexpected exit code {rc}.\n"
+            "STDOUT: {out}\nSTDERR: {err}\nCOMMAND: {cmd} {args}".format(
                 rc=rc,
                 out=stdout,
                 err=stderr,
@@ -448,13 +480,19 @@ def build_plan(terraform_binary, project_path, variables_args, state_file, targe
     return plan_file_path, changed, any_destroyed, stdout, stderr
 
 
-def execute_plan(terraform_binary, prebuilt_command, project_path, workspace, workspace_ctx):
+def execute_plan(
+    terraform_binary: str,
+    prebuilt_command: List[str],
+    project_path: str,
+    workspace: str,
+    workspace_ctx: TerraformWorkspaceContext,
+) -> Tuple[str, str]:
     rc, out, err = module.run_command(prebuilt_command, check_rc=False, cwd=project_path)
     if rc != 0:
-        if workspace_ctx["current"] != workspace:
-            select_workspace(terraform_binary, project_path, workspace_ctx["current"])
-        module.fail_json(
-            msg=err.rstrip(),
+        if workspace_ctx.current != workspace:
+            select_workspace(terraform_binary, project_path, workspace_ctx.current)
+        raise TerraformError(
+            err.rstrip(),
             rc=rc,
             stdout=out,
             stdout_lines=out.splitlines(),
@@ -465,29 +503,40 @@ def execute_plan(terraform_binary, prebuilt_command, project_path, workspace, wo
     return out, err
 
 
-def get_outputs(terraform_binary, project_path, state_file):
-    outputs_command = [terraform_binary, "output", "-no-color", "-json"] + _state_args(state_file)
-    rc, outputs_text, outputs_err = module.run_command(outputs_command, cwd=project_path)
+def get_outputs(
+    run_command_fp: AnsibleRunCommandType,
+    terraform_binary: str,
+    project_path: Optional[str],
+    state_file: Optional[str],
+    output_format: str,
+    name: Optional[str] = None,
+) -> Union[TJsonObject, TJsonBareValue]:
+    outputs_command = [terraform_binary, "output", "-no-color", "-{0}".format(output_format)]
+    outputs_command += ([name] if name else []) + _state_args(state_file)
+    rc, outputs_text, outputs_err = run_command_fp(outputs_command, cwd=project_path)
     if rc == 1:
-        module.warn(
+        message = (
             "Could not get Terraform outputs. "
-            "This usually means none have been defined.\nstdout: {0}\nstderr: {1}".format(outputs_text, outputs_err)
+            "This usually means none have been defined.\ncommand: {0}\nstdout: {1}\nstderr: {2}".format(
+                outputs_command, outputs_text, outputs_err
+            )
         )
-        outputs = {}
+        raise TerraformWarning(message)
     elif rc != 0:
-        module.fail_json(
-            msg="Failure when getting Terraform outputs. "
-            "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, outputs_text, outputs_err),
-            command=" ".join(outputs_command),
+        message = "Failure when getting Terraform outputs. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
+            rc, outputs_text, outputs_err
         )
+        raise TerraformError(message, command=" ".join(outputs_command))
     else:
-        outputs = json.loads(outputs_text)
-
-    return outputs
+        if output_format == "raw":
+            return cast(TJsonObject, outputs_text)
+        else:
+            outputs = cast(TJsonObject, json.loads(outputs_text))
+            return outputs
 
 
 # needs init
-def get_providers_schema(terraform_binary, project_path):
+def get_providers_schema(terraform_binary: str, project_path: str) -> TerraformProviderSchemaCollection:
     command = [
         terraform_binary,
         "providers",
@@ -496,129 +545,194 @@ def get_providers_schema(terraform_binary, project_path):
     ]  # in the command we have "providers schema", in the schema we have "provider_schemas"
     rc, text, err = module.run_command(command, cwd=project_path)
     if rc == 1:
-        module.warn("Could not get provider schemas. " "\nstdout: {0}\nstderr: {1}".format(text, err))
-        provider_schemas = {}
+        raise TerraformWarning("Could not get provider schemas. " "\nstdout: {0}\nstderr: {1}".format(text, err))
     elif rc != 0:
-        module.fail_json(
-            msg="Failure when getting provider schemas. " "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
+        raise TerraformError(
+            "Failure when getting provider schemas. " "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
             command=" ".join(command),
         )
-    else:
-        provider_schemas = json.loads(text)
-    return provider_schemas
+    result = TerraformProviderSchemaCollection.from_json(json.loads(text))
+    return result
 
 
-def is_attribute_sensitive_in_providers_schema(provider_schemas, resource, attribute):
-    for provider_schema in provider_schemas["provider_schemas"]:
-        for resource_schema_key, resource_schema_value in (
-            provider_schemas["provider_schemas"].get(provider_schema).get("resource_schemas").items()
-        ):
-            if resource_schema_key == resource["type"]:
-                sensitive = resource_schema_value["block"]["attributes"][attribute].get(
-                    "sensitive", False
-                )  # sensitive exists only when it is True
+def is_attribute_sensitive_in_providers_schema(
+    schemas: TerraformProviderSchemaCollection, resource: TerraformRootModuleResource, attribute: str
+) -> bool:
+    for provider_schema in schemas.provider_schemas:
+        resource_schemas = schemas.provider_schemas[provider_schema].resource_schemas
+        for resource_schema_name, resource_schema in resource_schemas.items():
+            if resource_schema_name == resource.type:
+                sensitive = resource_schema.attributes[attribute].sensitive
                 return sensitive
+    return False
 
 
-def is_attribute_in_sensitive_values(resource, attribute):
-    return attribute in resource["sensitive_values"]
+def is_attribute_in_sensitive_values(resource: TerraformRootModuleResource, attribute: str) -> bool:
+    return attribute in resource.sensitive_values
 
 
-def filter_resource_attributes(state_file, provider_schemas):
+def filter_resource_attributes(
+    state_contents: TerraformShow, provider_schemas: TerraformProviderSchemaCollection
+) -> TerraformShow:
     # using .get() in case there is no existing .tfstate before apply
-    for resource in state_file.get("values", {}).get("root_module", {}).get("resources", {}):
+    for resource in state_contents.values.root_module.resources:
         attributes_to_remove = []
-        for attribute in resource.get("values", {}):
+        for attribute in resource.values:
             if is_attribute_sensitive_in_providers_schema(
                 provider_schemas, resource, attribute
             ) or is_attribute_in_sensitive_values(resource, attribute):
                 attributes_to_remove.append(attribute)
         for attribute in attributes_to_remove:
-            resource["values"][attribute] = None
-    return state_file
+            resource.values[attribute] = None
+    return state_contents
 
 
-def filter_outputs(state_file):
-    outputs_to_remove = []
+def filter_outputs(state_contents: TerraformShow) -> TerraformShow:
+    outputs_to_remove: List[str] = []
     # using .get() in case there is no existing .tfstate before apply
-    for output_key, output_value in state_file.get("values", {}).get("outputs", {}).items():
-        if output_value.get("sensitive", False):
+    for output_key, output_value in state_contents.values.outputs.items():
+        if output_value.sensitive:
             outputs_to_remove.append(output_key)
 
     for output in outputs_to_remove:
-        state_file["values"]["outputs"][output]["value"] = None
+        state_contents.values.outputs[output].value = None
 
-    return state_file
+    return state_contents
 
 
-# this will not produce error if there is no init before the command
-def get_state_content(terraform_binary, project_path, state_file, provider_schemas, sanitized):
+def get_state_content(
+    terraform_binary: str,
+    project_path: str,
+    state_file_path: str,
+    provider_schemas: TerraformProviderSchemaCollection,
+    sanitized: bool,
+) -> Optional[TerraformShow]:
     command = [
         terraform_binary,
         "show",
         "-json",
-        state_file,  # can be absolute path to state file or name of the state file in project_dir
+        state_file_path,  # can be absolute path to state file or name of the state file in project_dir
     ]
     rc, text, err = module.run_command(command, cwd=project_path)
     if rc == 1:
-        module.warn("Could not get Terraform state file. " "\nstdout: {0}\nstderr: {1}".format(text, err))
-        state_file = {}
+        raise TerraformWarning("Could not get Terraform state file. " "\nstdout: {0}\nstderr: {1}".format(text, err))
     elif rc != 0:
-        module.fail_json(
-            msg="Failure when getting Terraform state file. "
-            "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
+        raise TerraformError(
+            "Failure when getting Terraform state file. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
             command=" ".join(command),
         )
-    else:
-        state_file = json.loads(text)
 
-        if sanitized:
-            state_file = filter_resource_attributes(state_file, provider_schemas)
-            state_file = filter_outputs(state_file)
+    state_json = json.loads(text)
 
-    return state_file
+    # when not initialized, this doesn't return anything useful, but also not an error
+    # this is not an exceptional case in our usage, so no warning
+    if len(state_json.keys()) == 1 and "format_version" in state_json:
+        return None
+
+    show_state = TerraformShow.from_json(state_json)
+
+    if sanitized:
+        show_state = filter_resource_attributes(show_state, provider_schemas)
+        show_state = filter_outputs(show_state)
+
+    return show_state
 
 
-def get_state_content_from_plan(terraform_binary, project_path, plan, provider_schemas, sanitized):
+def get_state_content_from_plan(
+    terraform_binary: str,
+    project_path: str,
+    plan_file: str,
+    provider_schemas: TerraformProviderSchemaCollection,
+    sanitized: bool,
+) -> TerraformShow:
     command = [
         terraform_binary,
         "show",
         "-json",
-        plan,
+        plan_file,
     ]
     rc, text, err = module.run_command(command, cwd=project_path)
     if rc == 1:
-        module.warn("Could not get Terraform state from plan file. " "\nstdout: {0}\nstderr: {1}".format(text, err))
-        plan = {}
+        raise TerraformWarning(
+            "Could not get Terraform state from plan file. " "\nstdout: {0}\nstderr: {1}".format(text, err)
+        )
     elif rc != 0:
-        module.fail_json(
-            msg="Failure when getting Terraform state from plan file. "
+        raise TerraformError(
+            "Failure when getting Terraform state from plan file. "
             "Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, text, err),
             command=" ".join(command),
         )
-    else:
-        plan = json.loads(text)
-        plan = {
-            key: value
-            for key, value in plan.items()
-            if key
-            in [
-                "format_version",
-                "terraform_version",
-                "planned_values",
-            ]
-        }
-        # renaming planned_values to values for filtering
-        plan["values"] = plan.pop("planned_values")
 
-        if sanitized:
-            plan = filter_resource_attributes(plan, provider_schemas)
-            plan = filter_outputs(plan)
+    # load and restructure the plan output to fit the state-based show output
+    plan = json.loads(text)
+    plan = {
+        key: value
+        for key, value in plan.items()
+        if key
+        in [
+            "format_version",
+            "terraform_version",
+            "planned_values",
+        ]
+    }
+    # renaming planned_values to values for filtering
+    plan["values"] = plan.pop("planned_values")
 
-    return plan
+    planned_state_contents = TerraformShow.from_json(plan)
+
+    if sanitized:
+        planned_state_contents = filter_resource_attributes(planned_state_contents, provider_schemas)
+        planned_state_contents = filter_outputs(planned_state_contents)
+
+    return planned_state_contents
 
 
-def main():
+def format_args(terraform_variables: TJsonBareValue) -> str:
+    if isinstance(terraform_variables, str):
+        return '"{string}"'.format(string=terraform_variables.replace("\\", "\\\\").replace('"', '\\"'))
+    elif isinstance(terraform_variables, bool):
+        if terraform_variables:
+            return "true"
+        else:
+            return "false"
+    return str(terraform_variables)
+
+
+def process_complex_args(terraform_variables: AnyJsonType) -> str:
+    ret_out = []
+    if isinstance(terraform_variables, dict):
+        for k, v in terraform_variables.items():
+            if isinstance(v, dict):
+                ret_out.append("{0}={{{1}}}".format(k, process_complex_args(v)))
+            elif isinstance(v, list):
+                ret_out.append("{0}={1}".format(k, process_complex_args(v)))
+            elif isinstance(v, (integer_types, float, str, bool)):
+                ret_out.append("{0}={1}".format(k, format_args(v)))
+            else:
+                # only to handle anything unforeseen
+                raise TerraformError(
+                    "Supported types are, dictionaries, lists, strings, integer_types, boolean and float."
+                )
+    if isinstance(terraform_variables, list):
+        l_out = []
+        for item in terraform_variables:
+            if isinstance(item, dict):
+                l_out.append("{{{0}}}".format(process_complex_args(item)))
+            elif isinstance(item, list):
+                l_out.append("{0}".format(process_complex_args(item)))
+            elif isinstance(item, (str, integer_types, float, bool)):
+                l_out.append(format_args(item))
+            else:
+                # only to handle anything unforeseen
+                raise TerraformError(
+                    "Supported types are, dictionaries, lists, strings, integer_types, boolean and float."
+                )
+
+        ret_out.append("[{0}]".format(",".join(l_out)))
+    return ",".join(ret_out)
+
+
+def main() -> None:
     global module
     module = AnsibleModule(
         argument_spec=dict(
@@ -711,6 +825,7 @@ def main():
     if force_init:
         if overwrite_init or not os.path.isfile(os.path.join(project_path, ".terraform", "terraform.tfstate")):
             init_plugins(
+                module.run_command,
                 terraform_binary,
                 project_path,
                 backend_config,
@@ -720,157 +835,143 @@ def main():
                 plugin_paths,
             )
 
-    provider_schemas = get_providers_schema(terraform_binary, project_path)
-    initial_state = get_state_content(terraform_binary, project_path, state_file, provider_schemas, sanitized=True)
+    try:
+        provider_schemas = get_providers_schema(terraform_binary, project_path)
+        try:
+            initial_state = get_state_content(
+                terraform_binary, project_path, state_file, provider_schemas, sanitized=True
+            )
+        except TerraformWarning as e:
+            module.warn(e.message)
+            initial_state = None
 
-    workspace_ctx = get_workspace_context(terraform_binary, project_path)
-    if workspace_ctx["current"] != workspace:
-        if workspace not in workspace_ctx["all"]:
-            create_workspace(terraform_binary, project_path, workspace)
-        else:
-            select_workspace(terraform_binary, project_path, workspace)
+        try:
+            workspace_ctx = get_workspace_context(terraform_binary, project_path)
+        except TerraformWarning as e:
+            module.warn(e.message)
+            workspace_ctx = TerraformWorkspaceContext(current="default", all=[])
 
-    def format_args(vars):
-        if isinstance(vars, str):
-            return '"{string}"'.format(string=vars.replace("\\", "\\\\").replace('"', '\\"'))
-        elif isinstance(vars, bool):
-            if vars:
-                return "true"
+        if workspace_ctx.current != workspace:
+            if workspace not in workspace_ctx.all:
+                create_workspace(terraform_binary, project_path, workspace)
             else:
-                return "false"
-        return str(vars)
+                select_workspace(terraform_binary, project_path, workspace)
 
-    def process_complex_args(vars):
-        ret_out = []
-        if isinstance(vars, dict):
-            for k, v in vars.items():
+        variables_args = []
+        if complex_vars:
+            for k, v in variables.items():
                 if isinstance(v, dict):
-                    ret_out.append("{0}={{{1}}}".format(k, process_complex_args(v)))
+                    variables_args.extend(["-var", "{0}={{{1}}}".format(k, process_complex_args(v))])
                 elif isinstance(v, list):
-                    ret_out.append("{0}={1}".format(k, process_complex_args(v)))
-                elif isinstance(v, (integer_types, float, str, bool)):
-                    ret_out.append("{0}={1}".format(k, format_args(v)))
+                    variables_args.extend(["-var", "{0}={1}".format(k, process_complex_args(v))])
+                # on the top-level we need to pass just the python string with necessary
+                # terraform string escape sequences
+                elif isinstance(v, str):
+                    variables_args.extend(["-var", "{0}={1}".format(k, v)])
                 else:
-                    # only to handle anything unforeseen
-                    module.fail_json(
-                        msg="Supported types are, dictionaries, lists, strings, integer_types, boolean and float."
-                    )
-        if isinstance(vars, list):
-            l_out = []
-            for item in vars:
-                if isinstance(item, dict):
-                    l_out.append("{{{0}}}".format(process_complex_args(item)))
-                elif isinstance(item, list):
-                    l_out.append("{0}".format(process_complex_args(item)))
-                elif isinstance(item, (str, integer_types, float, bool)):
-                    l_out.append(format_args(item))
-                else:
-                    # only to handle anything unforeseen
-                    module.fail_json(
-                        msg="Supported types are, dictionaries, lists, strings, integer_types, boolean and float."
-                    )
-
-            ret_out.append("[{0}]".format(",".join(l_out)))
-        return ",".join(ret_out)
-
-    variables_args = []
-    if complex_vars:
-        for k, v in variables.items():
-            if isinstance(v, dict):
-                variables_args.extend(["-var", "{0}={{{1}}}".format(k, process_complex_args(v))])
-            elif isinstance(v, list):
-                variables_args.extend(["-var", "{0}={1}".format(k, process_complex_args(v))])
-            # on the top-level we need to pass just the python string with necessary
-            # terraform string escape sequences
-            elif isinstance(v, str):
+                    variables_args.extend(["-var", "{0}={1}".format(k, format_args(v))])
+        else:
+            for k, v in variables.items():
                 variables_args.extend(["-var", "{0}={1}".format(k, v)])
-            else:
-                variables_args.extend(["-var", "{0}={1}".format(k, format_args(v))])
-    else:
-        for k, v in variables.items():
-            variables_args.extend(["-var", "{0}={1}".format(k, v)])
 
-    if variables_files:
-        for f in variables_files:
-            variables_args.extend(["-var-file", f])
+        if variables_files:
+            for f in variables_files:
+                variables_args.extend(["-var-file", f])
 
-    # only use an existing plan file if we're not in the deprecated "planned" mode
-    if plan_file and state != "planned":
-        if not any([os.path.isfile(project_path + "/" + plan_file), os.path.isfile(plan_file)]):
-            module.fail_json(msg='Could not find plan_file "{0}", check the path and try again.'.format(plan_file))
+        # only use an existing plan file if we're not in the deprecated "planned" mode
+        if plan_file and state != "planned":
+            if not any([os.path.isfile(project_path + "/" + plan_file), os.path.isfile(plan_file)]):
+                raise TerraformError('Could not find plan_file "{0}", check the path and try again.'.format(plan_file))
 
-        plan_file_needs_application = True
-        plan_file_to_apply = plan_file
-    else:
-        new_plan_file, plan_result_changed, plan_result_any_destroyed, plan_stdout, plan_stderr = build_plan(
-            terraform_binary=terraform_binary,
-            project_path=project_path,
-            variables_args=variables_args,
-            state_file=state_file,
-            targets=module.params.get("targets"),
-            state=computed_state,
-        )
-
-        # if we have an explicit plan file specified, copy over the temporary one
-        if plan_file:
-            module.preserved_copy(new_plan_file, project_path + "/" + plan_file)
-
-        if computed_state == "present" and plan_result_any_destroyed and check_destroy:
-            module.fail_json(
-                msg="Aborting command because it would destroy some resources. "
-                "Consider switching the 'check_destroy' to false to suppress this error"
+            plan_file_needs_application = True
+            plan_file_to_apply = plan_file
+        else:
+            new_plan_file, plan_result_changed, plan_result_any_destroyed, plan_stdout, plan_stderr = build_plan(
+                terraform_binary=terraform_binary,
+                project_path=project_path,
+                variables_args=variables_args,
+                state_file=state_file,
+                targets=module.params.get("targets"),
+                state=computed_state,
             )
 
-        plan_file_needs_application = plan_result_changed
-        plan_file_to_apply = new_plan_file
-        out = plan_stdout
-        err = plan_stderr
+            # if we have an explicit plan file specified, copy over the temporary one
+            if plan_file:
+                module.preserved_copy(new_plan_file, project_path + "/" + plan_file)
 
-    final_apply_command.append(plan_file_to_apply)
+            if computed_state == "present" and plan_result_any_destroyed and check_destroy:
+                raise TerraformError(
+                    "Aborting command because it would destroy some resources. "
+                    "Consider switching the 'check_destroy' to false to suppress this error"
+                )
 
-    preflight_validation(terraform_binary, project_path, checked_version, variables_args)
+            plan_file_needs_application = plan_result_changed
+            plan_file_to_apply = new_plan_file
+            out = plan_stdout
+            err = plan_stderr
 
-    planned_state = get_state_content_from_plan(
-        terraform_binary, project_path, plan_file_to_apply, provider_schemas, sanitized=True
-    )
+        final_apply_command.append(plan_file_to_apply)
 
-    if plan_file_needs_application and not computed_check_mode:
-        apply_stdout, apply_stderr = execute_plan(
+        preflight_validation(terraform_binary, project_path, checked_version, variables_args)
+
+        try:
+            planned_state = get_state_content_from_plan(
+                terraform_binary, project_path, plan_file_to_apply, provider_schemas, sanitized=True
+            )
+        except TerraformWarning as e:
+            module.warn(e.message)
+            planned_state = None
+
+        if plan_file_needs_application and not computed_check_mode:
+            apply_stdout, apply_stderr = execute_plan(
+                terraform_binary=terraform_binary,
+                prebuilt_command=final_apply_command,
+                project_path=project_path,
+                workspace=workspace,
+                workspace_ctx=workspace_ctx,
+            )
+
+            out = apply_stdout
+            err = apply_stderr
+            applied_state = get_state_content(
+                terraform_binary, project_path, state_file, provider_schemas, sanitized=True
+            )
+
+            final_state = applied_state
+        else:
+            final_state = planned_state
+
+        outputs = get_outputs(
+            run_command_fp=module.run_command,
             terraform_binary=terraform_binary,
-            prebuilt_command=final_apply_command,
             project_path=project_path,
-            workspace=workspace,
-            workspace_ctx=workspace_ctx,
+            state_file=state_file,
+            output_format="json",
         )
 
-        out = apply_stdout
-        err = apply_stderr
-        applied_state = get_state_content(terraform_binary, project_path, state_file, provider_schemas, sanitized=True)
+        # Restore the Terraform workspace found when running the module
+        if workspace_ctx.current != workspace:
+            select_workspace(terraform_binary, project_path, workspace_ctx.current)
+        if computed_state == "absent" and workspace != "default" and purge_workspace is True:
+            remove_workspace(terraform_binary, project_path, workspace)
 
-        final_state = applied_state
-    else:
-        final_state = planned_state
+        diff = dict(
+            before=dataclasses.asdict(initial_state) if initial_state is not None else {},
+            after=dataclasses.asdict(final_state) if final_state is not None else {},
+        )
 
-    outputs = get_outputs(terraform_binary=terraform_binary, project_path=project_path, state_file=state_file)
-
-    # Restore the Terraform workspace found when running the module
-    if workspace_ctx["current"] != workspace:
-        select_workspace(terraform_binary, project_path, workspace_ctx["current"])
-    if computed_state == "absent" and workspace != "default" and purge_workspace is True:
-        remove_workspace(terraform_binary, project_path, workspace)
-
-    diff = dict(before=initial_state, after=final_state)
-
-    module.exit_json(
-        changed=plan_file_needs_application,
-        diff=diff,
-        state=computed_state,
-        workspace=workspace,
-        outputs=outputs,
-        stdout=out,
-        stderr=err,
-        command=" ".join(final_apply_command),
-    )
+        module.exit_json(
+            changed=plan_file_needs_application,
+            diff=diff,
+            state=computed_state,
+            workspace=workspace,
+            outputs=outputs,
+            stdout=out,
+            stderr=err,
+            command=" ".join(final_apply_command),
+        )
+    except TerraformError as e:
+        e.fail_json(module)
 
 
 if __name__ == "__main__":

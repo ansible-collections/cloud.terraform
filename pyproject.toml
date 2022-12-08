@@ -22,3 +22,12 @@ module = [
     "ansible.*",
 ]
 ignore_missing_imports = true
+
+# this module parses JSON and would need casts and asserts all over the place
+# because parsing fails anyway, we ignore these two errors, as
+# we assume that the JSON structure Terraform returns is consistent
+[[tool.mypy.overrides]]
+module = [
+    "ansible_collections.cloud.terraform.plugins.module_utils.models",
+]
+disable_error_code = ["arg-type", "union-attr"]
