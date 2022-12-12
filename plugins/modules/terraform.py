@@ -293,7 +293,7 @@ import dataclasses
 import os
 import json
 import tempfile
-from typing import List, Optional, Dict, Tuple, Union, cast, Callable
+from typing import List, Optional, Dict, Tuple, cast
 
 from ansible.module_utils.compat.version import LooseVersion
 from ansible.module_utils.six.moves import shlex_quote
@@ -303,7 +303,6 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.cloud.terraform.plugins.module_utils.types import (
     AnyJsonType,
     TJsonBareValue,
-    TJsonObject,
     AnsibleRunCommandType,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
@@ -313,19 +312,21 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformRootModuleResource,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
+from ansible_collections.cloud.terraform.plugins.module_utils.utils import get_state_args, get_outputs
 
 
-module = None  # type: AnsibleModule
-
-
-def get_version(bin_path: str) -> str:
-    extract_version = module.run_command([bin_path, "version", "-json"])
+def get_version(run_command_fp: AnsibleRunCommandType, bin_path: str) -> str:
+    extract_version = run_command_fp([bin_path, "version", "-json"])
     terraform_version = cast(str, (json.loads(extract_version[1]))["terraform_version"])
     return terraform_version
 
 
 def preflight_validation(
-    bin_path: str, project_path: str, version: str, variables_args: List[str], plan_file: Optional[str] = None
+    run_command_fp: AnsibleRunCommandType,
+    bin_path: str,
+    project_path: str,
+    version: str,
+    variables_args: List[str],
 ) -> Tuple[int, str, str]:
     if project_path is None or "/" not in project_path:
         raise TerraformError("Path for Terraform project can not be None or ''.")
@@ -343,18 +344,10 @@ def preflight_validation(
             )
         )
     if LooseVersion(version) < LooseVersion("0.15.0"):
-        rc, out, err = module.run_command([bin_path, "validate"] + variables_args, check_rc=True, cwd=project_path)
+        rc, out, err = run_command_fp([bin_path, "validate"] + variables_args, check_rc=True, cwd=project_path)
     else:
-        rc, out, err = module.run_command([bin_path, "validate"], check_rc=True, cwd=project_path)
+        rc, out, err = run_command_fp([bin_path, "validate"], check_rc=True, cwd=project_path)
     return rc, out, err
-
-
-def _state_args(state_file: Optional[str]) -> List[str]:
-    if state_file and os.path.exists(state_file):
-        return ["-state", state_file]
-    if state_file and not os.path.exists(state_file):
-        raise TerraformError('Could not find state_file "{0}", check the path and try again.'.format(state_file))
-    return []
 
 
 def init_plugins(
@@ -384,9 +377,11 @@ def init_plugins(
     return run_command_fp(command, check_rc=True, cwd=project_path)
 
 
-def get_workspace_context(bin_path: str, project_path: str) -> TerraformWorkspaceContext:
+def get_workspace_context(
+    run_command_fp: AnsibleRunCommandType, bin_path: str, project_path: str
+) -> TerraformWorkspaceContext:
     command = [bin_path, "workspace", "list", "-no-color"]
-    rc, out, err = module.run_command(command, cwd=project_path)
+    rc, out, err = run_command_fp(command, cwd=project_path)
     current_workspace = "default"
     all_workspaces: List[str] = []
     if rc != 0:
@@ -402,26 +397,40 @@ def get_workspace_context(bin_path: str, project_path: str) -> TerraformWorkspac
     return TerraformWorkspaceContext(current=current_workspace, all=all_workspaces)
 
 
-def _workspace_cmd(bin_path: str, project_path: str, action: str, workspace: str) -> Tuple[int, str, str]:
+def _workspace_cmd(
+    run_command_fp: AnsibleRunCommandType, bin_path: str, project_path: str, action: str, workspace: str
+) -> Tuple[int, str, str]:
     command = [bin_path, "workspace", action, workspace, "-no-color"]
-    rc, out, err = module.run_command(command, check_rc=True, cwd=project_path)
+    rc, out, err = run_command_fp(command, check_rc=True, cwd=project_path)
     return rc, out, err
 
 
-def create_workspace(bin_path: str, project_path: str, workspace: str) -> Tuple[int, str, str]:
-    return _workspace_cmd(bin_path, project_path, "new", workspace)
+def create_workspace(
+    run_command_fp: AnsibleRunCommandType, bin_path: str, project_path: str, workspace: str
+) -> Tuple[int, str, str]:
+    return _workspace_cmd(run_command_fp, bin_path, project_path, "new", workspace)
 
 
-def select_workspace(bin_path: str, project_path: str, workspace: str) -> Tuple[int, str, str]:
-    return _workspace_cmd(bin_path, project_path, "select", workspace)
+def select_workspace(
+    run_command_fp: AnsibleRunCommandType, bin_path: str, project_path: str, workspace: str
+) -> Tuple[int, str, str]:
+    return _workspace_cmd(run_command_fp, bin_path, project_path, "select", workspace)
 
 
-def remove_workspace(bin_path: str, project_path: str, workspace: str) -> Tuple[int, str, str]:
-    return _workspace_cmd(bin_path, project_path, "delete", workspace)
+def remove_workspace(
+    run_command_fp: AnsibleRunCommandType, bin_path: str, project_path: str, workspace: str
+) -> Tuple[int, str, str]:
+    return _workspace_cmd(run_command_fp, bin_path, project_path, "delete", workspace)
 
 
 def build_plan(
-    terraform_binary: str, project_path: str, variables_args: List[str], state_file: str, targets: List[str], state: str
+    run_command_fp: AnsibleRunCommandType,
+    terraform_binary: str,
+    project_path: str,
+    variables_args: List[str],
+    state_file: str,
+    targets: List[str],
+    state: str,
 ) -> Tuple[str, bool, bool, str, str]:
     f, plan_file_path = tempfile.mkstemp(suffix=".tfplan")
 
@@ -440,9 +449,9 @@ def build_plan(
         plan_command.extend(["-target", t])
     if state == "absent":
         plan_command.append("-destroy")
-    plan_command.extend(_state_args(state_file))
+    plan_command.extend(get_state_args(state_file))
 
-    rc, stdout, stderr = module.run_command(plan_command + variables_args, cwd=project_path)
+    rc, stdout, stderr = run_command_fp(plan_command + variables_args, cwd=project_path)
 
     if rc == 0:
         # no changes
@@ -481,16 +490,17 @@ def build_plan(
 
 
 def execute_plan(
+    run_command_fp: AnsibleRunCommandType,
     terraform_binary: str,
     prebuilt_command: List[str],
     project_path: str,
     workspace: str,
     workspace_ctx: TerraformWorkspaceContext,
 ) -> Tuple[str, str]:
-    rc, out, err = module.run_command(prebuilt_command, check_rc=False, cwd=project_path)
+    rc, out, err = run_command_fp(prebuilt_command, check_rc=False, cwd=project_path)
     if rc != 0:
         if workspace_ctx.current != workspace:
-            select_workspace(terraform_binary, project_path, workspace_ctx.current)
+            select_workspace(run_command_fp, terraform_binary, project_path, workspace_ctx.current)
         raise TerraformError(
             err.rstrip(),
             rc=rc,
@@ -503,47 +513,17 @@ def execute_plan(
     return out, err
 
 
-def get_outputs(
-    run_command_fp: AnsibleRunCommandType,
-    terraform_binary: str,
-    project_path: Optional[str],
-    state_file: Optional[str],
-    output_format: str,
-    name: Optional[str] = None,
-) -> Union[TJsonObject, TJsonBareValue]:
-    outputs_command = [terraform_binary, "output", "-no-color", "-{0}".format(output_format)]
-    outputs_command += ([name] if name else []) + _state_args(state_file)
-    rc, outputs_text, outputs_err = run_command_fp(outputs_command, cwd=project_path)
-    if rc == 1:
-        message = (
-            "Could not get Terraform outputs. "
-            "This usually means none have been defined.\ncommand: {0}\nstdout: {1}\nstderr: {2}".format(
-                outputs_command, outputs_text, outputs_err
-            )
-        )
-        raise TerraformWarning(message)
-    elif rc != 0:
-        message = "Failure when getting Terraform outputs. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
-            rc, outputs_text, outputs_err
-        )
-        raise TerraformError(message, command=" ".join(outputs_command))
-    else:
-        if output_format == "raw":
-            return cast(TJsonObject, outputs_text)
-        else:
-            outputs = cast(TJsonObject, json.loads(outputs_text))
-            return outputs
-
-
 # needs init
-def get_providers_schema(terraform_binary: str, project_path: str) -> TerraformProviderSchemaCollection:
+def get_providers_schema(
+    run_command_fp: AnsibleRunCommandType, terraform_binary: str, project_path: str
+) -> TerraformProviderSchemaCollection:
     command = [
         terraform_binary,
         "providers",
         "schema",
         "-json",
     ]  # in the command we have "providers schema", in the schema we have "provider_schemas"
-    rc, text, err = module.run_command(command, cwd=project_path)
+    rc, text, err = run_command_fp(command, cwd=project_path)
     if rc == 1:
         raise TerraformWarning("Could not get provider schemas. " "\nstdout: {0}\nstderr: {1}".format(text, err))
     elif rc != 0:
@@ -601,6 +581,7 @@ def filter_outputs(state_contents: TerraformShow) -> TerraformShow:
 
 
 def get_state_content(
+    run_command_fp: AnsibleRunCommandType,
     terraform_binary: str,
     project_path: str,
     state_file_path: str,
@@ -613,7 +594,7 @@ def get_state_content(
         "-json",
         state_file_path,  # can be absolute path to state file or name of the state file in project_dir
     ]
-    rc, text, err = module.run_command(command, cwd=project_path)
+    rc, text, err = run_command_fp(command, cwd=project_path)
     if rc == 1:
         raise TerraformWarning("Could not get Terraform state file. " "\nstdout: {0}\nstderr: {1}".format(text, err))
     elif rc != 0:
@@ -639,6 +620,7 @@ def get_state_content(
 
 
 def get_state_content_from_plan(
+    run_command_fp: AnsibleRunCommandType,
     terraform_binary: str,
     project_path: str,
     plan_file: str,
@@ -651,7 +633,7 @@ def get_state_content_from_plan(
         "-json",
         plan_file,
     ]
-    rc, text, err = module.run_command(command, cwd=project_path)
+    rc, text, err = run_command_fp(command, cwd=project_path)
     if rc == 1:
         raise TerraformWarning(
             "Could not get Terraform state from plan file. " "\nstdout: {0}\nstderr: {1}".format(text, err)
@@ -733,7 +715,6 @@ def process_complex_args(terraform_variables: AnyJsonType) -> str:
 
 
 def main() -> None:
-    global module
     module = AnsibleModule(
         argument_spec=dict(
             project_path=dict(required=True, type="path"),
@@ -800,7 +781,7 @@ def main() -> None:
         terraform_binary = module.get_bin_path("terraform", required=True)
     final_apply_command = [terraform_binary]
 
-    checked_version = get_version(terraform_binary)
+    checked_version = get_version(module.run_command, terraform_binary)
 
     if LooseVersion(checked_version) < LooseVersion("0.15.0"):
         apply_args = ("apply", "-no-color", "-input=false", "-auto-approve=true")
@@ -836,26 +817,26 @@ def main() -> None:
             )
 
     try:
-        provider_schemas = get_providers_schema(terraform_binary, project_path)
+        provider_schemas = get_providers_schema(module.run_command, terraform_binary, project_path)
         try:
             initial_state = get_state_content(
-                terraform_binary, project_path, state_file, provider_schemas, sanitized=True
+                module.run_command, terraform_binary, project_path, state_file, provider_schemas, sanitized=True
             )
         except TerraformWarning as e:
             module.warn(e.message)
             initial_state = None
 
         try:
-            workspace_ctx = get_workspace_context(terraform_binary, project_path)
+            workspace_ctx = get_workspace_context(module.run_command, terraform_binary, project_path)
         except TerraformWarning as e:
             module.warn(e.message)
             workspace_ctx = TerraformWorkspaceContext(current="default", all=[])
 
         if workspace_ctx.current != workspace:
             if workspace not in workspace_ctx.all:
-                create_workspace(terraform_binary, project_path, workspace)
+                create_workspace(module.run_command, terraform_binary, project_path, workspace)
             else:
-                select_workspace(terraform_binary, project_path, workspace)
+                select_workspace(module.run_command, terraform_binary, project_path, workspace)
 
         variables_args = []
         if complex_vars:
@@ -887,6 +868,7 @@ def main() -> None:
             plan_file_to_apply = plan_file
         else:
             new_plan_file, plan_result_changed, plan_result_any_destroyed, plan_stdout, plan_stderr = build_plan(
+                run_command_fp=module.run_command,
                 terraform_binary=terraform_binary,
                 project_path=project_path,
                 variables_args=variables_args,
@@ -912,11 +894,11 @@ def main() -> None:
 
         final_apply_command.append(plan_file_to_apply)
 
-        preflight_validation(terraform_binary, project_path, checked_version, variables_args)
+        preflight_validation(module.run_command, terraform_binary, project_path, checked_version, variables_args)
 
         try:
             planned_state = get_state_content_from_plan(
-                terraform_binary, project_path, plan_file_to_apply, provider_schemas, sanitized=True
+                module.run_command, terraform_binary, project_path, plan_file_to_apply, provider_schemas, sanitized=True
             )
         except TerraformWarning as e:
             module.warn(e.message)
@@ -924,6 +906,7 @@ def main() -> None:
 
         if plan_file_needs_application and not computed_check_mode:
             apply_stdout, apply_stderr = execute_plan(
+                run_command_fp=module.run_command,
                 terraform_binary=terraform_binary,
                 prebuilt_command=final_apply_command,
                 project_path=project_path,
@@ -934,7 +917,7 @@ def main() -> None:
             out = apply_stdout
             err = apply_stderr
             applied_state = get_state_content(
-                terraform_binary, project_path, state_file, provider_schemas, sanitized=True
+                module.run_command, terraform_binary, project_path, state_file, provider_schemas, sanitized=True
             )
 
             final_state = applied_state
@@ -951,9 +934,9 @@ def main() -> None:
 
         # Restore the Terraform workspace found when running the module
         if workspace_ctx.current != workspace:
-            select_workspace(terraform_binary, project_path, workspace_ctx.current)
+            select_workspace(module.run_command, terraform_binary, project_path, workspace_ctx.current)
         if computed_state == "absent" and workspace != "default" and purge_workspace is True:
-            remove_workspace(terraform_binary, project_path, workspace)
+            remove_workspace(module.run_command, terraform_binary, project_path, workspace)
 
         diff = dict(
             before=dataclasses.asdict(initial_state) if initial_state is not None else {},
