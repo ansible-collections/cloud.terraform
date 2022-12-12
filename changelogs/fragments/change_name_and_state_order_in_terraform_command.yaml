@@ -1,0 +1,4 @@
+---
+bugfixes:
+  - terraform_output module - when providing name and state_file parameters, the value of the requested output wasn't returned.
+    This issue was solved by changing the order of the name and state parameters in the invoked Terraform command (https://github.com/ansible-collections/cloud.terraform/pull/19).

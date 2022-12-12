@@ -130,7 +130,7 @@ def get_outputs(terraform_binary, project_path, state_file, output_format, name=
         "-no-color",
         "-{0}".format(output_format)
     ]
-    outputs_command += ([name] if name else []) + _state_args(state_file)
+    outputs_command += _state_args(state_file) + ([name] if name else [])
     rc, outputs_text, outputs_err = module.run_command(
         outputs_command, cwd=project_path
     )

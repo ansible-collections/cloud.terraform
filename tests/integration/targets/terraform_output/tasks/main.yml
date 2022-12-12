@@ -85,12 +85,13 @@
       - terraform_output.outputs.my_output.value == "file generated"
       - terraform_output.value is not defined
 
-- name: Delete results
-  cloud.terraform.terraform:
-    project_path: "{{ test_basedir }}"
-    state: absent
-  register: terraform_result
-  check_mode: false
+- name: Terraform checkout - specified state file and specified output
+  cloud.terraform.terraform_output:
+    state_file: "{{ test_basedir }}/mycustomstate.tfstate"
+    name: my_output
+  register: terraform_output
 - assert:
     that:
-      - terraform_result is changed
+      - terraform_output is not changed
+      - terraform_output.outputs is not defined
+      - terraform_output.value == "file generated"
