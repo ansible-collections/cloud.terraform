@@ -51,7 +51,20 @@ You can either call modules by their Fully Qualified Collection Name (FQCN), suc
       state: present
 ```
 
-## Testing
+## Developing and testing
+
+The project uses `mypy` and `black`.
+Black works without special configuration, while `mypy` requires a valid package structure.
+Assuming this repository is checked out in the proper structure,
+e.g. `collections_root/ansible_collections/cloud/terraform/`, run:
+
+```shell
+black --check --diff .
+black .
+
+export MYPYPATH="$(realpath "$PWD/../../../")"
+mypy -p ansible_collections.cloud.terraform.plugins
+```
 
 Sanity and unit tests are run as normal:
 
