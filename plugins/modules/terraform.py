@@ -290,7 +290,6 @@ import os
 import tempfile
 from typing import List, Tuple
 
-from ansible.module_utils.compat.version import LooseVersion
 from ansible.module_utils.six import integer_types
 from ansible.module_utils.basic import AnsibleModule
 
@@ -309,32 +308,11 @@ from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands
     TerraformCommands,
     WorkspaceCommand,
 )
-from ansible_collections.cloud.terraform.plugins.module_utils.utils import get_state_args, get_outputs
-
-
-def preflight_validation(
-    terraform: TerraformCommands,
-    bin_path: str,
-    project_path: str,
-    version: LooseVersion,
-    variables_args: List[str],
-) -> None:
-    if project_path is None or "/" not in project_path:
-        raise TerraformError("Path for Terraform project can not be None or ''.")
-
-    if not os.path.exists(bin_path):
-        raise TerraformError(
-            "Path for Terraform binary '{0}' doesn't exist on this host - check the path and try again please.".format(
-                bin_path
-            )
-        )
-    if not os.path.isdir(project_path):
-        raise TerraformError(
-            "Path for Terraform project '{0}' doesn't exist on this host - check the path and try again please.".format(
-                project_path
-            )
-        )
-    terraform.validate(version, variables_args)
+from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
+    get_state_args,
+    get_outputs,
+    preflight_validation,
+)
 
 
 def is_attribute_sensitive_in_providers_schema(

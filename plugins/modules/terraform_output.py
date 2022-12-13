@@ -105,7 +105,11 @@ from typing import Optional
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
-from ansible_collections.cloud.terraform.plugins.module_utils.utils import get_outputs
+from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
+    get_outputs,
+    validate_project_path,
+    validate_bin_path,
+)
 
 
 def main() -> None:
@@ -131,6 +135,7 @@ def main() -> None:
         terraform_binary = bin_path
     else:
         terraform_binary = module.get_bin_path("terraform", required=True)
+    validate_bin_path(terraform_binary)
 
     try:
         outputs = get_outputs(
