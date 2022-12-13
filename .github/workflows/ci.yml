@@ -84,19 +84,24 @@ jobs:
           mypy -p ansible_collections.cloud.terraform.plugins
 
   sanity:
-    name: Sanity (Ⓐ${{ matrix.ansible }})
+    name: Sanity (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
     strategy:
       matrix:
         ansible:
           - stable-2.13
           - stable-2.14
+        python:
+          - '3.8'
+          - '3.9'
+          - '3.10'
     runs-on: ubuntu-20.04
     steps:
       - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1
         with:
-          ansible-core-version: ${{ matrix.ansible }}
           testing-type: sanity
+          ansible-core-version: ${{ matrix.ansible }}
+          target-python-version: ${{ matrix.python }}
 
   units:
     runs-on: ubuntu-20.04
@@ -115,6 +120,7 @@ jobs:
         with:
           ansible-core-version: ${{ matrix.ansible }}
           testing-type: units
+          target-python-version: "3.10"
 
   integration:
     runs-on: ubuntu-20.04
