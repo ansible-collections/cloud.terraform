@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 import enum
 import json
 from typing import Dict, List, Tuple, cast, Optional
@@ -13,8 +11,6 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformProviderSchemaCollection,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnsibleRunCommandType
-
-__metaclass__ = type
 
 
 class WorkspaceCommand(enum.Enum):

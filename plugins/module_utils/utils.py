@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 import os
 import json
 from typing import List, Optional, Union, cast
@@ -10,9 +8,6 @@ from ansible_collections.cloud.terraform.plugins.module_utils.types import (
     AnsibleRunCommandType,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
-
-
-__metaclass__ = type
 
 
 def get_state_args(state_file: Optional[str]) -> List[str]:

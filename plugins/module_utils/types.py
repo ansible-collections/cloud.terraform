@@ -1,8 +1,4 @@
-from __future__ import absolute_import, division, print_function
-
 from typing import Union, Dict, List, Callable, Tuple
-
-__metaclass__ = type
 
 AnyJsonType = Union[Dict[str, "AnyJsonType"], List["AnyJsonType"], str, int, float, bool, None]
 TJsonObject = Dict[str, AnyJsonType]

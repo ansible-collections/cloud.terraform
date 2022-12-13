@@ -1,11 +1,7 @@
-from __future__ import absolute_import, division, print_function
-
 from typing import Any, Dict, List, Union, Optional
 from dataclasses import dataclass
 
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType, TJsonObject
-
-__metaclass__ = type
 
 
 @dataclass
