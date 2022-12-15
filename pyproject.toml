@@ -1,0 +1,33 @@
+[tool.black]
+line-length = 120
+target-version = ["py38", "py39", "py310", "py311"]
+include = "\\.pyi?$"
+workers = 4
+
+[tool.mypy]
+strict = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_column_numbers = true
+warn_unused_configs = true
+color_output = true
+
+namespace_packages = true
+explicit_package_bases = true
+
+# ignores for dependencies without type information
+[[tool.mypy.overrides]]
+module = [
+    "ansible.*",
+]
+ignore_missing_imports = true
+
+# this module parses JSON and would need casts and asserts all over the place
+# because parsing fails anyway, we ignore these two errors, as
+# we assume that the JSON structure Terraform returns is consistent
+[[tool.mypy.overrides]]
+module = [
+    "ansible_collections.cloud.terraform.plugins.module_utils.models",
+]
+disable_error_code = ["arg-type", "union-attr"]

@@ -4,18 +4,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 - set_fact:
-    test_basedir: "/tmp/terraform_diff/"
-
-- name: Clean the test directory
-  ansible.builtin.file:
-    path: "{{ test_basedir }}"
-    state: absent
-
-- name: Create terraform project directory
-  ansible.builtin.file:
-    path: "{{ test_basedir }}"
-    state: directory
-    mode: 0755
+    test_basedir: "{{ test_basedir | default(output_dir) }}"
 
 - name: Copy terraform files to work space
   ansible.builtin.copy:

@@ -10,6 +10,8 @@ boto3==1.26.5
 awscli==1.27.5
 google-auth==2.14.1
 google-cloud==0.34.0
+black==22.10.0
+mypy==0.991
 
 # this gets installed as part of the collection requirements to avoid dependency conflicts
 # the readme installs this without dependencies to prevent conflicts

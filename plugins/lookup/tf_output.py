@@ -1,9 +1,5 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
 # language=yaml
 DOCUMENTATION = """
 name: tf_output
@@ -70,46 +66,27 @@ _value:
 """
 
 
-import os
-import json
 import subprocess
-from ansible.errors import AnsibleLookupError
+from typing import Optional, List, Tuple, Dict
+
 from ansible.plugins.lookup import LookupBase
 from ansible.module_utils.common import process
+from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType
+from ansible_collections.cloud.terraform.plugins.module_utils.utils import get_outputs
 
 
-def _state_args(state_file):
-    if state_file:
-        if not os.path.exists(state_file):
-            raise AnsibleLookupError(
-                'Could not find state_file "{0}", check the path and try again.'.format(state_file)
-            )
-        return ["-state", state_file]
-    return []
+# no module available here, mock functionality to be consistent throughout the rest of the codebase
+def module_run_command(cmd: List[str], cwd: str) -> Tuple[int, str, str]:
+    completed_process = subprocess.run(cmd, capture_output=True, check=False, cwd=cwd)
+    return (
+        completed_process.returncode,
+        completed_process.stdout.decode("utf-8"),
+        completed_process.stderr.decode("utf-8"),
+    )
 
 
-def get_outputs(terraform_binary, project_path, state_file, name=None):
-    outputs_command = [
-        terraform_binary,
-        "output",
-        "-no-color",
-        "-json",
-    ]
-    outputs_command += _state_args(state_file) + ([name] if name else [])
-    completed_process = subprocess.run(outputs_command, cwd=project_path, capture_output=True, check=False)
-
-    if completed_process.returncode != 0:
-        raise AnsibleLookupError(
-            "Failure when getting Terraform outputs. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
-                completed_process.returncode, completed_process.stdout, completed_process.stderr
-            )
-        )
-
-    return json.loads(completed_process.stdout)
-
-
-class LookupModule(LookupBase):
-    def run(self, terms, variables=None, **kwargs):
+class LookupModule(LookupBase):  # type: ignore  # cannot subclass without available type (implicitly Any)
+    def run(self, terms: List[str], variables: Optional[Dict[str, str]] = None, **kwargs: str) -> List[AnyJsonType]:
         self.set_options(var_options=variables, direct=kwargs)
         project_path = self.get_option("project_path")
         state_file = self.get_option("state_file")
@@ -120,11 +97,15 @@ class LookupModule(LookupBase):
         else:
             terraform_binary = process.get_bin_path("terraform", required=True)
 
-        output = []
+        output: List[AnyJsonType] = []
         if not terms:
-            output.append(get_outputs(terraform_binary, project_path, state_file))
+            output.append(
+                get_outputs(module_run_command, terraform_binary, project_path, state_file, output_format="json")
+            )
         else:
             for term in terms:
-                value = get_outputs(terraform_binary, project_path, state_file, name=term)
+                value = get_outputs(
+                    module_run_command, terraform_binary, project_path, state_file, name=term, output_format="json"
+                )
                 output.append(value)
         return output
