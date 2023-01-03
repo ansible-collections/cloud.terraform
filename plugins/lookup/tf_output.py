@@ -5,7 +5,7 @@ DOCUMENTATION = """
 name: tf_output
 author: Polona Mihalič (@PolonaM)
 version_added: 1.0.0
-short_description: Read state file outputs.
+short_description: Reads state file outputs.
 description:
   - This lookup returns all outputs or selected output in state file.
 options:
