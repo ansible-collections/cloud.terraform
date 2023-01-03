@@ -94,6 +94,9 @@ gcloud auth application-default set-quota-project <id>
 black --check --diff .
 MYPYPATH="$(realpath "$PWD/../../../")" mypy -p ansible_collections.cloud.terraform.plugins
 ansible-test integration [target] [--exclude aws|azure|gcp]
+
+# Generate docs
+ansible-doc --list | grep cloud.terraform | cut -d " " -f 1 | xargs -I {} antsibull-docs plugin --dest-dir docs/ {}
 ```
 
 ## Licensing
