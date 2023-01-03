@@ -14,6 +14,17 @@ Name | Description
 [cloud.terraform.terraform](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_module.rst)|Manages a Terraform deployment (and plans)
 [cloud.terraform.terraform_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_output_module.rst)|Returns Terraform module outputs.
 
+### Lookup
+Name | Description
+--- | ---
+[cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
+
+### Roles
+Name | Description
+--- | ---
+[cloud.terraform.git_plan](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.git_plan_role.rst)|Clones a Git repository and applys a plan from it.
+[cloud.terraform.inventory_from_outputs](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.inventory_from_outputs_role.rst)|Creates an in-memory inventory from Terraform outputs.
+
 <!--end collection content-->
 
 ## Installing this collection
