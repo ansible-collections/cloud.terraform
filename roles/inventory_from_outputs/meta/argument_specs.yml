@@ -2,6 +2,8 @@
 argument_specs:
   main:
     short_description: Create an in-memory inventory from Terraform outputs.
+    description:
+      - Create an in-memory inventory from Terraform outputs.
     options:
       project_path:
         description:
