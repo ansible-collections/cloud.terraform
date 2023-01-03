@@ -2,6 +2,7 @@
 .. Document meta
 
 :orphan:
+:github_url: https://github.com/ansible-collections/cloud.terraform/edit/main/plugins/modules/terraform.py?description=%23%23%23%23%23%20SUMMARY%0A%3C!---%20Your%20description%20here%20--%3E%0A%0A%0A%23%23%23%23%23%20ISSUE%20TYPE%0A-%20Docs%20Pull%20Request%0A%0A%2Blabel:%20docsite_pr
 
 .. |antsibull-internal-nbsp| unicode:: 0xA0
     :trim:
@@ -42,7 +43,7 @@ cloud.terraform.terraform module -- Manages a Terraform deployment (and plans)
 .. Collection note
 
 .. note::
-    This module is part of the `cloud.terraform collection <https://galaxy.ansible.com/cloud/terraform>`_.
+    This module is part of the `cloud.terraform collection <https://galaxy.ansible.com/cloud/terraform>`_ (version 1.0.0).
 
     To install it, use: :code:`ansible-galaxy collection install cloud.terraform`.
     You need further requirements to be able to use this module,
@@ -894,6 +895,10 @@ Parameters
       A list of specific resources to target in this plan/application. The resources selected here will also auto-include any dependencies.
 
 
+      .. rst-class:: ansible-option-line
+
+      :ansible-option-default-bold:`Default:` :ansible-option-default:`[]`
+
       .. raw:: html
 
         </div>
@@ -1095,7 +1100,7 @@ Examples
       cloud.terraform.terraform:
         project_path: '{{ project_dir }}'
         state: present
-        camplex_vars: true
+        complex_vars: true
         variables:
           vm_name: "{{ inventory_hostname }}"
           vm_vcpus: 2
@@ -1417,6 +1422,16 @@ Authors
 
 .. Extra links
 
+Collection links
+~~~~~~~~~~~~~~~~
+
+.. raw:: html
+
+  <p class="ansible-links">
+    <a href="https://github.com/ansible-collections/cloud.terraform/issues" aria-role="button" target="_blank" rel="noopener external">Issue Tracker</a>
+    <a href="https://github.com/ansible-collections/cloud.terraform" aria-role="button" target="_blank" rel="noopener external">Repository (Sources)</a>
+    <a href="https://github.com/ansible-collections/cloud.terraform/issues/new/choose" aria-role="button" target="_blank" rel="noopener external">Report an issue</a>
+  </p>
 
 .. Parsing errors
 
