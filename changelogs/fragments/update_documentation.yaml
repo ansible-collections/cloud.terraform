@@ -1,0 +1,3 @@
+---
+minor_changes:
+- git_plan and inventory_from_outputs role's argument_spec.yml updated to be able to generate documentation (https://github.com/ansible-collections/cloud.terraform/pull/28)
