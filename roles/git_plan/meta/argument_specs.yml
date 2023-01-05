@@ -2,6 +2,8 @@
 argument_specs:
   main:
     short_description: Clone a Git repository and apply a plan from it.
+    description:
+      - Clone a Git repository and apply a plan from it.
     options:
       repo_url:
         description: The URL of the repository to clone.
@@ -83,6 +85,7 @@ argument_specs:
             required: false
             version_added: 1.0.0
       terraform_options:
+        description: Options to configure terraform execution.
         options:
           state_file:
             description: An optional state file to use, overriding the default.
