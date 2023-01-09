@@ -23,7 +23,7 @@ options:
     type: path
   state_file:
     description:
-      - Absolute path to an existing Terraform state file whose outputs will be listed.
+      - The path to an existing Terraform state file whose outputs will be listed.
       - If I(state_file) and I(project_path) are not specified, the C(terraform.tfstate) file in the
         current working directory will be used.
       - The C(TF_DATA_DIR) environment variable is respected.
