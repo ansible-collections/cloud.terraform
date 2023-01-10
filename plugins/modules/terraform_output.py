@@ -14,7 +14,10 @@ description:
 options:
   project_path:
     description:
-      - The path to the root of the Terraform directory with the .tfstate file.
+      - The path to the root of the Terraform directory with the terraform.tfstate file.
+      - If I(state_file) and I(project_path) are not specified, the C(terraform.tfstate) file in the
+        current working directory will be used.
+      - The C(TF_DATA_DIR) environment variable is respected.
     type: path
     version_added: 1.0.0
   name:
@@ -37,8 +40,10 @@ options:
     version_added: 1.0.0
   state_file:
     description:
-      - Absolute path to an existing Terraform state file whose outputs will be listed.
-      - If this is not specified, the default C(terraform.tfstate) in the directory I(project_path) will be used.
+      - The path to an existing Terraform state file whose outputs will be listed.
+      - If I(state_file) and I(project_path) are not specified, the C(terraform.tfstate) file in the
+        current working directory will be used.
+      - The C(TF_DATA_DIR) environment variable is respected.
     type: path
     version_added: 1.0.0
 requirements: [ "terraform" ]
@@ -107,7 +112,6 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
     get_outputs,
-    validate_project_path,
     validate_bin_path,
 )
 
@@ -122,7 +126,6 @@ def main() -> None:
             state_file=dict(type="path"),
         ),
         required_if=[("format", "raw", ("name",))],
-        required_one_of=[("project_path", "state_file")],
     )
 
     project_path: Optional[str] = module.params.get("project_path")
@@ -148,6 +151,7 @@ def main() -> None:
         )
     except TerraformWarning as e:
         module.warn(e.message)
+        outputs = None
     except TerraformError as e:
         e.fail_json(module)
 
