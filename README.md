@@ -19,6 +19,11 @@ Name | Description
 --- | ---
 [cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
 
+### Inventory
+Name | Description
+--- | ---
+[cloud.terraform.terraform_provider](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_provider_inventory.rst)|Builds an inventory from Terraform state file.
+
 ### Roles
 Name | Description
 --- | ---

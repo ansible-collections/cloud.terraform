@@ -1,0 +1,47 @@
+- name: Test create groups
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - groups | length == 7
+          - "'all' in groups"
+          - "'ungrouped' in groups"
+          - "'childlessgroup' in groups"
+          - "'somegroup' in groups"
+          - "'anothergroup' in groups"
+          - "'somechild' in groups"
+          - "'anotherchild' in groups"
+
+- name: Test create hosts
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - "'somehost' in hostvars"
+          - "'anotherhost' in hostvars"
+
+- name: Test host and group variables
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - hostvars["somehost"].host_hello == "from host!"
+          - hostvars["somehost"].host_variable == "7"
+          - hostvars["somehost"].group_hello == "from group!"
+          - hostvars["somehost"].group_variable == "11"
+          - hostvars["anotherhost"].host_hello == "from anotherhost!"
+          - hostvars["anotherhost"].host_variable == "5"
+
+- name: Test asigning hosts to groups
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - "'somegroup' in hostvars['somehost']['groups']"
+          - "'anothergroup' in hostvars['somehost']['groups']"
+          - "'somechild' in hostvars['anotherhost']['groups']"
+          - "'ungrouped' in hostvars['ungrupedhost']['groups']"
