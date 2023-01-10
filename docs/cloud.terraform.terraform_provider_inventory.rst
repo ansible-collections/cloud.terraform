@@ -293,23 +293,45 @@ Examples
 .. code-block:: yaml+jinja
 
     
-    # Example that creates an inventory from terraform.tfstate file in cwd
+    # Example configuration file inventory.yml, that creates an inventory from terraform.tfstate file in cwd
+    plugin: cloud.terraform.terraform_provider
+    # Running command `ansible-inventory -i inventory.yml --graph --vars` would then produce the inventory:
+    # @all:
+    #   |--@anothergroup:
+    #   |  |--somehost
+    #   |  |  |--{group_hello = from group!}
+    #   |  |  |--{group_variable = 11}
+    #   |  |  |--{host_hello = from host!}
+    #   |  |  |--{host_variable = 7}
+    #   |--@childlessgroup:
+    #   |--@somegroup:
+    #   |  |--@anotherchild:
+    #   |  |--@somechild:
+    #   |  |  |--anotherhost
+    #   |  |  |  |--{group_hello = from group!}
+    #   |  |  |  |--{group_variable = 11}
+    #   |  |  |  |--{host_hello = from anotherhost!}
+    #   |  |  |  |--{host_variable = 5}
+    #   |  |--somehost
+    #   |  |  |--{group_hello = from group!}
+    #   |  |  |--{group_variable = 11}
+    #   |  |  |--{host_hello = from host!}
+    #   |  |  |--{host_variable = 7}
+    #   |  |--{group_hello = from group!}
+    #   |  |--{group_variable = 11}
+    #   |--@ungrouped:
+    #   |  |--ungrupedhost
 
-    plugin: cloud.terraform.inventory
-
-    # Example that creates an inventory from terraform.tfstate file in selected project directory
-
-    plugin: cloud.terraform.inventory
+    # Example configuration file that creates an inventory from terraform.tfstate file in selected project directory
+    plugin: cloud.terraform.terraform_provider
     project_path: some/project/path
 
-    # Example that creates an inventory from specified state file
-
-    plugin: cloud.terraform.inventory
+    # Example configuration file that creates an inventory from specified state file
+    plugin: cloud.terraform.terraform_provider
     state_file: some/state/file/path
 
-    # Example that creates an inventory from mycustomstate.tfstate file in selected project directory
-
-    plugin: cloud.terraform.inventory
+    # Example configuration file that creates an inventory from mycustomstate.tfstate file in selected project directory
+    plugin: cloud.terraform.terraform_provider
     project_path: some/project/path
     state_file: mycustomstate.tfstate
 
