@@ -54,18 +54,16 @@ class TerraformRootModuleResource:
 
 @dataclass
 class TerraformAnsibleProvider:
-    host_name: str
+    name: str
     groups: List[str]
-    group_name: str
     children: List[str]
     variables: Dict[str, str]
 
     @classmethod
     def from_json(cls, json: TerraformRootModuleResource) -> "TerraformAnsibleProvider":
         return cls(
-            host_name=json.values.get("host_name", None),
+            name=json.values.get("name", None),
             groups=json.values.get("groups", []),
-            group_name=json.values.get("group_name", None),
             children=json.values.get("children", []),
             variables=json.values.get("variables", {}),
         )
