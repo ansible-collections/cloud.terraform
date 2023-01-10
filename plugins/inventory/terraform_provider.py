@@ -96,6 +96,7 @@ import os
 import subprocess
 from typing import List, Tuple, Any
 import yaml
+import json
 
 from ansible.errors import AnsibleParserError
 from ansible.plugins.inventory import BaseInventoryPlugin
@@ -108,6 +109,10 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAnsibleProvider,
     TerraformShow,
 )
+
+
+# TODO: remove when ansible provider is available
+TESTING_STATE_FILE = os.environ.get("TESTING_STATE_FILE", False)
 
 
 # no module available here, mock functionality to be consistent throughout the rest of the codebase
@@ -192,10 +197,17 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             terraform_binary = process.get_bin_path("terraform", required=True)
 
         terraform = TerraformCommands(module_run_command, project_path, terraform_binary, False)
-        try:
-            state_content = terraform.show(state_file)
-        except TerraformWarning as e:
-            raise TerraformError(e.message)
+
+        # TODO: remove when ansible provider is available
+        if TESTING_STATE_FILE:
+            with open("terraform.tfstateshow", "r") as state_file:
+                state_content = json.loads(state_file.read())
+                state_content = TerraformShow.from_json(state_content)
+        else:
+            try:
+                state_content = terraform.show(state_file)
+            except TerraformWarning as e:
+                raise TerraformError(e.message)
 
         if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
             self.create_inventory(inventory, state_content)
