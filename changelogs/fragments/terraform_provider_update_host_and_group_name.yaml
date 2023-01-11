@@ -1,0 +1,3 @@
+---
+bugfixes:
+  - Updated host and group name in cloud.terraform.terraform_provider inventory plugin. (https://github.com/ansible-collections/cloud.terraform/pull/34)
