@@ -156,25 +156,25 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
 
     def _add_group(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
-        inventory.add_group(attributes.group_name)
+        inventory.add_group(attributes.name)
         if attributes.children:
             for child in attributes.children:
                 inventory.add_group(child)
-                inventory.add_child(attributes.group_name, child)
+                inventory.add_child(attributes.name, child)
         if attributes.variables:
             for key, value in attributes.variables.items():
-                inventory.set_variable(attributes.group_name, key, value)
+                inventory.set_variable(attributes.name, key, value)
 
     def _add_host(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
-        inventory.add_host(attributes.host_name)
+        inventory.add_host(attributes.name)
         if attributes.groups:
             for group in attributes.groups:
                 inventory.add_group(group)
-                inventory.add_host(attributes.host_name, group=group)
+                inventory.add_host(attributes.name, group=group)
         if attributes.variables:
             for key, value in attributes.variables.items():
-                inventory.set_variable(attributes.host_name, key, value)
+                inventory.set_variable(attributes.name, key, value)
 
     def create_inventory(self, inventory: Any, state_content: TerraformShow) -> None:
         for resource in state_content.values.root_module.resources:

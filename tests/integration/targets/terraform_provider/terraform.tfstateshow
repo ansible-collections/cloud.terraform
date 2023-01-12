@@ -13,7 +13,7 @@
           "schema_version": 0,
           "values": {
             "children": null,
-            "group_name": "childlessgroup",
+            "name": "childlessgroup",
             "id": "childlessgroup",
             "variables": null
           },
@@ -31,7 +31,7 @@
               "somechild",
               "anotherchild"
             ],
-            "group_name": "somegroup",
+            "name": "somegroup",
             "id": "somegroup",
             "variables": {
               "group_variable": "11",
@@ -57,7 +57,7 @@
             "groups": [
               "somechild"
             ],
-            "host_name": "anotherhost",
+            "name": "anotherhost",
             "id": "anotherhost",
             "variables": {
               "host_hello": "from anotherhost!",
@@ -83,7 +83,7 @@
               "somegroup",
               "anothergroup"
             ],
-            "host_name": "somehost",
+            "name": "somehost",
             "id": "somehost",
             "variables": {
               "host_hello": "from host!",
@@ -107,7 +107,7 @@
           "schema_version": 0,
           "values": {
             "groups": null,
-            "host_name": "ungrupedhost",
+            "name": "ungrupedhost",
             "id": "ungrupedhost",
             "variables": null
           },

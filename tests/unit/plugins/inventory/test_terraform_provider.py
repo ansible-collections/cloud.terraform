@@ -93,9 +93,8 @@ class TestInventoryModuleAddHost:
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformAnsibleProvider.from_json"
         ).return_value = TerraformAnsibleProvider(
-            host_name="host_name",
+            name="host_name",
             groups=["group1", "group2"],
-            group_name=None,
             children=[],
             variables={"host_var1": "1", "host_var2": "2"},
         )
@@ -112,9 +111,8 @@ class TestInventoryModuleAddHost:
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformAnsibleProvider.from_json"
         ).return_value = TerraformAnsibleProvider(
-            host_name="host_name",
+            name="host_name",
             groups=["group1", "group2"],
-            group_name=None,
             children=[],
             variables={},
         )
@@ -129,9 +127,8 @@ class TestInventoryModuleAddHost:
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformAnsibleProvider.from_json"
         ).return_value = TerraformAnsibleProvider(
-            host_name="host_name",
+            name="host_name",
             groups=[],
-            group_name=None,
             children=[],
             variables={"host_var1": "1", "host_var2": "2"},
         )
@@ -148,9 +145,8 @@ class TestInventoryModuleAddGroup:
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformAnsibleProvider.from_json"
         ).return_value = TerraformAnsibleProvider(
-            host_name=None,
             groups=[],
-            group_name="group_name",
+            name="group_name",
             children=["child1", "child2"],
             variables={"group_var1": "1", "group_var2": "2"},
         )
@@ -167,9 +163,8 @@ class TestInventoryModuleAddGroup:
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformAnsibleProvider.from_json"
         ).return_value = TerraformAnsibleProvider(
-            host_name=None,
             groups=[],
-            group_name="group_name",
+            name="group_name",
             children=["child1", "child2"],
             variables={},
         )
@@ -184,9 +179,8 @@ class TestInventoryModuleAddGroup:
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformAnsibleProvider.from_json"
         ).return_value = TerraformAnsibleProvider(
-            host_name=None,
             groups=[],
-            group_name="group_name",
+            name="group_name",
             children=[],
             variables={"group_var1": "1", "group_var2": "2"},
         )
@@ -216,7 +210,7 @@ class TestCreateInventory:
                             schema_version=0,
                             values={
                                 "children": None,
-                                "group_name": "childlessgroup",
+                                "name": "childlessgroup",
                                 "id": "childlessgroup",
                                 "variables": None,
                             },
@@ -232,7 +226,7 @@ class TestCreateInventory:
                             schema_version=0,
                             values={
                                 "children": ["somechild", "anotherchild"],
-                                "group_name": "somegroup",
+                                "name": "somegroup",
                                 "id": "somegroup",
                                 "variables": {"group_hello": "from somegroup!", "group_variable": "11"},
                             },
@@ -248,7 +242,7 @@ class TestCreateInventory:
                             schema_version=0,
                             values={
                                 "groups": ["somechild"],
-                                "host_name": "anotherhost",
+                                "name": "anotherhost",
                                 "id": "anotherhost",
                                 "variables": {"host_hello": "from anotherhost!", "host_variable": "5"},
                             },
@@ -264,7 +258,7 @@ class TestCreateInventory:
                             schema_version=0,
                             values={
                                 "groups": ["somegroup", "anothergroup"],
-                                "host_name": "somehost",
+                                "name": "somehost",
                                 "id": "somehost",
                                 "variables": {"host_hello": "from somehost!", "host_variable": "7"},
                             },
@@ -280,7 +274,7 @@ class TestCreateInventory:
                             schema_version=0,
                             values={
                                 "groups": None,
-                                "host_name": "ungroupedhost",
+                                "name": "ungroupedhost",
                                 "id": "ungroupedhost",
                                 "variables": None,
                             },
