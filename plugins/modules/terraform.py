@@ -322,8 +322,14 @@ def is_attribute_sensitive_in_providers_schema(
         resource_schemas = schemas.provider_schemas[provider_schema].resource_schemas
         for resource_schema_name, resource_schema in resource_schemas.items():
             if resource_schema_name == resource.type:
-                sensitive = resource_schema.attributes[attribute].sensitive
+                sensitive = False
+                if attribute in resource_schema.attributes:
+                    sensitive = resource_schema.attributes[attribute].sensitive
+                for block_type, block_value in resource_schema.block_types.items():
+                    if attribute in block_value.attributes:
+                        sensitive = block_value.attributes[attribute].sensitive
                 return sensitive
+
     return False
 
 
