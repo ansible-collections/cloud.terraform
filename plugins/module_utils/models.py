@@ -135,6 +135,7 @@ class TerraformAttributeSpec:
             computed=json.get("computed", False),
         )
 
+
 @dataclass
 class TerraformBlockTypeSpec:
     attributes: Dict[str, TerraformAttributeSpec]
@@ -149,6 +150,7 @@ class TerraformBlockTypeSpec:
             },
             nesting_mode=json["nesting_mode"],
         )
+
 
 @dataclass
 class TerraformResourceSchema:
