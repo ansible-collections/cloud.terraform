@@ -240,6 +240,7 @@ class TerraformCommands:
                 continue
             elif stripped_item.startswith("* "):
                 current_workspace = stripped_item.replace("* ", "")
+                all_workspaces.append(current_workspace)
             else:
                 all_workspaces.append(stripped_item)
         return TerraformWorkspaceContext(current=current_workspace, all=all_workspaces)
