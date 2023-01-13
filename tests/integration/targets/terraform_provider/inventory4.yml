@@ -1,0 +1,4 @@
+---
+plugin: cloud.terraform.terraform_provider
+
+state_file: subdir4/mystate.tfstate

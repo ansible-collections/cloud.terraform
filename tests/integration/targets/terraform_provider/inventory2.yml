@@ -1,0 +1,5 @@
+---
+plugin: cloud.terraform.terraform_provider
+
+project_path: subdir2/
+state_file: mycustomstate.tfstate

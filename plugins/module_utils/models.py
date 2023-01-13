@@ -53,6 +53,23 @@ class TerraformRootModuleResource:
 
 
 @dataclass
+class TerraformAnsibleProvider:
+    name: str
+    groups: List[str]
+    children: List[str]
+    variables: Dict[str, str]
+
+    @classmethod
+    def from_json(cls, json: TerraformRootModuleResource) -> "TerraformAnsibleProvider":
+        return cls(
+            name=json.values.get("name", None),
+            groups=json.values.get("groups", []),
+            children=json.values.get("children", []),
+            variables=json.values.get("variables", {}),
+        )
+
+
+@dataclass
 class TerraformRootModule:
     resources: List[TerraformRootModuleResource]
 
