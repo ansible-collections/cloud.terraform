@@ -69,6 +69,10 @@ You can either call modules by their Fully Qualified Collection Name (FQCN), suc
 
 ## Developing and testing
 
+In order to run and test this collection locally, first install the required dependencies using:
+
+	pip install -r requirements.txt
+
 The project uses `mypy` and `black`.
 Black works without special configuration, while `mypy` requires a valid package structure.
 Assuming this repository is checked out in the proper structure,
