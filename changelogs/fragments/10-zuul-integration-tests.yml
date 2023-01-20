@@ -1,0 +1,3 @@
+---
+trivial:
+  - enable aws integration testing on zuul (https://github.com/ansible-collections/pravic/pull/10).
