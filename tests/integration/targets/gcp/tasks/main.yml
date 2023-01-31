@@ -15,7 +15,7 @@
     test_basedir: "{{ test_basedir | default(output_dir) }}"
     # project names must match this regex, but can start with a number by default
     # "^(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)$"
-    resource_id: "tf{{ '00' | community.general.random_mac | hash('md5') }}"
+    resource_id: "{{ resource_prefix }}-vpc"
     resource_project: "{{ gcloud_auth.quota_project_id }}"
 
 - name: Copy terraform files to workspace

@@ -2,133 +2,132 @@
 # Copyright (c) Ansible Project
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
-
-- set_fact:
-    test_basedir: "{{ test_basedir | default(output_dir) }}"
-    resource_id: "{{ '00' | community.general.random_mac | hash('md5') }}"
-
-- name: Copy terraform files to workspace
-  ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: "{{ test_basedir }}/{{ item }}"
-  loop:
-    - cloud.tf
-
-- name: Clean up all integration test resources
+- environment:
+    AWS_ACCESS_KEY_ID: "{{ aws_access_key | default(omit) }}"
+    AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key | default(omit) }}"
+    AWS_SESSION_TOKEN: "{{ security_token | default(omit) }}"
+    AWS_REGION: "{{ aws_region | default(omit) }}"
   block:
-    - name: Get a list of VPCs with a matching tag
-      steampunk.aws.ec2_vpc_info:
-        auth:
-          profile: default
-        filters:
-          "tag:cloud_terraform_integration": "true"
-      register: integration_vpcs
+    - set_fact:
+        test_basedir: "{{ test_basedir | default(output_dir) }}"
+        resource_id: "{{ resource_prefix }}-vpc"
 
-    - name: Delete VPCs
-      steampunk.aws.ec2_vpc:
-        auth:
-          profile: default
-        id: "{{ item.id }}"
-        state: absent
-      loop: "{{ integration_vpcs.objects }}"
+    - name: Copy terraform files to workspace
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ test_basedir }}/{{ item }}"
+      loop:
+        - cloud.tf
 
-- &verification
-  block:
-    - name: Get a list of VPCs with a matching tag
-      steampunk.aws.ec2_vpc_info:
-        auth:
-          profile: default
-        filters:
-          "tag:cloud_terraform_integration_id": "{{ resource_id }}"
-      register: vpc_info
-    - name: Assert that there are {{ number_of_vpcs }} VPCs present
-      assert:
+    - name: Clean up all integration test resources
+      block:
+        - name: Get a list of VPCs with a matching tag
+          amazon.aws.ec2_vpc_net_info:
+            filters:
+              "tag:cloud_terraform_integration": "true"
+          register: integration_vpcs
+
+        - name: Delete VPCs
+          amazon.aws.ec2_vpc_net:
+            vpc_id: "{{ item.vpc_id }}"
+            state: absent
+          loop: "{{ integration_vpcs.vpcs }}"
+
+    - &verification
+      block:
+        - name: Get a list of VPCs with a matching tag
+          amazon.aws.ec2_vpc_net_info:
+            filters:
+              "tag:cloud_terraform_integration_id": "{{ resource_id }}"
+          register: vpc_info
+        - name: Assert that there are {{ number_of_vpcs }} VPCs present
+          assert:
+            that:
+              - (vpc_info.vpcs | length) == number_of_vpcs
+      vars:
+        number_of_vpcs: 0
+
+    - name: Terraform in present check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: present
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: true
+    - assert:
         that:
-          - (vpc_info.objects | length) == number_of_vpcs
-  vars:
-    number_of_vpcs: 0
+          - terraform_result is not failed
+          - terraform_result is changed
+    - <<: *verification
+      vars:
+        number_of_vpcs: 0
 
-- name: Terraform in present check mode
-  cloud.terraform.terraform:
-    project_path: "{{ test_basedir }}"
-    state: present
-    force_init: true
-    variables:
-      cloud_terraform_integration_id: "{{ resource_id }}"
-  register: terraform_result
-  check_mode: true
-- assert:
-    that:
-      - terraform_result is not failed
-      - terraform_result is changed
-- <<: *verification
-  vars:
-    number_of_vpcs: 0
+    - name: Terraform in present non-check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: present
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: false
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is changed
+    - <<: *verification
+      vars:
+        number_of_vpcs: 1
 
-- name: Terraform in present non-check mode
-  cloud.terraform.terraform:
-    project_path: "{{ test_basedir }}"
-    state: present
-    force_init: true
-    variables:
-      cloud_terraform_integration_id: "{{ resource_id }}"
-  register: terraform_result
-  check_mode: false
-- assert:
-    that:
-      - terraform_result is not failed
-      - terraform_result is changed
-- <<: *verification
-  vars:
-    number_of_vpcs: 1
+    - name: Terraform in present non-check mode (idempotency)
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: present
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: false
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is not changed
+    - <<: *verification
+      vars:
+        number_of_vpcs: 1
 
-- name: Terraform in present non-check mode (idempotency)
-  cloud.terraform.terraform:
-    project_path: "{{ test_basedir }}"
-    state: present
-    force_init: true
-    variables:
-      cloud_terraform_integration_id: "{{ resource_id }}"
-  register: terraform_result
-  check_mode: false
-- assert:
-    that:
-      - terraform_result is not failed
-      - terraform_result is not changed
-- <<: *verification
-  vars:
-    number_of_vpcs: 1
+    - name: Terraform in absent check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: absent
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: true
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is changed
+    - <<: *verification
+      vars:
+        number_of_vpcs: 1
 
-- name: Terraform in absent check mode
-  cloud.terraform.terraform:
-    project_path: "{{ test_basedir }}"
-    state: absent
-    force_init: true
-    variables:
-      cloud_terraform_integration_id: "{{ resource_id }}"
-  register: terraform_result
-  check_mode: true
-- assert:
-    that:
-      - terraform_result is not failed
-      - terraform_result is changed
-- <<: *verification
-  vars:
-    number_of_vpcs: 1
-
-- name: Terraform in absent non-check mode
-  cloud.terraform.terraform:
-    project_path: "{{ test_basedir }}"
-    state: absent
-    force_init: true
-    variables:
-      cloud_terraform_integration_id: "{{ resource_id }}"
-  register: terraform_result
-  check_mode: false
-- assert:
-    that:
-      - terraform_result is not failed
-      - terraform_result is changed
-- <<: *verification
-  vars:
-    number_of_vpcs: 0
+    - name: Terraform in absent non-check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: absent
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: false
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is changed
+    - <<: *verification
+      vars:
+        number_of_vpcs: 0

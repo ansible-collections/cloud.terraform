@@ -5,7 +5,7 @@
 
 - set_fact:
     test_basedir: "{{ test_basedir | default(output_dir) }}"
-    resource_id: "{{ '00' | community.general.random_mac | hash('md5') }}"
+    resource_id: "{{ resource_prefix }}-vnet"
     resource_group_name: "cloud.terraform_integration_resource_group"
     resource_group_location: "northeurope"
 
