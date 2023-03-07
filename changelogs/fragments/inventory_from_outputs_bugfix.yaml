@@ -1,0 +1,3 @@
+---
+bugfixes:
+  - Removed "mutually exclusive" condition for state_file and project_path in inventory_from_outputs role, since terraform_output module doesn't require this. (https://github.com/ansible-collections/cloud.terraform/pull/39)
