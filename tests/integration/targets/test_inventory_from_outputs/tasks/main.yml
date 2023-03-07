@@ -19,6 +19,7 @@
     name: cloud.terraform.inventory_from_outputs
   vars:
     project_path: "{{ test_basedir }}"
+    state_file: "{{ test_basedir }}/terraform.tfstate" # not necessary, can be null
     mapping_variables:
       host_list: myvar_hostlist
       name: myvar_name
