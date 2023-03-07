@@ -8,13 +8,17 @@ argument_specs:
       project_path:
         description:
           - The path to the root of the Terraform directory with the .tfstate file.
-          - Mutually exclusive with state_file.
+          - If I(state_file) and I(project_path) are not specified, the C(terraform.tfstate) file in the
+            current working directory will be used.
+          - The C(TF_DATA_DIR) environment variable is respected.
         type: path
         version_added: 1.0.0
       state_file:
         description:
-          - An absolute path to an existing Terraform state file.
-          - Mutually exclusive with project_path.
+          - The path to an existing Terraform state file.
+          - If I(state_file) and I(project_path) are not specified, the C(terraform.tfstate) file in the
+            current working directory will be used.
+          - The C(TF_DATA_DIR) environment variable is respected.
         type: path
         version_added: 1.0.0
       mapping_variables:

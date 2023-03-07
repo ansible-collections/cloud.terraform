@@ -357,7 +357,9 @@ Parameters
 
       The path to the root of the Terraform directory with the .tfstate file.
 
-      Mutually exclusive with state\_file.
+      If \ :emphasis:`state\_file`\  and \ :emphasis:`project\_path`\  are not specified, the \ :literal:`terraform.tfstate`\  file in the current working directory will be used.
+
+      The \ :literal:`TF\_DATA\_DIR`\  environment variable is respected.
 
 
       .. raw:: html
@@ -397,9 +399,11 @@ Parameters
 
         <div class="ansible-option-cell">
 
-      An absolute path to an existing Terraform state file.
+      The path to an existing Terraform state file.
 
-      Mutually exclusive with project\_path.
+      If \ :emphasis:`state\_file`\  and \ :emphasis:`project\_path`\  are not specified, the \ :literal:`terraform.tfstate`\  file in the current working directory will be used.
+
+      The \ :literal:`TF\_DATA\_DIR`\  environment variable is respected.
 
 
       .. raw:: html

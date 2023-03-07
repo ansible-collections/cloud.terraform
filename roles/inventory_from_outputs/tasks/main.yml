@@ -1,21 +1,9 @@
 ---
-- name: Ensure exactly one of (project_path, state_file) is set.
-  ansible.builtin.fail:
-    msg: Exactly one of (project_path, state_file) must be set.
-  when: project_path is defined == state_file is defined
-
 - name: Read outputs from project path
   cloud.terraform.terraform_output:
     project_path: "{{ project_path }}"
-    # state_file: "{{ state_file }}"
-  register: terraform_output_project_path
-  when: project_path is defined
-
-- name: Read outputs from state file
-  cloud.terraform.terraform_output:
     state_file: "{{ state_file }}"
-  register: terraform_output_state_file
-  when: state_file is defined
+  register: terraform_output
 
 - name: Add hosts from terraform_output to the group defined in terraform_output
   ansible.builtin.add_host:
@@ -24,7 +12,3 @@
     ansible_host: "{{ item[mapping_variables.ip] }}"
     ansible_user: "{{ item[mapping_variables.user] }}"
   loop: "{{ terraform_output.outputs[mapping_variables.host_list].value }}"
-  vars:
-    # even skipped tasks register variables, so we need to choose one explicitly
-    terraform_output: "{{ (terraform_output_project_path is defined and terraform_output_project_path is success) |
-                           ternary(terraform_output_project_path, terraform_output_state_file) }}"
