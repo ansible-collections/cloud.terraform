@@ -44,6 +44,18 @@ Example Playbook
             user: terraform_var_user
             group: terraform_var_group
 
+Example of inventory definition in .tf file
+----------------
+```
+output "terraform_var_host_list" {
+  value = [
+    { "terraform_var_ip" : "my_ip1", "terraform_var_group" : "my_group1", "terraform_var_name" : "my_name1", "terraform_var_user" : "my_user" },
+    { "terraform_var_ip" : "my_ip2", "terraform_var_group" : "my_group2", "terraform_var_name" : "my_name2", "terraform_var_user" : "my_user" },
+    { "terraform_var_ip" : "my_ip3", "terraform_var_group" : "my_group1", "terraform_var_name" : "my_name3", "terraform_var_user" : "my_user" },
+  ]
+}
+```
+
 License
 -------
 
