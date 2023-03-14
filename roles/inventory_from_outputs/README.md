@@ -11,8 +11,8 @@ Requirements
 Role Variables
 --------------
 
-* **project_path**: The path to the root of the Terraform directory with the .tfstate file. *Mutually exclusive with state_file*.
-* **state_file**: An absolute path to an existing Terraform state file. *Mutually exclusive with project_path*.
+* **project_path**: The path to the root of the Terraform directory with the .tfstate file. If not set, the current working directory is used as a Terraform directory.
+* **state_file**: The path to an existing Terraform state file. If not set, terraform.tfstate in selected directory is used.
 * **mapping_variables**: Names that define the mapping between Terraform output variables and inventory host variables. Contains the following:
   - **host_list**: (Required) The Terraform variable that contains the list of hosts to be processed into the in-memory inventory. Other keys in the mapping_variables parameter refer to properties of the items of this list.
   - **name**: (Required) The Terraform variable that contains the name of the resulting inventory host.
