@@ -38,7 +38,7 @@ Example Playbook
         - role: cloud.terraform.inventory_from_outputs
           project_path: 'my_project_directory'
           mapping_variables:
-            host_lists: terraform_var_host_list
+            host_list: terraform_var_host_list
             name: terraform_var_name
             ip: terraform_var_ip
             user: terraform_var_user
