@@ -20,7 +20,7 @@ class TerraformOutput:
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformOutput":
-        return cls(sensitive=json["sensitive"], value=json["value"], type=json["type"])
+        return cls(sensitive=json.get("sensitive"), value=json.get("value"), type=json.get("type"))
 
 
 @dataclass
