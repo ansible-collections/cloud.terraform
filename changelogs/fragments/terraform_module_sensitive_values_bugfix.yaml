@@ -1,0 +1,3 @@
+---
+bugfixes:
+  - Terraform module - fix now expands the providers schema with block_types section so when checking if (block) attribute is sensitive in providers schema KeyError is now avoided. (https://github.com/ansible-collections/cloud.terraform/pull/46)
