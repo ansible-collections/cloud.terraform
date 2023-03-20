@@ -137,19 +137,42 @@ class TerraformAttributeSpec:
 
 
 @dataclass
+class TerraformBlockSensitive:
+    sensitive: bool
+
+    @classmethod
+    def create(cls, block_sensitive: bool) -> "TerraformBlockSensitive":
+        return cls(sensitive=block_sensitive)
+
+
+@dataclass
 class TerraformResourceSchema:
     version: int
-    # this de-nests the "block" subelement
-    attributes: Dict[str, TerraformAttributeSpec]
+    # this de-nests the "block" and the "block_type" subelement
+    # but "block_type" is simplified - contains only sensitive attribute
+    attributes: Dict[str, Union[TerraformAttributeSpec, TerraformBlockSensitive]]
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformResourceSchema":
+        attributes: Dict[str, Union[TerraformAttributeSpec, TerraformBlockSensitive]] = {
+            attr_name: TerraformAttributeSpec.from_json(attr_value)
+            for attr_name, attr_value in json.get("block", {}).get("attributes", {}).items()
+        }
+        for block_name, block_value in json.get("block", {}).get("block_types", {}).items():
+            block_attributes = {
+                block_attr_name: TerraformAttributeSpec.from_json(block_attr_value)
+                for block_attr_name, block_attr_value in block_value.get("block", {}).get("attributes", {}).items()
+            }
+            sensitive_list = [
+                block_attribute_value.sensitive
+                for block_attribute_name, block_attribute_value in block_attributes.items()
+            ]
+            # if one attribute is sensitive, we make the whole block sensitive
+            attributes[block_name] = TerraformBlockSensitive.create(any(sensitive_list))
+
         return cls(
             version=json["version"],
-            attributes={
-                attr_name: TerraformAttributeSpec.from_json(attr_value)
-                for attr_name, attr_value in json.get("block", {}).get("attributes", {}).items()
-            },
+            attributes=attributes,
         )
 
 

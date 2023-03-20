@@ -322,13 +322,29 @@ def is_attribute_sensitive_in_providers_schema(
         resource_schemas = schemas.provider_schemas[provider_schema].resource_schemas
         for resource_schema_name, resource_schema in resource_schemas.items():
             if resource_schema_name == resource.type:
-                sensitive = resource_schema.attributes[attribute].sensitive
+                # it can happen that attribute is not in the providers schema
+                if resource_schema.attributes.get(attribute):
+                    sensitive = resource_schema.attributes[attribute].sensitive
+                else:
+                    sensitive = False
                 return sensitive
     return False
 
 
 def is_attribute_in_sensitive_values(resource: TerraformRootModuleResource, attribute: str) -> bool:
-    return attribute in resource.sensitive_values
+    # In case if one attribute inside of block is sensitive, the whole block is sensitive - example: ephemeral_block_device
+    # or only selected attribute is sensitive - example: credit_specification, capacity_reservation_specification
+    # Also in case of lists - example: security_groups, if one element is sensitive, the whole attribute is sensitive
+    # Example of the sensitive_values
+    # "sensitive_values":{"capacity_reservation_specification":[{"capacity_reservation_target":[{"capacity_reservation_id":true}]}],
+    # "credit_specification":[{"cpu_credits":true}],"ebs_block_device":[],"enclave_options":[],"ephemeral_block_device":true,"ipv6_addresses":[],
+    # "launch_template":[],"maintenance_options":[],"metadata_options":[],"network_interface":[],"private_dns_name_options":[],
+    # "root_block_device":[],"secondary_private_ips":[],"security_groups":true,"tags":{},"tags_all":{},"vpc_security_group_ids":[]}}
+    # to make code simpler, also in the case when only certain attributes in block are listed as sensitive, we make the whole block sensitive
+    if attribute in resource.sensitive_values:
+        if resource.sensitive_values[attribute]:  # is Truthy (True or not an empty [] or {})
+            return True
+    return False
 
 
 def filter_resource_attributes(
