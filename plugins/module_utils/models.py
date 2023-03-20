@@ -137,10 +137,27 @@ class TerraformAttributeSpec:
 
 
 @dataclass
+class TerraformBlockTypeSpec:
+    attributes: Dict[str, TerraformAttributeSpec]
+    nesting_mode: Union[str, List[str]]
+
+    @classmethod
+    def from_json(cls, json: TJsonObject) -> "TerraformBlockTypeSpec":
+        return cls(
+            attributes={
+                attr_name: TerraformAttributeSpec.from_json(attr_value)
+                for attr_name, attr_value in json.get("block", {}).get("attributes", {}).items()
+            },
+            nesting_mode=json["nesting_mode"],
+        )
+
+
+@dataclass
 class TerraformResourceSchema:
     version: int
     # this de-nests the "block" subelement
     attributes: Dict[str, TerraformAttributeSpec]
+    block_types: Dict[str, TerraformBlockTypeSpec]
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformResourceSchema":
@@ -149,6 +166,10 @@ class TerraformResourceSchema:
             attributes={
                 attr_name: TerraformAttributeSpec.from_json(attr_value)
                 for attr_name, attr_value in json.get("block", {}).get("attributes", {}).items()
+            },
+            block_types={
+                block_name: TerraformBlockTypeSpec.from_json(block_value)
+                for block_name, block_value in json.get("block", {}).get("block_types", {}).items()
             },
         )
 

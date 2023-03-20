@@ -163,6 +163,7 @@ def provider_schemas():
                             "description": "Generates a local file with the given content.",
                             "description_kind": "plain",
                         },
+                        block_types={},
                     ),
                     "local_sensitive_file": TerraformResourceSchema(
                         version=0,
@@ -240,9 +241,10 @@ def provider_schemas():
                             "description": "Generates a local file with the given sensitive content.",
                             "description_kind": "plain",
                         },
+                        block_types={},
                     ),
-                },
-            ),
+                }
+            )
         },
     )
 

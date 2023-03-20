@@ -293,10 +293,7 @@ from typing import List, Tuple
 from ansible.module_utils.six import integer_types
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.cloud.terraform.plugins.module_utils.types import (
-    AnyJsonType,
-    TJsonBareValue,
-)
+from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType, TJsonBareValue
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformWorkspaceContext,
     TerraformShow,
@@ -324,6 +321,21 @@ def is_attribute_sensitive_in_providers_schema(
             if resource_schema_name == resource.type:
                 sensitive = resource_schema.attributes[attribute].sensitive
                 return sensitive
+
+    return False
+
+
+def is_blocktype_sensitive_in_providers_schema(
+    schemas: TerraformProviderSchemaCollection, resource: TerraformRootModuleResource, blocktype: str, subattribute: str
+) -> bool:
+    for provider_schema in schemas.provider_schemas:
+        resource_schemas = schemas.provider_schemas[provider_schema].resource_schemas
+        for resource_schema_name, resource_schema in resource_schemas.items():
+            if resource_schema_name == resource.type:
+                for block_type in resource_schema.block_types:
+                    if blocktype == block_type:
+                        sensitive = resource_schema.block_types[blocktype].attributes[subattribute].sensitive
+                        return sensitive
     return False
 
 
@@ -332,18 +344,37 @@ def is_attribute_in_sensitive_values(resource: TerraformRootModuleResource, attr
 
 
 def filter_resource_attributes(
-    state_contents: TerraformShow, provider_schemas: TerraformProviderSchemaCollection
+    state_contents: TerraformShow, provider_schemas_collection: TerraformProviderSchemaCollection
 ) -> TerraformShow:
     # using .get() in case there is no existing .tfstate before apply
+
+    # Aggregate all block types
+    block_types = set()
+    for provider_schema in provider_schemas_collection.provider_schemas:
+        resource_schemas = provider_schemas_collection.provider_schemas[provider_schema].resource_schemas
+        for resource_schema_name, resource_schema in resource_schemas.items():
+            for block_type in resource_schema.block_types:
+                block_types.add(block_type)
+
     for resource in state_contents.values.root_module.resources:
-        attributes_to_remove = []
-        for attribute in resource.values:
-            if is_attribute_sensitive_in_providers_schema(
-                provider_schemas, resource, attribute
-            ) or is_attribute_in_sensitive_values(resource, attribute):
-                attributes_to_remove.append(attribute)
-        for attribute in attributes_to_remove:
-            resource.values[attribute] = None
+        for attr_name, attr_values in resource.values.items():
+            # Distringuish between attributes and block_types
+            if attr_name in block_types:
+                # If attribute is not sensitive, check for its sensitive subattributes
+                if is_attribute_in_sensitive_values(resource, attr_name):
+                    resource.values[attr_name] = None
+                else:
+                    for attr_values in resource.values[attr_name]:
+                        for subattr_name in attr_values:
+                            if is_blocktype_sensitive_in_providers_schema(
+                                provider_schemas_collection, resource, attr_name, subattr_name
+                            ):
+                                resource.values[attr_name][subattr_name] = None
+            else:
+                if is_attribute_sensitive_in_providers_schema(
+                    provider_schemas_collection, resource, attr_name
+                ) or is_attribute_in_sensitive_values(resource, attr_name):
+                    resource.values[attr_name] = None
     return state_contents
 
 
@@ -360,10 +391,7 @@ def filter_outputs(state_contents: TerraformShow) -> TerraformShow:
     return state_contents
 
 
-def sanitize_state(
-    show_state: TerraformShow,
-    provider_schemas: TerraformProviderSchemaCollection,
-) -> TerraformShow:
+def sanitize_state(show_state: TerraformShow, provider_schemas: TerraformProviderSchemaCollection) -> TerraformShow:
     show_state = filter_resource_attributes(show_state, provider_schemas)
     show_state = filter_outputs(show_state)
     return show_state
@@ -487,11 +515,7 @@ def main() -> None:
     if force_init:
         if overwrite_init or not os.path.isfile(os.path.join(project_path, ".terraform", "terraform.tfstate")):
             terraform.init(
-                backend_config or {},
-                backend_config_files or [],
-                init_reconfigure,
-                provider_upgrade,
-                plugin_paths or [],
+                backend_config or {}, backend_config_files or [], init_reconfigure, provider_upgrade, plugin_paths or []
             )
 
     try:
