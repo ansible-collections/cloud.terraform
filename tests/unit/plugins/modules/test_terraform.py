@@ -14,6 +14,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformProviderSchema,
     TerraformProviderSchemaCollection,
     TerraformAttributeSpec,
+    TerraformBlockSensitive,
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     is_attribute_sensitive_in_providers_schema,
@@ -41,8 +42,14 @@ def sensitive_root_module_resource():
             "filename": "./sensitive_file_name.txt",
             "id": "ba2561b92867583049c9d0ac9cd46a9cc17e38be",
             "source": None,
+            "resource_block": [{"resource_block_attribute": {"resource_block_nested_attribute": "value"}}],
+            "missing_in_providers_schema": "value",
         },
-        sensitive_values={"filename": True},
+        sensitive_values={
+            "filename": True,
+            "resource_block": [{"resource_block_attribute": {"resource_block_nested_attribute": True}}],
+            "missing_in_providers_schema": True,
+        },
         depends_on=[],
     )
 
@@ -64,8 +71,10 @@ def root_module_resource():
             "filename": "./file_name.txt",
             "id": "ba2561b92867583049c9d0ac9cd46a9cc17e38be",
             "source": None,
+            "resource_block": [{"resource_block_attribute": {"resource_block_nested_attribute": "value"}}],
+            "missing_in_providers_schema": "value",
         },
-        sensitive_values={},
+        sensitive_values={"resource_block": []},
         depends_on=[],
     )
 
@@ -162,6 +171,7 @@ def provider_schemas():
                             ),
                             "description": "Generates a local file with the given content.",
                             "description_kind": "plain",
+                            "resource_block": TerraformBlockSensitive(sensitive=False),
                         },
                     ),
                     "local_sensitive_file": TerraformResourceSchema(
@@ -239,6 +249,7 @@ def provider_schemas():
                             ),
                             "description": "Generates a local file with the given sensitive content.",
                             "description_kind": "plain",
+                            "resource_block": TerraformBlockSensitive(sensitive=True),
                         },
                     ),
                 },
@@ -263,23 +274,58 @@ def state_contents(root_module_resource, sensitive_root_module_resource):
 
 
 class TestIsAttributeSensitiveInProvidersSchema:
-    def test_is_attribute_sensitive_in_providers_schema_false(self, provider_schemas, root_module_resource):
-        assert not is_attribute_sensitive_in_providers_schema(
-            provider_schemas, root_module_resource, attribute="content"
-        )
+    @pytest.mark.parametrize(
+        "attribute, expected_result",
+        [
+            ("content", False),
+            ("resource_block", False),
+            ("missing_in_providers_schema", False),
+        ],
+    )
+    def test_not_sensitive_attributes(self, provider_schemas, root_module_resource, attribute, expected_result):
+        result = is_attribute_sensitive_in_providers_schema(provider_schemas, root_module_resource, attribute=attribute)
+        assert result == expected_result
 
-    def test_is_attribute_sensitive_in_providers_schema_true(self, provider_schemas, sensitive_root_module_resource):
-        assert is_attribute_sensitive_in_providers_schema(
-            provider_schemas, sensitive_root_module_resource, attribute="content"
+    @pytest.mark.parametrize(
+        "attribute, expected_result",
+        [
+            ("content", True),
+            ("content_base64", True),
+            ("resource_block", True),
+        ],
+    )
+    def test_sensitive_attributes(self, provider_schemas, sensitive_root_module_resource, attribute, expected_result):
+        result = is_attribute_sensitive_in_providers_schema(
+            provider_schemas, sensitive_root_module_resource, attribute=attribute
         )
+        assert result == expected_result
 
 
 class TestIsAttributeInSensitiveValues:
-    def test_is_attribute_in_sensitive_values_false(self, root_module_resource):
-        assert not is_attribute_in_sensitive_values(root_module_resource, attribute="filename")
+    @pytest.mark.parametrize(
+        "attribute, expected_result",
+        [
+            ("content", False),
+            ("content_base64", False),
+            ("resource_block", False),
+        ],
+    )
+    def test_not_in_sensitive_values(self, root_module_resource, attribute, expected_result):
+        result = is_attribute_in_sensitive_values(root_module_resource, attribute=attribute)
+        assert result == expected_result
 
-    def test_is_attribute_in_sensitive_values_true(self, sensitive_root_module_resource):
-        assert is_attribute_in_sensitive_values(sensitive_root_module_resource, attribute="filename")
+    @pytest.mark.parametrize(
+        "attribute, expected_result",
+        [
+            ("content", False),
+            ("filename", True),
+            ("resource_block", True),
+            ("missing_in_providers_schema", True),
+        ],
+    )
+    def test_in_sensitive_values(self, sensitive_root_module_resource, attribute, expected_result):
+        result = is_attribute_in_sensitive_values(sensitive_root_module_resource, attribute=attribute)
+        assert result == expected_result
 
 
 class TestFilterResourceAttributes:
@@ -300,8 +346,10 @@ class TestFilterResourceAttributes:
                 "filename": "./file_name.txt",
                 "id": "ba2561b92867583049c9d0ac9cd46a9cc17e38be",
                 "source": None,
+                "resource_block": [{"resource_block_attribute": {"resource_block_nested_attribute": "value"}}],
+                "missing_in_providers_schema": "value",
             },
-            sensitive_values={},
+            sensitive_values={"resource_block": []},
             depends_on=[],
         )
         assert filtered_attributes.values.root_module.resources[1] == TerraformRootModuleResource(
@@ -319,8 +367,14 @@ class TestFilterResourceAttributes:
                 "filename": None,  # Filtered
                 "id": "ba2561b92867583049c9d0ac9cd46a9cc17e38be",
                 "source": None,
+                "resource_block": None,  # Filtered
+                "missing_in_providers_schema": None,  # Filtered
             },
-            sensitive_values={"filename": True},
+            sensitive_values={
+                "filename": True,
+                "resource_block": [{"resource_block_attribute": {"resource_block_nested_attribute": True}}],
+                "missing_in_providers_schema": True,
+            },
             depends_on=[],
         )
 
@@ -360,8 +414,12 @@ class TestSanitizeState:
                                 "filename": "./file_name.txt",
                                 "id": "ba2561b92867583049c9d0ac9cd46a9cc17e38be",
                                 "source": None,
+                                "resource_block": [
+                                    {"resource_block_attribute": {"resource_block_nested_attribute": "value"}}
+                                ],
+                                "missing_in_providers_schema": "value",
                             },
-                            sensitive_values={},
+                            sensitive_values={"resource_block": []},
                             depends_on=[],
                         ),
                         TerraformRootModuleResource(
@@ -379,11 +437,88 @@ class TestSanitizeState:
                                 "filename": None,  # Filtered
                                 "id": "ba2561b92867583049c9d0ac9cd46a9cc17e38be",
                                 "source": None,
+                                "resource_block": None,  # Filtered
+                                "missing_in_providers_schema": None,  # Filtered
                             },
-                            sensitive_values={"filename": True},
+                            sensitive_values={
+                                "filename": True,
+                                "resource_block": [
+                                    {"resource_block_attribute": {"resource_block_nested_attribute": True}}
+                                ],
+                                "missing_in_providers_schema": True,
+                            },
                             depends_on=[],
                         ),
                     ]
                 ),
             ),
         )
+
+
+class TestTerraformResourceSchema:
+    def test_from_json(self):
+        resource = {
+            "version": "version",
+            "block": {
+                "attributes": {
+                    "attribute_name": {
+                        "type": "type",
+                        "description_kind": "description_kind",
+                        "description": "description",
+                        "required": True,
+                        "optional": False,
+                        "computed": True,
+                        "sensitive": False,
+                    },
+                },
+                "block_types": {
+                    "block_name": {
+                        "nesting_mode": "list",
+                        "block": {
+                            "attributes": {
+                                "block_attribute_name": {
+                                    "type": "block_type",
+                                    "description_kind": "block_description_kind",
+                                    "description": "block_description",
+                                    "required": False,
+                                    "optional": True,
+                                    "computed": False,
+                                    "sensitive": True,
+                                },
+                            },
+                            "block_types": {
+                                "nested_block_name": {
+                                    "nesting_mode": "list",
+                                    "block": "block-representation",
+                                    "min_items": 1,
+                                    "max_items": 3,
+                                },
+                            },
+                        },
+                        "min_items": 1,
+                        "max_items": 3,
+                    },
+                },
+            },
+        }
+
+        expected_terraform_resource_schema = TerraformResourceSchema(
+            version="version",
+            attributes={
+                "attribute_name": TerraformAttributeSpec(
+                    type="type",
+                    description_kind="description_kind",
+                    description="description",
+                    required=True,
+                    optional=False,
+                    computed=True,
+                    sensitive=False,
+                    deprecated=False,
+                ),
+                "block_name": TerraformBlockSensitive(sensitive=True),
+            },
+        )
+
+        terraform_resource_schema = TerraformResourceSchema.from_json(resource)
+
+        assert terraform_resource_schema == expected_terraform_resource_schema
