@@ -1,3 +1,0 @@
----
-major_changes:
-  - Support diff mode in cloud.terraform.terraform both in check mode and in non-check mode. (https://github.com/ansible-collections/cloud.terraform/pull/11)
