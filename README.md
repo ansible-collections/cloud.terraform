@@ -70,7 +70,7 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: cloud.terraform
-    version: 1.0.0
+    version: 1.1.0
 ```
 
 ## Using this collection
