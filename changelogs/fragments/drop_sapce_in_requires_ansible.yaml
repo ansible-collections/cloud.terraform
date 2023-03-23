@@ -1,3 +1,0 @@
----
-minor_changes:
-- "meta/runtime.yml - Drop space in requires_ansible that was preventing the upload on Galaxy (https://github.com/ansible-collections/cloud.terraform/pull/8)."

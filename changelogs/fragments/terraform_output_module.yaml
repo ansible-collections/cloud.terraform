@@ -1,5 +1,0 @@
----
-minor_changes:
-  - Removed "required_one_of" condition from terraform_output module. (https://github.com/ansible-collections/cloud.terraform/pull/31).
-bugfixes:
-  - Terraform_output - fix now sets "outputs" variable to None in case of TerraformWarning to avoid undefined variable error. (https://github.com/ansible-collections/cloud.terraform/pull/31)

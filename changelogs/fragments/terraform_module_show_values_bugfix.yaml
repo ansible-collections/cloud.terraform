@@ -1,4 +1,0 @@
----
-bugfixes:
-  - Terraform module - fix now allows the possibility that the key "value" is not always present in the terraform plan thus avoiding KeyError.
-    (https://github.com/ansible-collections/cloud.terraform/pull/45)

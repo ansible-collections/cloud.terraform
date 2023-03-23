@@ -1,4 +1,0 @@
----
-bugfixes:
-  - Major refactoring of the cloud.terraform collection, restructuring and compartmentalizing code.
-  - Type hints added to the cloud.terraform collection for easier future maintenance and reliability.
