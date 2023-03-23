@@ -26,27 +26,21 @@ This collection requires Ansible Core 2.13 or later and thus Python 3.8 or later
 
 ## Included content
 <!--start collection content-->
+### Inventory plugins
+Name | Description
+--- | ---
+[cloud.terraform.terraform_provider](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_provider_inventory.rst)|Builds an inventory from Terraform state file.
+
+### Lookup plugins
+Name | Description
+--- | ---
+[cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
+
 ### Modules
 Name | Description
 --- | ---
 [cloud.terraform.terraform](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_module.rst)|Manages a Terraform deployment (and plans)
 [cloud.terraform.terraform_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_output_module.rst)|Returns Terraform module outputs.
-
-### Lookup
-Name | Description
---- | ---
-[cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
-
-### Inventory
-Name | Description
---- | ---
-[cloud.terraform.terraform_provider](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_provider_inventory.rst)|Builds an inventory from Terraform state file.
-
-### Roles
-Name | Description
---- | ---
-[cloud.terraform.git_plan](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.git_plan_role.rst)|Clones a Git repository and applys a plan from it.
-[cloud.terraform.inventory_from_outputs](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.inventory_from_outputs_role.rst)|Creates an in-memory inventory from Terraform outputs.
 
 <!--end collection content-->
 
@@ -138,4 +132,5 @@ ansible-doc --list | grep cloud.terraform | cut -d " " -f 1 | xargs -I {} antsib
 GNU General Public License v3.0 or later.
 
 See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/main/LICENSE) to see the full text.
+
 
