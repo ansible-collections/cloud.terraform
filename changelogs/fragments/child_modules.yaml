@@ -1,0 +1,3 @@
+minor_changes:
+  - Added support for child modules in cloud.terraform.inventory. Child modules are common place in Terraform projects, so those need to be searched for
+    ansible_* Terraform resources.
