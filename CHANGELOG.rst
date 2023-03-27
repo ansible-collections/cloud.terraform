@@ -5,6 +5,14 @@ The cloud.terraform collection Release Notes
 .. contents:: Topics
 
 
+v1.1.1
+======
+
+Major Changes
+-------------
+
+- cloud.terraform.inventory searches the Terraform state for resources in child modules. 
+
 v1.1.0
 ======
 
