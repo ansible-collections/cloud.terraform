@@ -75,7 +75,13 @@ class TerraformRootModule:
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformRootModule":
-        return cls(resources=[TerraformRootModuleResource.from_json(r) for r in json.get("resources", [])])
+        root_resources = [TerraformRootModuleResource.from_json(r) for r in json.get("resources", [])]
+        child_resources = []
+        for cm in json.get("child_modules", []):
+            for r in TerraformRootModule.from_json(cm).resources:
+                child_resources.append(r)
+
+        return cls(resources=root_resources + child_resources)
 
 
 @dataclass
