@@ -215,7 +215,7 @@ class TerraformCommands:
         return TerraformShow.from_json(result)
 
     def validate(self, version: LooseVersion, variables_args: List[str]) -> None:
-        command = ["validate"]
+        command = ["validate", "-no-color"]
         if version < LooseVersion("0.15.0"):
             command += variables_args
         self._run(*command, check_rc=True)
