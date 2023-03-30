@@ -553,6 +553,8 @@ def main() -> None:
             for f in variables_files:
                 variables_args.extend(["-var-file", f])
 
+        preflight_validation(terraform, terraform_binary, project_path, checked_version, variables_args)
+
         # only use an existing plan file if we're not in the deprecated "planned" mode
         if plan_file and state != "planned":
             if not any([os.path.isfile(project_path + "/" + plan_file), os.path.isfile(plan_file)]):
@@ -585,8 +587,6 @@ def main() -> None:
             module.add_cleanup_file(new_plan_file)
             out = plan_stdout
             err = plan_stderr
-
-        preflight_validation(terraform, terraform_binary, project_path, checked_version, variables_args)
 
         try:
             planned_state = terraform.show(plan_file_to_apply)
