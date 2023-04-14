@@ -40,6 +40,12 @@ options:
         working directory is used as an inventory source.
     type: path
     version_added: 1.1.0
+  search_child_modules:
+    description:
+      - Whether to include ansible_host and ansible_group resources from Terraform child modules.
+    type: path
+    default: true
+    version_added: 1.2.0
   binary_path:
     description:
       - The path of a terraform binary to use.
@@ -104,7 +110,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import valid
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
-    TerraformRootModuleResource,
+    TerraformModuleResource,
     TerraformAnsibleProvider,
     TerraformShow,
 )
@@ -149,7 +155,7 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
     #             valid = True
     #     return valid
 
-    def _add_group(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
+    def _add_group(self, inventory: Any, resource: TerraformModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
         inventory.add_group(attributes.name)
         if attributes.children:
@@ -160,7 +166,7 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
 
-    def _add_host(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
+    def _add_host(self, inventory: Any, resource: TerraformModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
         inventory.add_host(attributes.name)
         if attributes.groups:
@@ -171,12 +177,19 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
 
-    def create_inventory(self, inventory: Any, state_content: TerraformShow) -> None:
+    def create_inventory(self, inventory: Any, state_content: TerraformShow, search_child_modules: bool) -> None:
         for resource in state_content.values.root_module.resources:
             if resource.type == "ansible_group":
                 self._add_group(inventory, resource)
             elif resource.type == "ansible_host":
                 self._add_host(inventory, resource)
+        if search_child_modules:
+            for module in state_content.values.root_module.child_modules:
+                for resource in module.resources:
+                    if resource.type == "ansible_group":
+                        self._add_group(inventory, resource)
+                    elif resource.type == "ansible_host":
+                        self._add_host(inventory, resource)
 
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path)
@@ -185,6 +198,7 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
 
         project_path = cfg.get("project_path", os.getcwd())
         state_file = cfg.get("state_file", "terraform.tfstate")
+        search_child_modules = cfg.get("search_child_modules", True)
         terraform_binary = cfg.get("binary_path", None)
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
@@ -199,4 +213,4 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             raise TerraformError(e.message)
 
         if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
-            self.create_inventory(inventory, state_content)
+            self.create_inventory(inventory, state_content, search_child_modules)

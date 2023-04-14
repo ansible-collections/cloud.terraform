@@ -301,7 +301,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformWorkspaceContext,
     TerraformShow,
     TerraformProviderSchemaCollection,
-    TerraformRootModuleResource,
+    TerraformModuleResource,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import (
@@ -316,7 +316,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
 
 
 def is_attribute_sensitive_in_providers_schema(
-    schemas: TerraformProviderSchemaCollection, resource: TerraformRootModuleResource, attribute: str
+    schemas: TerraformProviderSchemaCollection, resource: TerraformModuleResource, attribute: str
 ) -> bool:
     for provider_schema in schemas.provider_schemas:
         resource_schemas = schemas.provider_schemas[provider_schema].resource_schemas
@@ -331,7 +331,7 @@ def is_attribute_sensitive_in_providers_schema(
     return False
 
 
-def is_attribute_in_sensitive_values(resource: TerraformRootModuleResource, attribute: str) -> bool:
+def is_attribute_in_sensitive_values(resource: TerraformModuleResource, attribute: str) -> bool:
     # In case if one attribute inside of block is sensitive, the whole block is sensitive - example: ephemeral_block_device
     # or only selected attribute is sensitive - example: credit_specification, capacity_reservation_specification
     # Also in case of lists - example: security_groups, if one element is sensitive, the whole attribute is sensitive

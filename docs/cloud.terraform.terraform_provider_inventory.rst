@@ -117,6 +117,25 @@ Parameters
                         <div>If <em>state_file</em> and <em>project_path</em> are not specified, <code>terraform.tfstate</code> file in the current working directory is used as an inventory source.</div>
                 </td>
             </tr>
+            <tr>
+                <td colspan="1">
+                    <div class="ansibleOptionAnchor" id="parameter-"></div>
+                    <b>search_child_modules</b>
+                    <a class="ansibleOptionLink" href="#parameter-" title="Permalink to this option"></a>
+                    <div style="font-size: small">
+                        <span style="color: purple">path</span>
+                    </div>
+                    <div style="font-style: italic; font-size: small; color: darkgreen">added in 1.2.0</div>
+                </td>
+                <td>
+                  <code>true</code>
+                </td>
+                    <td>
+                    </td>
+                <td>
+                        <div>Whether to include ansible_host and ansible_group resources from Terraform child modules.</div>
+                </td>
+            </tr>
     </table>
     <br/>
 

@@ -1,5 +1,9 @@
 ancestor: null
 releases:
+  1.2.0:
+    changes:
+      major_changes:
+        - Added search_child_modules option to terraform_provider inventory plugin.
   1.1.0:
     changes:
       bugfixes:
