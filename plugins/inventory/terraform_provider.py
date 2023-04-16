@@ -32,7 +32,7 @@ options:
         working directory is used as an inventory source.
       - Accepts a list of paths for use with multiple Terraform projects.
     type: list
-    elements: str
+    elements: path
     version_added: 1.2.0
   state_file:
     description:
