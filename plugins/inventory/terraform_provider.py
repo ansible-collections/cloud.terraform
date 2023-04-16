@@ -30,8 +30,10 @@ options:
       - If I(state_file) is not specified, C(terraform.tfstate) in I(project_path) is used as an inventory source.
       - If I(state_file) and I(project_path) are not specified, C(terraform.tfstate) file in the current
         working directory is used as an inventory source.
-    type: path
-    version_added: 1.1.0
+      - Accepts a list of paths for use with multiple Terraform projects.
+    type: list
+    elements: str
+    version_added: 1.2.0
   state_file:
     description:
       - Path to an existing Terraform state file to be used as an inventory source.
@@ -86,6 +88,12 @@ plugin: cloud.terraform.terraform_provider
 # Example configuration file that creates an inventory from terraform.tfstate file in selected project directory
 plugin: cloud.terraform.terraform_provider
 project_path: some/project/path
+
+# Example configuration file that creates an inventory from terraform.tfstate file in multiple project directories
+plugin: cloud.terraform.terraform_provider
+project_path:
+  - some/project/path
+  - some/other/project/path
 
 # Example configuration file that creates an inventory from specified state file
 plugin: cloud.terraform.terraform_provider
@@ -157,6 +165,11 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
 
     def _add_group(self, inventory: Any, resource: TerraformModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
+        # Give warning if group already exists (in case of multiple terraform projects)
+        if inventory.get_group(attributes.name):
+            raise TerraformWarning(
+                f"Ansible Group {attributes.name} already exists elsewhere, please check your terraform project(s)"
+            )
         inventory.add_group(attributes.name)
         if attributes.children:
             for child in attributes.children:
@@ -168,6 +181,11 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
 
     def _add_host(self, inventory: Any, resource: TerraformModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
+        # Give warning if group already exists (in case of multiple terraform projects)
+        if inventory.get_host(attributes.name):
+            raise TerraformWarning(
+                f"Ansible Host {attributes.name} already exists elsewhere, please check your terraform project(s)"
+            )
         inventory.add_host(attributes.name)
         if attributes.groups:
             for group in attributes.groups:
@@ -177,19 +195,20 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
 
-    def create_inventory(self, inventory: Any, state_content: TerraformShow, search_child_modules: bool) -> None:
-        for resource in state_content.values.root_module.resources:
-            if resource.type == "ansible_group":
-                self._add_group(inventory, resource)
-            elif resource.type == "ansible_host":
-                self._add_host(inventory, resource)
-        if search_child_modules:
-            for module in state_content.values.root_module.child_modules:
-                for resource in module.resources:
-                    if resource.type == "ansible_group":
-                        self._add_group(inventory, resource)
-                    elif resource.type == "ansible_host":
-                        self._add_host(inventory, resource)
+    def create_inventory(self, inventory: Any, state_content: List[TerraformShow], search_child_modules: bool) -> None:
+        for state in state_content:
+            for resource in state.values.root_module.resources:
+                if resource.type == "ansible_group":
+                    self._add_group(inventory, resource)
+                elif resource.type == "ansible_host":
+                    self._add_host(inventory, resource)
+            if search_child_modules:
+                for module in state.values.root_module.child_modules:
+                    for resource in module.resources:
+                        if resource.type == "ansible_group":
+                            self._add_group(inventory, resource)
+                        elif resource.type == "ansible_host":
+                            self._add_host(inventory, resource)
 
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path)
@@ -207,10 +226,21 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
 
         terraform = TerraformCommands(module_run_command, project_path, terraform_binary, False)
 
-        try:
-            state_content = terraform.show(state_file)
-        except TerraformWarning as e:
-            raise TerraformError(e.message)
+        # TODO: remove when ansible provider is available
+        if TESTING_STATE_FILE:
+            with open("terraform.tfstateshow", "r") as state_file:
+                state_content = json.loads(state_file.read())
+                state_content = [TerraformShow.from_json(state_content)]
+        else:
+            state_content = []
+            if isinstance(project_path, str):
+                project_path = [project_path]
+            for path in project_path:
+                terraform = TerraformCommands(module_run_command, path, terraform_binary, False)
+                try:
+                    state_content.append(terraform.show(state_file))
+                except TerraformWarning as e:
+                    raise TerraformError(e.message)
 
         if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
             self.create_inventory(inventory, state_content, search_child_modules)

@@ -85,7 +85,7 @@ Parameters
                     <div style="font-size: small">
                         <span style="color: purple">path</span>
                     </div>
-                    <div style="font-style: italic; font-size: small; color: darkgreen">added in 1.1.0</div>
+                    <div style="font-style: italic; font-size: small; color: darkgreen">added in 1.2.0</div>
                 </td>
                 <td>
                 </td>
@@ -95,6 +95,7 @@ Parameters
                         <div>The path to the initialized Terraform directory with the .tfstate file.</div>
                         <div>If <em>state_file</em> is not specified, <code>terraform.tfstate</code> in <em>project_path</em> is used as an inventory source.</div>
                         <div>If <em>state_file</em> and <em>project_path</em> are not specified, <code>terraform.tfstate</code> file in the current working directory is used as an inventory source.</div>
+                        <div>Accepts a list of paths for use with multiple Terraform projects.</div>
                 </td>
             </tr>
             <tr>
@@ -179,6 +180,12 @@ Examples
     # Example configuration file that creates an inventory from terraform.tfstate file in selected project directory
     plugin: cloud.terraform.terraform_provider
     project_path: some/project/path
+
+    # Example configuration file that creates an inventory from terraform.tfstate file in multiple project directories
+    plugin: cloud.terraform.terraform_provider
+    project_path:
+    - some/project/path
+    - some/other/project/path
 
     # Example configuration file that creates an inventory from specified state file
     plugin: cloud.terraform.terraform_provider
