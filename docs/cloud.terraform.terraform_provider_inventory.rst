@@ -93,8 +93,8 @@ Parameters
                     </td>
                 <td>
                         <div>The path to the initialized Terraform directory with the .tfstate file.</div>
-                        <div>If <em>state_file</em> is not specified, <code>terraform.tfstate</code> in <em>project_path</em> is used as an inventory source.</div>
-                        <div>If <em>state_file</em> and <em>project_path</em> are not specified, <code>terraform.tfstate</code> file in the current working directory is used as an inventory source.</div>
+                        <div>If <em>state_file</em> is not specified, Terraform will attempt to automatically find the state file in <em>project_path</em> for use as inventory source.</div>
+                        <div>If <em>state_file</em> and <em>project_path</em> are not specified, Terraform will attempt to automatically find the state file in the current working directory.</div>
                         <div>Accepts a list of paths for use with multiple Terraform projects.</div>
                 </td>
             </tr>
@@ -114,8 +114,8 @@ Parameters
                     </td>
                 <td>
                         <div>Path to an existing Terraform state file to be used as an inventory source.</div>
-                        <div>If <em>state_file</em> is not specified, <code>terraform.tfstate</code> in <em>project_path</em> is used as an inventory source.</div>
-                        <div>If <em>state_file</em> and <em>project_path</em> are not specified, <code>terraform.tfstate</code> file in the current working directory is used as an inventory source.</div>
+                        <div>If <em>state_file</em> is not specified, Terraform will attempt to automatically find the state file in <em>project_path</em> for use as inventory source.</div>
+                        <div>If <em>state_file</em> and <em>project_path</em> are not specified, Terraform will attempt to automatically find the state file in the current working directory.</div>
                 </td>
             </tr>
             <tr>

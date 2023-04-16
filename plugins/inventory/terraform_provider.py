@@ -27,9 +27,8 @@ options:
   project_path:
     description:
       - The path to the initialized Terraform directory with the .tfstate file.
-      - If I(state_file) is not specified, C(terraform.tfstate) in I(project_path) is used as an inventory source.
-      - If I(state_file) and I(project_path) are not specified, C(terraform.tfstate) file in the current
-        working directory is used as an inventory source.
+      - If I(state_file) is not specified, Terraform will attempt to automatically find the state file in I(project_path) for use as inventory source.
+      - If I(state_file) and I(project_path) are not specified, Terraform will attempt to automatically find the state file in the current working directory.
       - Accepts a list of paths for use with multiple Terraform projects.
     type: list
     elements: path
@@ -37,9 +36,8 @@ options:
   state_file:
     description:
       - Path to an existing Terraform state file to be used as an inventory source.
-      - If I(state_file) is not specified, C(terraform.tfstate) in I(project_path) is used as an inventory source.
-      - If I(state_file) and I(project_path) are not specified, C(terraform.tfstate) file in the current
-        working directory is used as an inventory source.
+      - If I(state_file) is not specified, Terraform will attempt to automatically find the state file in I(project_path) for use as inventory source.
+      - If I(state_file) and I(project_path) are not specified, Terraform will attempt to automatically find the state file in the current working directory
     type: path
     version_added: 1.1.0
   search_child_modules:
@@ -216,7 +214,7 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
         cfg = self.read_config_data(path)  # type: ignore  # mypy ignore
 
         project_path = cfg.get("project_path", os.getcwd())
-        state_file = cfg.get("state_file", "terraform.tfstate")
+        state_file = cfg.get("state_file", "")
         search_child_modules = cfg.get("search_child_modules", True)
         terraform_binary = cfg.get("binary_path", None)
         if terraform_binary is not None:

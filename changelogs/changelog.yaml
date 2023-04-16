@@ -5,6 +5,8 @@ releases:
       major_changes:
         - Added search_child_modules option to terraform_provider inventory plugin.
         - Allow project_path in terraform_provider inventory plugin to accept a list of paths.
+      minor_changes:
+        - Set default of state_file in terraform_provider inventory plugin to a blank string.
   1.1.0:
     changes:
       bugfixes:
