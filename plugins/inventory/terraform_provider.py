@@ -43,7 +43,7 @@ options:
   search_child_modules:
     description:
       - Whether to include ansible_host and ansible_group resources from Terraform child modules.
-    type: path
+    type: bool
     default: true
     version_added: 1.2.0
   binary_path:
