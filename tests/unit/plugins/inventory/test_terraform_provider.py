@@ -287,7 +287,8 @@ class TestCreateInventory:
             ),
         )
 
-        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content)
+        search_child_modules = True
+        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
 
         groups = inventory_plugin.inventory.groups
 
