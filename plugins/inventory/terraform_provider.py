@@ -163,11 +163,6 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
 
     def _add_group(self, inventory: Any, resource: TerraformModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
-        # Give warning if group already exists (in case of multiple terraform projects)
-        if inventory.get_group(attributes.name):
-            raise TerraformWarning(
-                f"Ansible Group {attributes.name} already exists elsewhere, please check your terraform project(s)"
-            )
         inventory.add_group(attributes.name)
         if attributes.children:
             for child in attributes.children:
