@@ -281,7 +281,8 @@ class TestCreateInventory:
                             sensitive_values={},
                             depends_on=[],
                         ),
-                    ]
+                    ],
+                    child_modules=[],
                 ),
             ),
         )

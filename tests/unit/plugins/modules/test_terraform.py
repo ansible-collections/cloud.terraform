@@ -451,7 +451,8 @@ class TestSanitizeState:
                             },
                             depends_on=[],
                         ),
-                    ]
+                    ],
+                    child_modules=[],
                 ),
             ),
         )
