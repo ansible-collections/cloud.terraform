@@ -194,7 +194,7 @@ class TestInventoryModuleAddGroup:
 
 class TestCreateInventory:
     def test_create_inventory(self, inventory_plugin):
-        state_content = TerraformShow(
+        state_content = [TerraformShow(
             format_version="1.0",
             terraform_version="1.3.6",
             values=TerraformShowValues(
@@ -285,7 +285,7 @@ class TestCreateInventory:
                     child_modules=[],
                 ),
             ),
-        )
+        )]
 
         search_child_modules = True
         inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
