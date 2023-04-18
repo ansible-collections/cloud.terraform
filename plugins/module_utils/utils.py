@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 from typing import List, Optional, Union, cast
 
 from ansible.module_utils.compat.version import LooseVersion
@@ -66,7 +67,7 @@ def validate_project_path(project_path: str) -> None:
 
 
 def validate_bin_path(bin_path: str) -> None:
-    if not os.path.exists(bin_path):
+    if not shutil.which(bin_path):
         raise TerraformError(
             "Path for Terraform binary '{0}' doesn't exist on this host - check the path and try again please.".format(
                 bin_path
