@@ -338,7 +338,7 @@ class TestCreateInventory:
         anotherhost = inventory_plugin.inventory.get_host("anotherhost")
         ungroupedhost = inventory_plugin.inventory.get_host("ungroupedhost")
 
-        assert len(hosts) == 3
+        assert len(hosts) == 4
         assert "somehost" in hosts
         assert "anotherhost" in hosts
         assert "ungroupedhost" in hosts
@@ -360,6 +360,7 @@ class TestCreateInventory:
 
         hosts = inventory_plugin.inventory.hosts
 
+        assert len(hosts) == 3
         assert "childhost" not in hosts
 
         # Test conflicts with multiple hosts with the same name, possible when selecting
