@@ -9,80 +9,10 @@ on:
     - cron: '0 6 * * *'
 
 jobs:
-  docsite:
-    name: Lint extra docsite docs and links
-    permissions:
-      contents: read
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install antsibull-docs
-        run: pip install antsibull-docs --disable-pip-version-check
-
-      - name: Run collection docs linter
-        run: antsibull-docs lint-collection-docs .
-
-  formatting:
-    name: Formatting (black)
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install black
-        shell: bash
-        run: |
-          set -eux
-          cat requirements.txt | grep "black==" | xargs pip install
-
-      - name: Run black
-        shell: bash
-        run: |
-          set -eux
-          black --check --diff .
-
-  mypy:
-    name: Type checks (mypy)
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-          cache: 'pip'
-
-      - name: Install requirements
-        shell: bash
-        run: |
-          set -eux
-          pip install --upgrade pip wheel
-          pip install -r requirements.txt
-
-      - name: Link repo into the correct structure and run mypy
-        shell: bash
-        run: |
-          set -eux
-          mkdir -p collection_root/ansible_collections/cloud
-          ln -s ../../.. collection_root/ansible_collections/cloud/terraform
-          cd collection_root/ansible_collections/cloud/terraform/
-          export MYPYPATH="$PWD/../../../"
-          mypy -p ansible_collections.cloud.terraform.plugins
-
+  changelog:
+    uses: ansible-network/github_actions/.github/workflows/changelog.yml@main
+  linters:
+    uses: abikouo/github_actions/.github/workflows/tox-linters.yml@tox_linters
   sanity:
     name: Sanity (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
     strategy:
