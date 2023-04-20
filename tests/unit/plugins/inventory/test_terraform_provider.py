@@ -356,7 +356,7 @@ class TestCreateInventory:
         assert len(ungroupedhost.groups) == 0
 
         search_child_modules = False
-        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
+        inventory_plugin.create_inventory(None, state_content, search_child_modules)
 
         hosts = inventory_plugin.inventory.hosts
 
@@ -422,7 +422,7 @@ class TestCreateInventory:
         ]
 
         with pytest.raises(TerraformWarning) as exc:
-            inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
+            inventory_plugin.create_inventory(None, state_content, search_child_modules)
         exception = exc.value
 
         assert "already exists elsewhere" in str(exception.message)
