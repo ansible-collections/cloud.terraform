@@ -290,7 +290,7 @@ class TestCreateInventory:
                             TerraformChildModule(
                                 resources=[
                                     TerraformChildModuleResource(
-                                        address="ansible_host.childhost",
+                                        address='module.example.ansible_host["child"].duplicatehost',
                                         mode="managed",
                                         type="ansible_host",
                                         name="childhost",
@@ -377,7 +377,7 @@ class TestCreateInventory:
                             TerraformChildModule(
                                 resources=[
                                     TerraformChildModuleResource(
-                                        address="ansible_host.duplicatehost",
+                                        address='module.example.ansible_host["one"].duplicatehost',
                                         mode="managed",
                                         type="ansible_host",
                                         name="duplicatehost",
@@ -397,7 +397,7 @@ class TestCreateInventory:
                             TerraformChildModule(
                                 resources=[
                                     TerraformChildModuleResource(
-                                        address="ansible_host.duplicatehost",
+                                        address='module.example.ansible_host["two"].duplicatehost',
                                         mode="managed",
                                         type="ansible_host",
                                         name="duplicatehost",
