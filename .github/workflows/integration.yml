@@ -50,18 +50,18 @@ jobs:
           zcat terraform.zip > terraform
           chmod +x terraform
           mv sudo mv terraform /usr/bin
-          terraform --help
+          terraform -v
         shell: bash
 
-      # - name: Create AWS/sts session credentials
-      #   uses: abikouo/github_actions/.github/actions/ansible_aws_test_provider@ansible_test_integration_a
-      #   with:
-      #     collection_path: ${{ steps.install-collection.outputs.collection_path }}
-      #     ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}
+      - name: Create AWS/sts session credentials
+        uses: abikouo/github_actions/.github/actions/ansible_aws_test_provider@ansible_test_integration_a
+        with:
+          collection_path: ${{ steps.install-collection.outputs.collection_path }}
+          ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}
 
-      # - name: Run integration tests
-      #   uses: abikouo/github_actions/.github/actions/ansible_test_integration@ansible_test_integration_a
-      #   with:
-      #     collection_path: ${{ steps.install-collection.outputs.collection_path }}
-      #     python_version: ${{ matrix.python }}
-      #     ansible_version: ${{ matrix.ansible }}
+      - name: Run integration tests
+        uses: abikouo/github_actions/.github/actions/ansible_test_integration@ansible_test_integration_a
+        with:
+          collection_path: ${{ steps.install-collection.outputs.collection_path }}
+          python_version: ${{ matrix.python }}
+          ansible_version: ${{ matrix.ansible }}
