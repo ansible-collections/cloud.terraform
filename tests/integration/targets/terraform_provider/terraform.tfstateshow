@@ -125,7 +125,7 @@
               "provider_name": "registry.terraform.io/ansible/ansible",
               "schema_version": 0,
               "values": {
-                "groups": [],
+                "groups": null,
                 "id": "childhost",
                 "name": "childhost",
                 "variables": {}
