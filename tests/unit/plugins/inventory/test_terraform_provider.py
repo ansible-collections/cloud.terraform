@@ -10,12 +10,15 @@ from ansible.template import Templar
 from ansible_collections.cloud.terraform.plugins.inventory.terraform_provider import module_run_command, InventoryModule
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformRootModule,
+    TerraformChildModule,
     TerraformAnsibleProvider,
     TerraformRootModuleResource,
+    TerraformChildModuleResource,
     TerraformShow,
     TerraformShowValues,
 )
 from ansible.errors import AnsibleParserError
+from plugins.module_utils.errors import TerraformWarning
 
 
 @pytest.fixture
@@ -283,7 +286,28 @@ class TestCreateInventory:
                                 depends_on=[],
                             ),
                         ],
-                        child_modules=[],
+                        child_modules=[
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="ansible_host.childhost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="childhost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "childhost",
+                                            "id": "childhost",
+                                            "variables": None,
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                        ],
                     ),
                 ),
             )
@@ -318,6 +342,7 @@ class TestCreateInventory:
         assert "somehost" in hosts
         assert "anotherhost" in hosts
         assert "ungroupedhost" in hosts
+        assert "childhost" in hosts
 
         assert somehost.vars["host_hello"] == "from somehost!"
         assert somehost.vars["host_variable"] == "7"
@@ -329,3 +354,74 @@ class TestCreateInventory:
         assert anotherhost.groups[0].name == "somegroup"
         assert anotherhost.groups[1].name == "somechild"
         assert len(ungroupedhost.groups) == 0
+
+        search_child_modules = False
+        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
+
+        hosts = inventory_plugin.inventory.hosts
+
+        assert "childhost" not in hosts
+
+        # Test conflicts with multiple hosts with the same name, possible when selecting
+        # multiple Terraform projects into the inventory provider
+        # This should raise a TerraformWarning exception
+        state_content = [
+            TerraformShow(
+                format_version="1.0",
+                terraform_version="1.3.6",
+                values=TerraformShowValues(
+                    outputs={},
+                    root_module=TerraformRootModule(
+                        resources=[],
+                        child_modules=[
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="ansible_host.duplicatehost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="duplicatehost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "duplicatehost",
+                                            "id": "duplicatehost",
+                                            "variables": None,
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="ansible_host.duplicatehost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="duplicatehost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "duplicatehost",
+                                            "id": "duplicatehost",
+                                            "variables": None,
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ),
+            )
+        ]
+
+        with pytest.raises(TerraformWarning) as exc:
+            inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
+        exception = exc.value
+
+        assert "already exists elsewhere" in str(exception.message)
