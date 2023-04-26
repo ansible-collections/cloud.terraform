@@ -1,0 +1,191 @@
+name: unit_and_sanity
+concurrency:
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - labeled
+      - unlabeled
+      - synchronize
+      - closed
+    branches:
+      - main
+      - stable-*
+    tags:
+      - '*'
+
+jobs:
+  mypy:
+    name: Type checks (mypy)
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install requirements
+        shell: bash
+        run: |
+          set -eux
+          pip install --upgrade pip wheel
+          pip install -r requirements.txt
+
+      - name: Link repo into the correct structure and run mypy
+        shell: bash
+        run: |
+          set -eux
+          mkdir -p collection_root/ansible_collections/cloud
+          ln -s ../../.. collection_root/ansible_collections/cloud/terraform
+          cd collection_root/ansible_collections/cloud/terraform/
+          export MYPYPATH="$PWD/../../../"
+          mypy -p ansible_collections.cloud.terraform.plugins
+  
+  sanity:
+    uses: ansible-network/github_actions/.github/workflows/sanity.yml@main
+    with:
+      matrix_include: "[]"
+      matrix_exclude: >-
+          [
+            {
+              "ansible-version": "stable-2.9"
+            },
+            {
+              "ansible-version": "stable-2.12",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.12",
+              "python-version": "3.11"
+            },
+            {
+              "ansible-version": "stable-2.13",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.13",
+              "python-version": "3.11"
+            },
+            {
+              "ansible-version": "stable-2.14",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.14",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "stable-2.14",
+              "python-version": "3.11"
+            },
+            {
+              "ansible-version": "stable-2.15",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.15",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "stable-2.15",
+              "python-version": "3.11"
+            },
+            {
+              "ansible-version": "milestone",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "milestone",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "devel",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "devel",
+              "python-version": "3.8"
+            }
+          ]
+  unit-source:
+    uses: ansible-network/github_actions/.github/workflows/unit_source.yml@main
+    with:
+      matrix_exclude: >-
+          [
+            {
+              "python-version": "3.11"
+            },
+            {
+              "ansible-version": "stable-2.12",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.13",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.12",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "stable-2.13",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "stable-2.14",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.14",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "stable-2.15",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.15",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "milestone",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "milestone",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "devel",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "devel",
+              "python-version": "3.8"
+            }
+          ]
+      collection_pre_install: ''
+  all_green:
+    if: ${{ always() }}
+    needs:
+      - mypy
+      - sanity
+      - unit-source
+    runs-on: ubuntu-latest
+    steps:
+      - run: >-
+          python -c "assert set([
+          '${{ needs.linters.result }}',
+          '${{ needs.unit-source.result }}'
+          ]) == {'success'}"
+      - run: >-
+          python -c "assert '${{ needs.sanity.result }}'
+          in ['success', 'failure']"

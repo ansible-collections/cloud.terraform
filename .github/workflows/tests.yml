@@ -1,0 +1,142 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+      - stable-*
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  units:
+    uses: ansible-network/github_actions/.github/workflows/unit_source.yml@main
+    with:
+      matrix_exclude: >-
+          [
+            {
+              "python-version": "3.11"
+            },
+            {
+              "ansible-version": "stable-2.12",
+            },
+            {
+              "ansible-version": "stable-2.13",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.13",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "stable-2.14",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.14",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "stable-2.15",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "stable-2.15",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "milestone",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "milestone",
+              "python-version": "3.8"
+            },
+            {
+              "ansible-version": "devel",
+              "python-version": "3.7"
+            },
+            {
+              "ansible-version": "devel",
+              "python-version": "3.8"
+            }
+          ]
+      collection_pre_install: ''
+
+  integration:
+    runs-on: ubuntu-20.04
+    name: Integration (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }}+tf${{ matrix.terraform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible:
+          - stable-2.13
+          - stable-2.14
+        python:
+          - '3.8'
+          - '3.9'
+          - '3.10'
+        terraform:
+          - "1.3.4"
+        exclude:
+          # ansi2.14 requires py>=3.9
+          - ansible: stable-2.14
+            python: '3.8'
+    steps:
+      # we want to force tests to run locally, not in docker, so we replace --docker with --local forcefully
+      # a bit of a hack but what can you do
+      - name: Provision the ansible-test arg filtering script
+        run: |
+          mkdir -p ~/.local/bin/
+          cat >~/.local/bin/ansible-test-filtered <<EOF
+          #!/bin/sh
+          set -eux
+          args="\$(echo "\$*" | sed "s/--docker/--local/")"
+          exec ~/.local/bin/ansible-test-actual \$args
+          EOF
+          
+          chmod +x ~/.local/bin/ansible-test-filtered
+          cat ~/.local/bin/ansible-test-filtered
+        shell: bash
+
+      # we use raw git to create a repository in the tests
+      # this fails if the committer doesn't have a name and an email set
+      - name: Set up git
+        run: |
+          git config --global user.email gha@localhost
+          git config --global user.name "Github Actions"
+        shell: bash
+
+      - name: >-
+          Perform integration testing against
+          Ansible version ${{ matrix.ansible }}
+          under Python ${{ matrix.python }}
+          with Terraform ${{ matrix.terraform }}
+        uses: ansible-community/ansible-test-gh-action@release/v1
+        with:
+          ansible-core-version: ${{ matrix.ansible }}
+          origin-python-version: ${{ matrix.python }}
+          target-python-version: ${{ matrix.python }}
+          testing-type: integration
+          target: --exclude gcp --exclude aws --exclude azure
+          pre-test-cmd: |-
+            pip install coverage
+            
+            curl -L https://releases.hashicorp.com/terraform/${{ matrix.terraform }}/terraform_${{ matrix.terraform }}_linux_amd64.zip | zcat > terraform
+            chmod +x terraform
+            sudo mv terraform /usr/bin/terraform
+
+            mv ~/.local/bin/ansible-test ~/.local/bin/ansible-test-actual
+            mv ~/.local/bin/ansible-test-filtered ~/.local/bin/ansible-test
+  all_green:
+    if: ${{ always() }}
+    needs:
+      - units
+      - integration
+    runs-on: ubuntu-latest
+    steps:
+      - run: >-
+          python -c "assert set([
+          '${{ needs.units.result }}',
+          '${{ needs.integration.result }}'
+          ]) == {'success'}"
