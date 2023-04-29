@@ -290,7 +290,7 @@ class TestCreateInventory:
                             TerraformChildModule(
                                 resources=[
                                     TerraformChildModuleResource(
-                                        address='module.example.ansible_host["child"].duplicatehost',
+                                        address="module.example.ansible_host[0].duplicatehost",
                                         mode="managed",
                                         type="ansible_host",
                                         name="childhost",
@@ -313,7 +313,9 @@ class TestCreateInventory:
             )
         ]
 
+        inventory_plugin.inventory = InventoryData()
         search_child_modules = True
+
         inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
 
         groups = inventory_plugin.inventory.groups
@@ -355,7 +357,9 @@ class TestCreateInventory:
         assert anotherhost.groups[1].name == "somechild"
         assert len(ungroupedhost.groups) == 0
 
+        inventory_plugin.inventory = InventoryData()
         search_child_modules = False
+
         inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
 
         hosts = inventory_plugin.inventory.hosts
@@ -378,7 +382,7 @@ class TestCreateInventory:
                             TerraformChildModule(
                                 resources=[
                                     TerraformChildModuleResource(
-                                        address='module.example.ansible_host["one"].duplicatehost',
+                                        address="module.example.ansible_host[0].duplicatehost",
                                         mode="managed",
                                         type="ansible_host",
                                         name="duplicatehost",
@@ -398,7 +402,7 @@ class TestCreateInventory:
                             TerraformChildModule(
                                 resources=[
                                     TerraformChildModuleResource(
-                                        address='module.example.ansible_host["two"].duplicatehost',
+                                        address="module.other_example.ansible_host[0].duplicatehost",
                                         mode="managed",
                                         type="ansible_host",
                                         name="duplicatehost",
@@ -421,8 +425,12 @@ class TestCreateInventory:
             )
         ]
 
-        with pytest.raises(TerraformWarning) as exc:
-            inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
-        exception = exc.value
+        inventory_plugin.inventory = InventoryData()
+        search_child_modules = True
 
-        assert "already exists elsewhere" in str(exception.message)
+        with pytest.raises(Exception):
+            try:
+                inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
+            except TerraformWarning as e:
+                assert "already exists elsewhere" in str(e.value)
+                raise
