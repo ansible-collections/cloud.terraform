@@ -72,6 +72,14 @@ jobs:
           collection_path: ${{ steps.install-collection.outputs.collection_path }}
           ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}
 
+      # we use raw git to create a repository in the tests
+      # this fails if the committer doesn't have a name and an email set
+      - name: Set up git
+        run: |
+          git config --global user.email gha@localhost
+          git config --global user.name "Github Actions"
+        shell: bash
+
       - name: Run integration tests
         uses: abikouo/github_actions/.github/actions/ansible_test_integration@ansible_test_integration_a
         with:
