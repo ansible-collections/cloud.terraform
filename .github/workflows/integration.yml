@@ -1,0 +1,66 @@
+name: CI
+on:
+  pull_request_target:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    name: Integration (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }}+tf${{ matrix.terraform }})
+    env:
+      source: "./source"
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible:
+          - stable-2.13
+          - stable-2.14
+        python:
+          - '3.8'
+          - '3.9'
+          - '3.10'
+        terraform:
+          - "1.3.4"
+        exclude:
+          # ansi2.14 requires py>=3.9
+          - ansible: stable-2.14
+            python: '3.8'
+    steps:
+      - name: Checkout collection
+        uses: actions/checkout@v3
+        with:
+          path: ${{ env.source }}
+
+      - name: Build and install collection
+        id: install-collection
+        uses: abikouo/github_actions/.github/actions/build_install_collection@build_install_collection
+        with:
+          install_python_dependencies: true
+          source_path: ${{ env.source }}
+
+      - name: Download terraform binary
+        run: >-
+          curl
+          -o terraform.zip
+          https://releases.hashicorp.com/terraform/${{ matrix.terraform }}/terraform_${{ matrix.terraform }}_linux_amd64.zip
+        shell: bash
+
+      - name: Install terraform binary
+        run: |-
+          zcat terraform.zip > terraform
+          chmod +x terraform
+          mv sudo mv terraform /usr/bin
+          terraform -v
+        shell: bash
+
+      - name: Create AWS/sts session credentials
+        uses: abikouo/github_actions/.github/actions/ansible_aws_test_provider@ansible_test_integration_a
+        with:
+          collection_path: ${{ steps.install-collection.outputs.collection_path }}
+          ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}
+
+      - name: Run integration tests
+        uses: abikouo/github_actions/.github/actions/ansible_test_integration@ansible_test_integration_a
+        with:
+          collection_path: ${{ steps.install-collection.outputs.collection_path }}
+          python_version: ${{ matrix.python }}
+          ansible_version: ${{ matrix.ansible }}
