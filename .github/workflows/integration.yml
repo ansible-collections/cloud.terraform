@@ -8,6 +8,7 @@ jobs:
     name: Integration (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }}+tf${{ matrix.terraform }})
     env:
       source: "./source"
+      aws_dir: "./amazon_aws"
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +37,19 @@ jobs:
         with:
           install_python_dependencies: true
           source_path: ${{ env.source }}
+
+      - name: checkout ansible-collections/amazon.aws
+        uses: ansible-network/github_actions/.github/actions/checkout_dependency@main
+        with:
+          repository: ansible-collections/amazon.aws
+          path: ${{ env.amazon_aws }}
+          ref: main
+
+      - name: install amazon.aws collection
+        uses: abikouo/github_actions/.github/actions/build_install_collection@build_install_collection
+        with:
+          install_python_dependencies: true
+          source_path: ${{ env.amazon_aws }}
 
       - name: Download terraform binary
         run: >-
