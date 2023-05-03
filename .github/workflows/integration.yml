@@ -48,7 +48,7 @@ jobs:
         run: |-
           zcat terraform.zip > terraform
           chmod +x terraform
-          mv sudo mv terraform /usr/bin
+          sudo mv terraform /usr/bin
           terraform -v
         shell: bash
 
