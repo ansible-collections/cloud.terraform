@@ -31,6 +31,10 @@
           amazon.aws.ec2_vpc_net:
             vpc_id: "{{ item.vpc_id }}"
             state: absent
+          register: result
+          failed_when:
+            - result is failed
+            - '"An error occurred (InvalidVpcID.NotFound) when calling the DeleteVpc operation" not in result.msg'
           loop: "{{ integration_vpcs.vpcs }}"
 
     - &verification
