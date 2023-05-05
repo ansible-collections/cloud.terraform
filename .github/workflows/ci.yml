@@ -12,7 +12,7 @@ jobs:
   linters:
     uses: ansible-network/github_actions/.github/workflows/tox-linters.yml@main
   galaxy_importer:
-    uses: abikouo/github_actions/.github/workflows/galaxy_importer.yml@galaxy_importer_v1
+    uses: ansible-network/github_actions/.github/workflows/galaxy_importer.yml@main
   sanity:
     name: Sanity (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
     strategy:
