@@ -9,8 +9,6 @@ on:
     - cron: '0 6 * * *'
 
 jobs:
-  changelog:
-    uses: ansible-network/github_actions/.github/workflows/changelog.yml@main
   linters:
     uses: ansible-network/github_actions/.github/workflows/tox-linters.yml@main
   sanity:
