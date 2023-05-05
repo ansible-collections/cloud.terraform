@@ -3,7 +3,7 @@ on:
   pull_request:
 
 jobs:
-  sanity:
+  install:
     runs-on: ubuntu-20.04
     env:
       source: "collection_src"
@@ -16,7 +16,7 @@ jobs:
 
       - name: Build and install collection
         id: install-collection
-        uses: ansible-network/github_actions/.github/actions/build_install_collection@main
+        uses: abikouo/github_actions/.github/actions/build_install_collection@build_install_collection
         with:
           install_python_dependencies: true
           source_path: ${{ env.source }}
