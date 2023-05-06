@@ -3,7 +3,7 @@
 # Copyright: (c) 2022, XLAB Steampunk <steampunk@xlab.si>
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
---- 
+
 DOCUMENTATION = r"""
 name: terraform_provider
 author:
@@ -44,21 +44,6 @@ options:
     description:
       - The path of a terraform binary to use.
     type: path
-    version_added: 1.1.0
-  http_address:
-    description:
-      - The address of the REST endpoint for the HTTP state backend.
-    type: str
-    version_added: 1.1.0
-  http_username:
-    description:
-      - The username for HTTP basic authentication.
-    type: str
-    version_added: 1.1.0
-  http_password:
-    description:
-      - The password for HTTP basic authentication.
-    type: str
     version_added: 1.1.0
 """
 
@@ -104,13 +89,6 @@ state_file: some/state/file/path
 plugin: cloud.terraform.terraform_provider
 project_path: some/project/path
 state_file: mycustomstate.tfstate
-
-# Example configuration file that creates an inventory from HTTP backend
-- name: Example configuration file that creates an inventory from a remote HTTP state backend
-  plugin: cloud.terraform.terraform_provider
-  http_address: http://my.rest.api.com
-  http_username: myusername
-  http_password: mypassword
 """
 
 
@@ -133,12 +111,14 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformShow,
 )
 
-
-# TODO: remove when ansible provider is available
 TESTING_STATE_FILE = os.environ.get("TESTING_STATE_FILE", False)
 
+GITLAB_API_URL = "https://gitlab.example.com/api/v4"
+GITLAB_PROJECT_ID = "<your_gitlab_project_id>"
+GITLAB_STATE_NAME = "<your_gitlab_state_name>"
+GITLAB_ACCESS_TOKEN = "<your_gitlab_personal_access_token>"
 
-# no module available here, mock functionality to be consistent throughout the rest of the codebase
+
 def module_run_command(cmd: List[str], cwd: str, check_rc: bool) -> Tuple[int, str, str]:
     completed_process = subprocess.run(cmd, capture_output=True, check=check_rc, cwd=cwd)
     return (
@@ -148,145 +128,30 @@ def module_run_command(cmd: List[str], cwd: str, check_rc: bool) -> Tuple[int, s
     )
 
 
-class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
-    NAME = "terraform_provider"
-
-    # instead of self._read_config_data(path), which reads paths as absolute thus creating problems
-    # in case if project_path is provided and state_file is provided as relative path
-    def read_config_data(self, path):  # type: ignore  # mypy ignore
-        """
-        Reads and validates the inventory source file,
-        storing the provided configuration as options.
-        """
-        try:
-            with open(path, "r") as inventory_src:
-                cfg = yaml.safe_load(inventory_src)
-            return cfg
-        except Exception as e:
-            raise AnsibleParserError(e)
-
-    # If check of the name of the cfg file is needed, this should be uncommented
-    # def verify_file(self, path):
-    #     """
-    #     return true/false if this is possibly a valid file for this plugin to consume
-    #     """
-    #     valid = False
-    #     if super(InventoryModule, self).verify_file(path):
-    #         # base class verifies that file exists and is readable by current user
-    #         if path.endswith(("terraform_provider.yaml", "terraform_provider.yml")):
-    #             valid = True
-    #     return valid
-
-    def _add_group(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
-        attributes = TerraformAnsibleProvider.from_json(resource)
-        inventory.add_group(attributes.name)
-        if attributes.children:
-            for child in attributes.children:
-                inventory.add_group(child)
-                inventory.add_child(attributes.name, child)
-        if attributes.variables:
-            for key, value in attributes.variables.items():
-                inventory.set_variable(attributes.name, key, value)
-
-    def _add_host(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
-        attributes = TerraformAnsibleProvider.from_json(resource)
-        inventory.add_host(attributes.name)
-        if attributes.groups:
-            for group in attributes.groups:
-                inventory.add_group(group)
-                inventory.add_host(attributes.name, group=group)
-        if attributes.variables:
-            for key, value in attributes.variables.items():
-                inventory.set_variable(attributes.name, key, value)
-
-    def fetch_http_state(self, address, username=None, password=None):
-        headers = {}
-        if username and password:
-            headers["Authorization"] = f"Basic {base64.b64encode(f'{username}:{password}'.encode()).decode()}"
-
-        response = requests.get(address, headers=headers)
-
-        if response.status_code != 200:
-            raise AnsibleParserError(f"Failed to fetch remote state. Status code: {response.status_code}")
-
-        return json.loads(response.text)
-
-    def create_inventory(self, inventory: Any, state_content: TerraformShow) -> None:
-        for resource in state_content.values.root_module.resources:
-            if resource.type == "ansible_group":
-                self._add_group(inventory, resource)
-            elif resource.type == "ansible_host":
-                self._add_host(inventory, resource)
-
-    def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
-        super(InventoryModule, self).parse(inventory, loader, path)
-
-        cfg = self.read_config_data(path)  # type: ignore  # mypy ignore
-
-        http_address = cfg.get("http_address", None)
-        http_username = cfg.get("http_username", None)
-        http_password = cfg.get("http_password", None)
-
-        if http_address:
-            try:
-                state_content = self.fetch_http_state(http_address, http_username, http_password)
-                state_content = TerraformShow.from_json(state_content)
-            except Exception as e:
-                raise AnsibleParserError(f"Error fetching remote state: {str(e)}")
-        else:
-            project_path = cfg.get("project_path", os.getcwd())
-            state_file = cfg.get("state_file", "terraform.tfstate")
-            terraform_binary = cfg.get("binary_path", None)
-            if terraform_binary is not None:
-                validate_bin_path(terraform_binary)
-            else:
-                terraform_binary = process.get_bin_path("terraform", required=True)
-
-            terraform = TerraformCommands(module_run_command, project_path, terraform_binary, False)
-
-            # TODO: remove when ansible provider is available
-            if TESTING_STATE_FILE:
-                with open("terraform.tfstateshow", "r") as state_file:
-                    state_content = json.loads(state_file.read())
-                    state_content = TerraformShow.from_json(state_content)
-            else:
-                try:
-                    state_content = terraform.show(state_file)
-                except TerraformWarning as e:
-                    raise TerraformError(e.message)
-
-            if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
-                self.create_inventory(inventory, state_content)
-the rest of the codebase
-def module_run_command(cmd: List[str], cwd: str, check_rc: bool) -> Tuple[int, str, str]:
-    completed_process = subprocess.run(cmd, capture_output=True, check=check_rc, cwd=cwd)
-    return (
-        completed_process.returncode,
-        completed_process.stdout.decode("utf-8"),
-        completed_process.stderr.decode("utf-8"),
-    )
-
-def fetch_gitlab_tfstate(state_url, gitlab_username, gitlab_access_token):
-    headers = {
-        "Private-Token": gitlab_access_token,
-    }
-    response = requests.get(state_url, headers=headers)
+def get_gitlab_tfstate() -> str:
+    url = f"{GITLAB_API_URL}/projects/{GITLAB_PROJECT_ID}/terraform/state/{GITLAB_STATE_NAME}"
+    headers = {"Private-Token": GITLAB_ACCESS_TOKEN}
+    response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
-        raise AnsibleParserError(f"Error fetching tfstate file from GitLab: {response.status_code} {response.text}")
+        raise TerraformError(f"Error fetching Terraform state from GitLab: {response.content.decode('utf-8')}")
 
-    return response.json()
+    return response.content.decode("utf-8")
 
-class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
+
+def put_gitlab_tfstate(tfstate: str) -> None:
+    url = f"{GITLAB_API_URL}/projects/{GITLAB_PROJECT_ID}/terraform/state/{GITLAB_STATE_NAME}"
+    headers = {"Private-Token": GITLAB_ACCESS_TOKEN, "Content-Type": "application/json"}
+    response = requests.put(url, headers=headers, data=tfstate)
+
+    if response.status_code != 200:
+        raise TerraformError(f"Error uploading Terraform state to GitLab: {response.content.decode('utf-8')}")
+
+
+class InventoryModule(BaseInventoryPlugin):
     NAME = "terraform_provider"
 
-    # instead of self._read_config_data(path), which reads paths as absolute thus creating problems
-    # in case if project_path is provided and state_file is provided as relative path
-    def read_config_data(self, path):  # type: ignore  # mypy ignore
-        """
-        Reads and validates the inventory source file,
-        storing the provided configuration as options.
-        """
+    def read_config_data(self, path):
         try:
             with open(path, "r") as inventory_src:
                 cfg = yaml.safe_load(inventory_src)
@@ -323,18 +188,14 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             elif resource.type == "ansible_host":
                 self._add_host(inventory, resource)
 
-    def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
+    def parse(self, inventory, loader, path, cache=False):
         super(InventoryModule, self).parse(inventory, loader, path)
 
-        cfg = self.read_config_data(path)  # type: ignore  # mypy ignore
+        cfg = self.read_config_data(path)
 
         project_path = cfg.get("project_path", os.getcwd())
         state_file = cfg.get("state_file", "terraform.tfstate")
         terraform_binary = cfg.get("binary_path", None)
-        gitlab_tfstate_url = cfg.get("gitlab_tfstate_url", None)
-        gitlab_username = cfg.get("gitlab_username", None)
-        gitlab_access_token = cfg.get("gitlab_access_token", None)
-
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:
@@ -342,20 +203,19 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
 
         terraform = TerraformCommands(module_run_command, project_path, terraform_binary, False)
 
-        if gitlab_tfstate_url and gitlab_username and gitlab_access_token:
-            state_content = fetch_gitlab_tfstate(gitlab_tfstate_url, gitlab_username, gitlab_access_token)
-            state_content = TerraformShow.from_json(state_content)
-        else:
-            # TODO: remove when ansible provider is available
-            if TESTING_STATE_FILE:
-                with open("terraform.tfstateshow", "r") as state_file:
-                    state_content = json.loads(state_file.read())
-                    state_content = TerraformShow.from_json(state_content)
-            else:
-                try:
-                    state_content = terraform.show(state_file)
-                except TerraformWarning as e:
-                    raise TerraformError(e.message)
+        # Fetch state from GitLab
+        gitlab_tfstate = get_gitlab_tfstate()
 
-        if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
+        # Save fetched state to a temporary file
+        with open("temp.tfstate", "w") as temp_state_file:
+            temp_state_file.write(gitlab_tfstate)
+
+        try:
+            state_content = terraform.show("temp.tfstate")
+        except TerraformWarning as e:
+            raise TerraformError(e.message)
+        finally:
+            os.remove("temp.tfstate")
+
+        if state_content:
             self.create_inventory(inventory, state_content)
