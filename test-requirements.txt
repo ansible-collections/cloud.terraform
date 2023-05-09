@@ -1,1 +1,13 @@
+boto3
+awscli
+google-auth
+google-cloud
 pytest
+pytest-forked
+pytest-mock
+pytest-xdist
+types-PyYAML
+
+# this gets installed as part of the collection requirements to avoid dependency conflicts
+# the readme installs this without dependencies to prevent conflicts
+# azure-cli==2.34.0

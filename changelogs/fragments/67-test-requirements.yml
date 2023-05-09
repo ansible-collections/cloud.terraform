@@ -1,0 +1,2 @@
+bugfixes:
+  - move test requirements out of the requirements.txt file (https://github.com/ansible-collections/cloud.terraform/pull/67).
