@@ -64,7 +64,7 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: cloud.terraform
-    version: 1.1.0
+    version: 1.1.1
 ```
 
 ## Using this collection
@@ -132,5 +132,6 @@ ansible-doc --list | grep cloud.terraform | cut -d " " -f 1 | xargs -I {} antsib
 GNU General Public License v3.0 or later.
 
 See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/main/LICENSE) to see the full text.
+
 
 

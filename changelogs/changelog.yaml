@@ -70,3 +70,10 @@ releases:
         name: terraform_provider
         namespace: null
     release_date: '2023-03-23'
+  1.1.1:
+    changes:
+      bugfixes:
+      - move test requirements out of the requirements.txt file (https://github.com/ansible-collections/cloud.terraform/pull/67).
+    fragments:
+    - 67-test-requirements.yml
+    release_date: '2023-05-09'
