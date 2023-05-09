@@ -5,6 +5,14 @@ The cloud.terraform collection Release Notes
 .. contents:: Topics
 
 
+v1.1.1
+======
+
+Bugfixes
+--------
+
+- move test requirements out of the requirements.txt file (https://github.com/ansible-collections/cloud.terraform/pull/67).
+
 v1.1.0
 ======
 
