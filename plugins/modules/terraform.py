@@ -582,6 +582,7 @@ def main() -> None:
 
             plan_file_needs_application = plan_result_changed
             plan_file_to_apply = new_plan_file
+            module.add_cleanup_file(new_plan_file)
             out = plan_stdout
             err = plan_stderr
 
