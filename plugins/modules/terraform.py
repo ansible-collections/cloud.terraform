@@ -649,7 +649,7 @@ def main() -> None:
             outputs=outputs,
             stdout=out,
             stderr=err,
-            command=" ".join(final_apply_command),
+            command=final_apply_command,
         )
     except TerraformError as e:
         e.fail_json(module)
