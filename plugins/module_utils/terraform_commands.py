@@ -76,7 +76,7 @@ class TerraformCommands:
                     cmd=" ".join(command),
                 )
 
-        return " ".join(command), stdout, stderr
+        return command, stdout, stderr
 
     def init(
         self,
