@@ -54,9 +54,7 @@ def main():
         name=dict(required=True, type="list", elements="str"),
     )
 
-    module = AnsibleAWSModule(
-        argument_spec=argument_spec, supports_check_mode=True
-    )
+    module = AnsibleAWSModule(argument_spec=argument_spec, supports_check_mode=True)
 
     ec2_client = module.client("ec2", retry_decorator=AWSRetry.jittered_backoff())
     name = module.params["name"]
