@@ -1,0 +1,22 @@
+---
+- name: "Run Terraform {{ item.state }} with check_mode={{ item.check_mode }}"
+  cloud.terraform.terraform:
+    project_path: "{{ terraform_project_path }}"
+    state: "{{ item.state }}"
+    force_init: true
+    variables:
+      key_pair_name: "{{ key_pair_name }}"
+  register: _result
+  check_mode: "{{ item.check_mode }}"
+
+- name: "Validate terraform result is {{ item.changed }}"
+  assert:
+    that:
+      - '_result.changed == item.changed | bool'
+
+- name: Describes key pair
+  test_aws_describe_keypairs:
+    name: 
+      - "{{ key_pair_name }}"
+  register: _describe_key
+  failed_when: _describe_key.keypairs | length != item.nbkeys

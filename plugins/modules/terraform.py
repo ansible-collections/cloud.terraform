@@ -288,7 +288,7 @@ command:
 import dataclasses
 import os
 import tempfile
-from typing import List, Tuple
+from typing import List
 
 from ansible.module_utils.six import integer_types
 from ansible.module_utils.basic import AnsibleModule

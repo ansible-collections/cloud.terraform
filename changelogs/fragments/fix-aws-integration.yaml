@@ -1,0 +1,4 @@
+---
+minor_changes:
+  - Fix aws integration targets as they are unstable (https://github.com/ansible-collections/cloud.terraform/issues/73).
+
