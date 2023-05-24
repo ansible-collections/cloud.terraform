@@ -285,6 +285,7 @@ command:
   sample: terraform apply ...
 """
 
+# this is just a test
 import dataclasses
 import os
 import tempfile
