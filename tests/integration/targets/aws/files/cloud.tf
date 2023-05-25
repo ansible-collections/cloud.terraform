@@ -14,11 +14,14 @@ variable "cloud_terraform_integration_id" {
   type = string
 }
 
+variable "cidr_block" {
+  type = string
+}
+
 resource "aws_vpc" "test_vpc" {
-  cidr_block = "10.11.12.0/24"
+  cidr_block = var.cidr_block
   tags       = {
-    Name                           = "cloud.terraform integration VPC"
+    Name                           = var.cloud_terraform_integration_id
     cloud_terraform_integration    = "true"
-    cloud_terraform_integration_id = var.cloud_terraform_integration_id
   }
 }
