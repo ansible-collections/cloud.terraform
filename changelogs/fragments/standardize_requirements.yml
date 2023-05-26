@@ -1,0 +1,2 @@
+trivial:
+  - "As per https://github.com/ansible-community/community-topics/issues/230, standardize tests/requirements.yml file."

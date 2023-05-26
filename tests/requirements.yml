@@ -1,3 +1,0 @@
-integration_tests_dependencies:
-  - amazon.aws
-unit_tests_dependencies: []
