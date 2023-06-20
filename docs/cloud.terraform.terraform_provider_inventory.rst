@@ -95,7 +95,7 @@ Parameters
                         <div>The path to the initialized Terraform directory with the .tfstate file.</div>
                         <div>If <em>state_file</em> is not specified, Terraform will attempt to automatically find the state file in <em>project_path</em> for use as inventory source.</div>
                         <div>If <em>state_file</em> and <em>project_path</em> are not specified, Terraform will attempt to automatically find the state file in the current working directory.</div>
-                        <div>Accepts a list of paths for use with multiple Terraform projects.</div>
+                        <div>Accepts a string or a list of paths for use with multiple Terraform projects.</div>
                 </td>
             </tr>
             <tr>

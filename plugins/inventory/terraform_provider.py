@@ -29,9 +29,8 @@ options:
       - The path to the initialized Terraform directory with the .tfstate file.
       - If I(state_file) is not specified, Terraform will attempt to automatically find the state file in I(project_path) for use as inventory source.
       - If I(state_file) and I(project_path) are not specified, Terraform will attempt to automatically find the state file in the current working directory.
-      - Accepts a list of paths for use with multiple Terraform projects.
-    type: list
-    elements: path
+      - Accepts a string or a list of paths for use with multiple Terraform projects.
+    type: raw
     version_added: 1.2.0
   state_file:
     description:
@@ -216,8 +215,6 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             validate_bin_path(terraform_binary)
         else:
             terraform_binary = process.get_bin_path("terraform", required=True)
-
-        terraform = TerraformCommands(module_run_command, project_path, terraform_binary, False)
 
         # TODO: remove when ansible provider is available
         if TESTING_STATE_FILE:
