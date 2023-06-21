@@ -67,6 +67,9 @@ collections:
     version: 1.1.0
 ```
 
+### Requirements
+Either the execution environment you are using, or the target host, needs terraform installed in order to use this collection.
+
 ## Using this collection
 
 You can either call modules by their Fully Qualified Collection Name (FQCN), such as `cloud.terraform.terraform`, or you can call modules by their short name if you list the `cloud.terraform` collection in the playbook's `collections` keyword:
