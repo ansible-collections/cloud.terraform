@@ -1,9 +1,8 @@
-# TODO: update ansible provider url 
 terraform {
   required_providers {
     ansible = {
-      version = "~> 0.0.1"
-      source  = "terraform-ansible.com/ansibleprovider/ansible"
+      version = "~> 1.1.0"
+      source  = "ansible/ansible"
     }
   }
 }
