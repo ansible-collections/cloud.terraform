@@ -46,5 +46,10 @@ module "example" {
   source = "./modules/example"
 
   name = "childhost"
+}
 
+module "nested_module" {
+  source = "./modules/nested_module"
+
+  name = "nested_module"
 }
