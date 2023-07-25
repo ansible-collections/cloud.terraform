@@ -31,7 +31,7 @@ options:
       - If I(state_file) and I(project_path) are not specified, Terraform will attempt to automatically find the state file in the current working directory.
       - Accepts a string or a list of paths for use with multiple Terraform projects.
     type: raw
-    version_added: 1.2.0
+    version_added: 1.1.0
   state_file:
     description:
       - Path to an existing Terraform state file to be used as an inventory source.
@@ -43,7 +43,7 @@ options:
     description:
       - Whether to include ansible_host and ansible_group resources from Terraform child modules.
     type: bool
-    default: true
+    default: false
     version_added: 1.2.0
   binary_path:
     description:
