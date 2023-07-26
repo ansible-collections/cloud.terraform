@@ -217,20 +217,15 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             terraform_binary = process.get_bin_path("terraform", required=True)
 
         # TODO: remove when ansible provider is available
-        if TESTING_STATE_FILE:
-            with open("terraform.tfstateshow", "r") as state_file:
-                state_content = json.loads(state_file.read())
-                state_content = [TerraformShow.from_json(state_content)]
-        else:
-            state_content = []
-            if isinstance(project_path, str):
-                project_path = [project_path]
-            for path in project_path:
-                terraform = TerraformCommands(module_run_command, path, terraform_binary, False)
-                try:
-                    state_content.append(terraform.show(state_file))
-                except TerraformWarning as e:
-                    raise TerraformError(e.message)
+        state_content = []
+        if isinstance(project_path, str):
+            project_path = [project_path]
+        for path in project_path:
+            terraform = TerraformCommands(module_run_command, path, terraform_binary, False)
+            try:
+                state_content.append(terraform.show(state_file))
+            except TerraformWarning as e:
+                raise TerraformError(e.message)
 
         if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
             self.create_inventory(inventory, state_content, search_child_modules)
