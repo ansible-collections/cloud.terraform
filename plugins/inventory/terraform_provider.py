@@ -187,7 +187,9 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
 
-    def create_inventory(self, inventory: Any, state_content: List[Optional[TerraformShow]], search_child_modules: bool) -> None:
+    def create_inventory(
+        self, inventory: Any, state_content: List[Optional[TerraformShow]], search_child_modules: bool
+    ) -> None:
         for state in state_content:
             if state is None:
                 continue
