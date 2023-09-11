@@ -24,7 +24,7 @@ class TerraformOutput:
 
 
 @dataclass
-class TerraformRootModuleResource:
+class TerraformModuleResource:
     address: str
     mode: str
     type: str
@@ -38,7 +38,7 @@ class TerraformRootModuleResource:
     depends_on: List[str]
 
     @classmethod
-    def from_json(cls, json: TJsonObject) -> "TerraformRootModuleResource":
+    def from_json(cls, json: TJsonObject) -> "TerraformModuleResource":
         return cls(
             address=json["address"],
             mode=json["mode"],
@@ -53,6 +53,16 @@ class TerraformRootModuleResource:
 
 
 @dataclass
+class TerraformRootModuleResource(TerraformModuleResource):
+    pass
+
+
+@dataclass
+class TerraformChildModuleResource(TerraformModuleResource):
+    pass
+
+
+@dataclass
 class TerraformAnsibleProvider:
     name: str
     groups: List[str]
@@ -60,7 +70,7 @@ class TerraformAnsibleProvider:
     variables: Dict[str, str]
 
     @classmethod
-    def from_json(cls, json: TerraformRootModuleResource) -> "TerraformAnsibleProvider":
+    def from_json(cls, json: TerraformModuleResource) -> "TerraformAnsibleProvider":
         return cls(
             name=json.values.get("name", None),
             groups=json.values.get("groups", []),
@@ -70,12 +80,25 @@ class TerraformAnsibleProvider:
 
 
 @dataclass
+class TerraformChildModule:
+    resources: List[TerraformModuleResource]
+
+    @classmethod
+    def from_json(cls, json: TJsonObject) -> "TerraformChildModule":
+        return cls(resources=[TerraformChildModuleResource.from_json(r) for r in json.get("resources", [])])
+
+
+@dataclass
 class TerraformRootModule:
-    resources: List[TerraformRootModuleResource]
+    resources: List[TerraformModuleResource]
+    child_modules: List[TerraformChildModule]
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformRootModule":
-        return cls(resources=[TerraformRootModuleResource.from_json(r) for r in json.get("resources", [])])
+        return cls(
+            resources=[TerraformRootModuleResource.from_json(r) for r in json.get("resources", [])],
+            child_modules=[TerraformChildModule.from_json(r) for r in json.get("child_modules", [])],
+        )
 
 
 @dataclass

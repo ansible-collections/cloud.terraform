@@ -27,19 +27,24 @@ options:
   project_path:
     description:
       - The path to the initialized Terraform directory with the .tfstate file.
-      - If I(state_file) is not specified, C(terraform.tfstate) in I(project_path) is used as an inventory source.
-      - If I(state_file) and I(project_path) are not specified, C(terraform.tfstate) file in the current
-        working directory is used as an inventory source.
-    type: path
+      - If I(state_file) is not specified, Terraform will attempt to automatically find the state file in I(project_path) for use as inventory source.
+      - If I(state_file) and I(project_path) are not specified, Terraform will attempt to automatically find the state file in the current working directory.
+      - Accepts a string or a list of paths for use with multiple Terraform projects.
+    type: raw
     version_added: 1.1.0
   state_file:
     description:
       - Path to an existing Terraform state file to be used as an inventory source.
-      - If I(state_file) is not specified, C(terraform.tfstate) in I(project_path) is used as an inventory source.
-      - If I(state_file) and I(project_path) are not specified, C(terraform.tfstate) file in the current
-        working directory is used as an inventory source.
+      - If I(state_file) is not specified, Terraform will attempt to automatically find the state file in I(project_path) for use as inventory source.
+      - If I(state_file) and I(project_path) are not specified, Terraform will attempt to automatically find the state file in the current working directory
     type: path
     version_added: 1.1.0
+  search_child_modules:
+    description:
+      - Whether to include ansible_host and ansible_group resources from Terraform child modules.
+    type: bool
+    default: false
+    version_added: 1.2.0
   binary_path:
     description:
       - The path of a terraform binary to use.
@@ -81,6 +86,12 @@ plugin: cloud.terraform.terraform_provider
 plugin: cloud.terraform.terraform_provider
 project_path: some/project/path
 
+# Example configuration file that creates an inventory from terraform.tfstate file in multiple project directories
+plugin: cloud.terraform.terraform_provider
+project_path:
+  - some/project/path
+  - some/other/project/path
+
 # Example configuration file that creates an inventory from specified state file
 plugin: cloud.terraform.terraform_provider
 state_file: some/state/file/path
@@ -94,7 +105,7 @@ state_file: mycustomstate.tfstate
 
 import os
 import subprocess
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Optional
 import yaml
 
 from ansible.errors import AnsibleParserError
@@ -104,7 +115,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import valid
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
-    TerraformRootModuleResource,
+    TerraformModuleResource,
     TerraformAnsibleProvider,
     TerraformShow,
 )
@@ -149,7 +160,7 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
     #             valid = True
     #     return valid
 
-    def _add_group(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
+    def _add_group(self, inventory: Any, resource: TerraformModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
         inventory.add_group(attributes.name)
         if attributes.children:
@@ -160,8 +171,13 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
 
-    def _add_host(self, inventory: Any, resource: TerraformRootModuleResource) -> None:
+    def _add_host(self, inventory: Any, resource: TerraformModuleResource) -> None:
         attributes = TerraformAnsibleProvider.from_json(resource)
+        # Give warning if group already exists (in case of multiple terraform projects)
+        if inventory.get_host(attributes.name):
+            raise TerraformWarning(
+                f"Ansible Host {attributes.name} already exists elsewhere, please check your terraform project(s)"
+            )
         inventory.add_host(attributes.name)
         if attributes.groups:
             for group in attributes.groups:
@@ -171,12 +187,24 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
 
-    def create_inventory(self, inventory: Any, state_content: TerraformShow) -> None:
-        for resource in state_content.values.root_module.resources:
-            if resource.type == "ansible_group":
-                self._add_group(inventory, resource)
-            elif resource.type == "ansible_host":
-                self._add_host(inventory, resource)
+    def create_inventory(
+        self, inventory: Any, state_content: List[Optional[TerraformShow]], search_child_modules: bool
+    ) -> None:
+        for state in state_content:
+            if state is None:
+                continue
+            for resource in state.values.root_module.resources:
+                if resource.type == "ansible_group":
+                    self._add_group(inventory, resource)
+                elif resource.type == "ansible_host":
+                    self._add_host(inventory, resource)
+            if search_child_modules:
+                for module in state.values.root_module.child_modules:
+                    for resource in module.resources:
+                        if resource.type == "ansible_group":
+                            self._add_group(inventory, resource)
+                        elif resource.type == "ansible_host":
+                            self._add_host(inventory, resource)
 
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path)
@@ -184,19 +212,24 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
         cfg = self.read_config_data(path)  # type: ignore  # mypy ignore
 
         project_path = cfg.get("project_path", os.getcwd())
-        state_file = cfg.get("state_file", "terraform.tfstate")
+        state_file = cfg.get("state_file", "")
+        search_child_modules = cfg.get("search_child_modules", True)
         terraform_binary = cfg.get("binary_path", None)
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:
             terraform_binary = process.get_bin_path("terraform", required=True)
 
-        terraform = TerraformCommands(module_run_command, project_path, terraform_binary, False)
-
-        try:
-            state_content = terraform.show(state_file)
-        except TerraformWarning as e:
-            raise TerraformError(e.message)
+        # TODO: remove when ansible provider is available
+        state_content = []
+        if isinstance(project_path, str):
+            project_path = [project_path]
+        for path in project_path:
+            terraform = TerraformCommands(module_run_command, path, terraform_binary, False)
+            try:
+                state_content.append(terraform.show(state_file))
+            except TerraformWarning as e:
+                raise TerraformError(e.message)
 
         if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
-            self.create_inventory(inventory, state_content)
+            self.create_inventory(inventory, state_content, search_child_modules)

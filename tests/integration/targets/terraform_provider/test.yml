@@ -21,6 +21,8 @@
         that:
           - "'somehost' in hostvars"
           - "'anotherhost' in hostvars"
+          - "'childhost' in hostvars"
+          - "'nested_childhost' in hostvars"
 
 - name: Test host and group variables
   hosts: localhost

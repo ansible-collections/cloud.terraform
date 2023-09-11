@@ -268,7 +268,9 @@ def state_contents(root_module_resource, sensitive_root_module_resource):
                 "my_output": TerraformOutput(sensitive=False, value="my_value", type="string"),
                 "my_sensitive_output": TerraformOutput(sensitive=True, value="my_sensitive_value", type="string"),
             },
-            root_module=TerraformRootModule(resources=[root_module_resource, sensitive_root_module_resource]),
+            root_module=TerraformRootModule(
+                resources=[root_module_resource, sensitive_root_module_resource], child_modules=[]
+            ),
         ),
     )
 
@@ -449,7 +451,8 @@ class TestSanitizeState:
                             },
                             depends_on=[],
                         ),
-                    ]
+                    ],
+                    child_modules=[],
                 ),
             ),
         )

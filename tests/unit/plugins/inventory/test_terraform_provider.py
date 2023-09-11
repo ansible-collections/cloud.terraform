@@ -10,12 +10,15 @@ from ansible.template import Templar
 from ansible_collections.cloud.terraform.plugins.inventory.terraform_provider import module_run_command, InventoryModule
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformRootModule,
+    TerraformChildModule,
     TerraformAnsibleProvider,
     TerraformRootModuleResource,
+    TerraformChildModuleResource,
     TerraformShow,
     TerraformShowValues,
 )
 from ansible.errors import AnsibleParserError
+from plugins.module_utils.errors import TerraformWarning
 
 
 @pytest.fixture
@@ -194,99 +197,126 @@ class TestInventoryModuleAddGroup:
 
 class TestCreateInventory:
     def test_create_inventory(self, inventory_plugin):
-        state_content = TerraformShow(
-            format_version="1.0",
-            terraform_version="1.3.6",
-            values=TerraformShowValues(
-                outputs={},
-                root_module=TerraformRootModule(
-                    resources=[
-                        TerraformRootModuleResource(
-                            address="ansible_group.childlessgroup",
-                            mode="managed",
-                            type="ansible_group",
-                            name="childlessgroup",
-                            provider_name="terraform-ansible.com/ansibleprovider/ansible",
-                            schema_version=0,
-                            values={
-                                "children": None,
-                                "name": "childlessgroup",
-                                "id": "childlessgroup",
-                                "variables": None,
-                            },
-                            sensitive_values={},
-                            depends_on=[],
-                        ),
-                        TerraformRootModuleResource(
-                            address="ansible_group.group",
-                            mode="managed",
-                            type="ansible_group",
-                            name="group",
-                            provider_name="terraform-ansible.com/ansibleprovider/ansible",
-                            schema_version=0,
-                            values={
-                                "children": ["somechild", "anotherchild"],
-                                "name": "somegroup",
-                                "id": "somegroup",
-                                "variables": {"group_hello": "from somegroup!", "group_variable": "11"},
-                            },
-                            sensitive_values={"children": [False, False], "variables": {}},
-                            depends_on=[],
-                        ),
-                        TerraformRootModuleResource(
-                            address="ansible_host.anotherhost",
-                            mode="managed",
-                            type="ansible_host",
-                            name="anotherhost",
-                            provider_name="terraform-ansible.com/ansibleprovider/ansible",
-                            schema_version=0,
-                            values={
-                                "groups": ["somechild"],
-                                "name": "anotherhost",
-                                "id": "anotherhost",
-                                "variables": {"host_hello": "from anotherhost!", "host_variable": "5"},
-                            },
-                            sensitive_values={"groups": [False], "variables": {}},
-                            depends_on=[],
-                        ),
-                        TerraformRootModuleResource(
-                            address="ansible_host.host",
-                            mode="managed",
-                            type="ansible_host",
-                            name="host",
-                            provider_name="terraform-ansible.com/ansibleprovider/ansible",
-                            schema_version=0,
-                            values={
-                                "groups": ["somegroup", "anothergroup"],
-                                "name": "somehost",
-                                "id": "somehost",
-                                "variables": {"host_hello": "from somehost!", "host_variable": "7"},
-                            },
-                            sensitive_values={"groups": [False, False], "variables": {}},
-                            depends_on=[],
-                        ),
-                        TerraformRootModuleResource(
-                            address="ansible_host.ungroupedhost",
-                            mode="managed",
-                            type="ansible_host",
-                            name="ungroupedhost",
-                            provider_name="terraform-ansible.com/ansibleprovider/ansible",
-                            schema_version=0,
-                            values={
-                                "groups": None,
-                                "name": "ungroupedhost",
-                                "id": "ungroupedhost",
-                                "variables": None,
-                            },
-                            sensitive_values={},
-                            depends_on=[],
-                        ),
-                    ]
+        state_content = [
+            TerraformShow(
+                format_version="1.0",
+                terraform_version="1.3.6",
+                values=TerraformShowValues(
+                    outputs={},
+                    root_module=TerraformRootModule(
+                        resources=[
+                            TerraformRootModuleResource(
+                                address="ansible_group.childlessgroup",
+                                mode="managed",
+                                type="ansible_group",
+                                name="childlessgroup",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "children": None,
+                                    "name": "childlessgroup",
+                                    "id": "childlessgroup",
+                                    "variables": None,
+                                },
+                                sensitive_values={},
+                                depends_on=[],
+                            ),
+                            TerraformRootModuleResource(
+                                address="ansible_group.group",
+                                mode="managed",
+                                type="ansible_group",
+                                name="group",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "children": ["somechild", "anotherchild"],
+                                    "name": "somegroup",
+                                    "id": "somegroup",
+                                    "variables": {"group_hello": "from somegroup!", "group_variable": "11"},
+                                },
+                                sensitive_values={"children": [False, False], "variables": {}},
+                                depends_on=[],
+                            ),
+                            TerraformRootModuleResource(
+                                address="ansible_host.anotherhost",
+                                mode="managed",
+                                type="ansible_host",
+                                name="anotherhost",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "groups": ["somechild"],
+                                    "name": "anotherhost",
+                                    "id": "anotherhost",
+                                    "variables": {"host_hello": "from anotherhost!", "host_variable": "5"},
+                                },
+                                sensitive_values={"groups": [False], "variables": {}},
+                                depends_on=[],
+                            ),
+                            TerraformRootModuleResource(
+                                address="ansible_host.host",
+                                mode="managed",
+                                type="ansible_host",
+                                name="host",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "groups": ["somegroup", "anothergroup"],
+                                    "name": "somehost",
+                                    "id": "somehost",
+                                    "variables": {"host_hello": "from somehost!", "host_variable": "7"},
+                                },
+                                sensitive_values={"groups": [False, False], "variables": {}},
+                                depends_on=[],
+                            ),
+                            TerraformRootModuleResource(
+                                address="ansible_host.ungroupedhost",
+                                mode="managed",
+                                type="ansible_host",
+                                name="ungroupedhost",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "groups": None,
+                                    "name": "ungroupedhost",
+                                    "id": "ungroupedhost",
+                                    "variables": None,
+                                },
+                                sensitive_values={},
+                                depends_on=[],
+                            ),
+                        ],
+                        child_modules=[
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="module.example.ansible_host[0].duplicatehost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="childhost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "childhost",
+                                            "id": "childhost",
+                                            "variables": None,
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                 ),
-            ),
-        )
+            )
+        ]
 
-        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content)
+        inventory_plugin.inventory = InventoryData()
+        search_child_modules = True
+
+        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
 
         groups = inventory_plugin.inventory.groups
 
@@ -310,10 +340,11 @@ class TestCreateInventory:
         anotherhost = inventory_plugin.inventory.get_host("anotherhost")
         ungroupedhost = inventory_plugin.inventory.get_host("ungroupedhost")
 
-        assert len(hosts) == 3
+        assert len(hosts) == 4
         assert "somehost" in hosts
         assert "anotherhost" in hosts
         assert "ungroupedhost" in hosts
+        assert "childhost" in hosts
 
         assert somehost.vars["host_hello"] == "from somehost!"
         assert somehost.vars["host_variable"] == "7"
@@ -325,3 +356,81 @@ class TestCreateInventory:
         assert anotherhost.groups[0].name == "somegroup"
         assert anotherhost.groups[1].name == "somechild"
         assert len(ungroupedhost.groups) == 0
+
+        inventory_plugin.inventory = InventoryData()
+        search_child_modules = False
+
+        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
+
+        hosts = inventory_plugin.inventory.hosts
+
+        assert len(hosts) == 3
+        assert "childhost" not in hosts
+
+        # Test conflicts with multiple hosts with the same name, possible when selecting
+        # multiple Terraform projects into the inventory provider
+        # This should raise a TerraformWarning exception
+        state_content = [
+            TerraformShow(
+                format_version="1.0",
+                terraform_version="1.3.6",
+                values=TerraformShowValues(
+                    outputs={},
+                    root_module=TerraformRootModule(
+                        resources=[],
+                        child_modules=[
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="module.example.ansible_host[0].duplicatehost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="duplicatehost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "duplicatehost",
+                                            "id": "duplicatehost",
+                                            "variables": None,
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="module.other_example.ansible_host[0].duplicatehost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="duplicatehost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "duplicatehost",
+                                            "id": "duplicatehost",
+                                            "variables": None,
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ),
+            )
+        ]
+
+        inventory_plugin.inventory = InventoryData()
+        search_child_modules = True
+
+        with pytest.raises(Exception):
+            try:
+                inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, search_child_modules)
+            except TerraformWarning as e:
+                assert "already exists elsewhere" in str(e.value)
+                raise

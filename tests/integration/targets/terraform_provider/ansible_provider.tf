@@ -41,3 +41,15 @@ resource "ansible_group" "group" {
 resource "ansible_group" "childlessgroup" {
   name = "childlessgroup"
 }
+
+module "example" {
+  source = "./modules/example"
+
+  name = "childhost"
+}
+
+module "nested_module" {
+  source = "./modules/nested_module"
+
+  name = "nested_module"
+}
