@@ -29,7 +29,7 @@ class TestLookupModuleRun:
         mocker.patch("ansible_collections.cloud.terraform.plugins.lookup.tf_output.LookupModule.set_options")
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.lookup.tf_output.LookupModule.get_option"
-        ).side_effect = ["project_path", "state_file", "bin_path"]
+        ).side_effect = ["project_path", "state_file", "bin_path", "workspace"]
         mocker.patch("ansible_collections.cloud.terraform.plugins.lookup.tf_output.process.get_bin_path")
         mocker.patch("ansible_collections.cloud.terraform.plugins.lookup.tf_output.get_outputs").side_effect = [
             "my_output_value1",
@@ -45,7 +45,7 @@ class TestLookupModuleRun:
         mocker.patch("ansible_collections.cloud.terraform.plugins.lookup.tf_output.LookupModule.set_options")
         mocker.patch(
             "ansible_collections.cloud.terraform.plugins.lookup.tf_output.LookupModule.get_option"
-        ).side_effect = ["project_path", "state_file", "bin_path"]
+        ).side_effect = ["project_path", "state_file", "bin_path", "workspace"]
         mocker.patch("ansible_collections.cloud.terraform.plugins.lookup.tf_output.process.get_bin_path")
         mocker.patch("ansible_collections.cloud.terraform.plugins.lookup.tf_output.get_outputs").return_value = {
             "my_output1": {"sensitive": False, "type": "string", "value": "value1"},

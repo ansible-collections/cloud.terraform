@@ -1,0 +1,35 @@
+---
+- block:
+    - name: Create temporary directory to work in
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: .tf
+      register: tf_dir
+
+    - name: Copy terraform files
+      ansible.builtin.copy:
+        src: outputs.tf
+        dest: "{{ tf_dir.path }}"
+
+    - name: Apply terraform projects
+      cloud.terraform.terraform:
+        force_init: true
+        workspace: '{{ item }}'
+        project_path: '{{ tf_dir.path }}'
+        variables:
+          workspace: "{{ item }}"
+      with_items: "{{ test_workspaces }}"
+
+    - name: Ensure module returned values as expected
+      ansible.builtin.assert:
+        that:
+          - item == tf_outputs.my_workspace.value
+      with_items: "{{ test_workspaces }}"
+      vars:
+        tf_outputs: "{{ lookup('cloud.terraform.tf_output', project_path=tf_dir.path, workspace=item) }}"
+
+  always:
+    - name: Delete temporary directory
+      ansible.builtin.file:
+        state: absent
+        path: "{{ tf_dir.path }}"
