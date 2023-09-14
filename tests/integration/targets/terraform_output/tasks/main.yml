@@ -118,7 +118,7 @@
     - name: Ensure module returned values as expected
       ansible.builtin.assert:
         that:
-          -  terraform_output.results | map(attribute='outputs.my_workspace.value') | list == test_workspaces
+          - terraform_output.results | map(attribute='outputs.my_workspace.value') | list == test_workspaces
 
   always:
     - name: Delete temporary directory
