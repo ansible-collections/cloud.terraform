@@ -200,7 +200,7 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
                     self._add_host(inventory, resource)
             if search_child_modules:
                 for module in state.values.root_module.child_modules:
-                    for resource in module.resources:
+                    for resource in module.get_resources():
                         if resource.type == "ansible_group":
                             self._add_group(inventory, resource)
                         elif resource.type == "ansible_host":

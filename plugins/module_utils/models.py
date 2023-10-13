@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Any, Dict, List, Union, Optional
 from dataclasses import dataclass
 
@@ -82,10 +83,17 @@ class TerraformAnsibleProvider:
 @dataclass
 class TerraformChildModule:
     resources: List[TerraformModuleResource]
+    child_modules: List[TerraformChildModule]
+
+    def get_resources(self):
+        return self.resources + sum([child.get_resources() for child in self.child_modules], [])
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformChildModule":
-        return cls(resources=[TerraformChildModuleResource.from_json(r) for r in json.get("resources", [])])
+        return cls(
+            resources=[TerraformChildModuleResource.from_json(r) for r in json.get("resources", [])],
+            child_modules=[TerraformChildModule.from_json(r) for r in json.get("child_modules", [])],
+        )
 
 
 @dataclass
