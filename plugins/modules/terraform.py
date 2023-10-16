@@ -63,10 +63,11 @@ options:
     version_added: 1.0.0
   plan_file:
     description:
-      - The path to an existing Terraform plan file to apply. If this is not
-        specified, Ansible will build a new TF plan and execute it.
-      - Note that this option is required if 'state' has the 'planned' value.
-        In this case, the plan file is only generated, but not applied.
+      - The path to a Terraform plan file to apply or generate.
+      - When 'check_mode' is set to I(True) or I(state=planned), a Terraform plan file with be generated and
+        saved into the specified location.
+      - When 'check_mode' is set to I(False) and I(state) is set to either C(present) or C(absent),
+        The existing Terraform plan file will be applied.
     type: path
     version_added: 1.0.0
   state_file:
@@ -288,7 +289,7 @@ command:
 import dataclasses
 import os
 import tempfile
-from typing import List, Tuple
+from typing import List
 
 from ansible.module_utils.six import integer_types
 from ansible.module_utils.basic import AnsibleModule
@@ -510,6 +511,8 @@ def main() -> None:
                 plugin_paths or [],
             )
 
+    out = None
+    err = None
     try:
         provider_schemas = terraform.providers_schema()
         try:
@@ -554,25 +557,27 @@ def main() -> None:
                 variables_args.extend(["-var-file", f])
 
         # only use an existing plan file if we're not in the deprecated "planned" mode
-        if plan_file and state != "planned":
+        # or if check_mode is set to False
+        if plan_file and not computed_check_mode:
             if not any([os.path.isfile(project_path + "/" + plan_file), os.path.isfile(plan_file)]):
                 raise TerraformError('Could not find plan_file "{0}", check the path and try again.'.format(plan_file))
 
             plan_file_needs_application = True
             plan_file_to_apply = plan_file
         else:
-            f, new_plan_file = tempfile.mkstemp(suffix=".tfplan")
+            plan_file_to_apply = plan_file
+            if not plan_file:
+                f, new_plan_file = tempfile.mkstemp(suffix=".tfplan")
+                module.add_cleanup_file(new_plan_file)
+                plan_file_to_apply = new_plan_file
+
             plan_result_changed, plan_result_any_destroyed, plan_stdout, plan_stderr = terraform.plan(
-                target_plan_file_path=new_plan_file,
+                target_plan_file_path=plan_file_to_apply,
                 targets=module.params.get("targets"),
                 destroy=state == "absent",
                 state_args=get_state_args(state_file),
                 variables_args=variables_args,
             )
-
-            # if we have an explicit plan file specified, copy over the temporary one
-            if plan_file:
-                module.preserved_copy(new_plan_file, project_path + "/" + plan_file)
 
             if computed_state == "present" and plan_result_any_destroyed and check_destroy:
                 raise TerraformError(
@@ -581,8 +586,6 @@ def main() -> None:
                 )
 
             plan_file_needs_application = plan_result_changed
-            plan_file_to_apply = new_plan_file
-            module.add_cleanup_file(new_plan_file)
             out = plan_stdout
             err = plan_stderr
 

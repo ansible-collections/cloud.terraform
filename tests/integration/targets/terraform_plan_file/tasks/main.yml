@@ -1,0 +1,57 @@
+- name: Testing Terraform plan file custom location
+  block:
+    - name: Create temporary directory for terraform project
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: ".terraform_plan_file"
+      register: tmpdir
+
+    - name: Copy terraform configuration into project path
+      ansible.builtin.copy:
+        src: "main.tf"
+        dest: "{{ tmpdir.path }}/main.tf"
+
+    - name: Create plan file using check_mode=true
+      cloud.terraform.terraform:
+        force_init: true
+        project_path: "{{ tmpdir.path }}"
+        plan_file: "{{ tmpdir.path }}/test.tfplan"
+        variables:
+          new_group: terraform
+      check_mode: true
+
+    - name: Ensure no resources were created
+      cloud.terraform.terraform_output:
+        project_path: "{{ tmpdir.path }}"
+      register: output
+      failed_when: output.outputs != {}
+
+    - name: Ensure plan file has been created
+      ansible.builtin.stat:
+        path: "{{ tmpdir.path }}/test.tfplan"
+      register: tfplan
+      failed_when: not tfplan.stat.exists
+
+    - name: Ensure state file has not been created
+      ansible.builtin.stat:
+        path: "{{ tmpdir.path }}/terraform.tfstate"
+      register: tfstate
+      failed_when: tfstate.stat.exists
+
+    - name: Apply Terraform generated plan file
+      cloud.terraform.terraform:
+        force_init: true
+        project_path: "{{ tmpdir.path }}"
+        plan_file: "{{ tmpdir.path }}/test.tfplan"
+
+    - name: Ensure plan file has been applied
+      cloud.terraform.terraform_output:
+        project_path: "{{ tmpdir.path }}"
+      register: output
+      failed_when: output.outputs.host_groups.value != ["ansible", "terraform"]
+
+  always:
+    - name: Delete temporary directory
+      ansible.builtin.file:
+        state: absent
+        path: "{{ tmpdir.path }}"
