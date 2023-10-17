@@ -84,7 +84,7 @@ class TerraformChildModule:
     resources: List[TerraformModuleResource]
     child_modules: List["TerraformChildModule"]
 
-    def get_resources(self):
+    def get_resources(self) -> List[TerraformModuleResource]:
         return self.resources + sum([child.get_resources() for child in self.child_modules], [])
 
     @classmethod
@@ -100,8 +100,8 @@ class TerraformRootModule:
     resources: List[TerraformModuleResource]
     child_modules: List[TerraformChildModule]
 
-    def get_resources(self, search_child_modules: bool):
-        child_resources = []
+    def get_resources(self, search_child_modules: bool) -> List[TerraformModuleResource]:
+        child_resources: List[TerraformModuleResource] = []
 
         if search_child_modules:
             child_resources = sum([child.get_resources() for child in self.child_modules], [])
