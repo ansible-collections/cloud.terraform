@@ -82,16 +82,31 @@ class TerraformAnsibleProvider:
 @dataclass
 class TerraformChildModule:
     resources: List[TerraformModuleResource]
+    child_modules: List["TerraformChildModule"]
+
+    def get_resources(self):
+        return self.resources + sum([child.get_resources() for child in self.child_modules], [])
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformChildModule":
-        return cls(resources=[TerraformChildModuleResource.from_json(r) for r in json.get("resources", [])])
+        return cls(
+            resources=[TerraformChildModuleResource.from_json(r) for r in json.get("resources", [])],
+            child_modules=[TerraformChildModule.from_json(r) for r in json.get("child_modules", [])],
+        )
 
 
 @dataclass
 class TerraformRootModule:
     resources: List[TerraformModuleResource]
     child_modules: List[TerraformChildModule]
+
+    def get_resources(self, search_child_modules: bool):
+        child_resources = []
+
+        if search_child_modules:
+            child_resources = sum([child.get_resources() for child in self.child_modules], [])
+
+        return self.resources + child_resources
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformRootModule":
