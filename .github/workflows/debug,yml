@@ -1,0 +1,20 @@
+name: Debugging
+on:
+  pull_request:
+
+jobs:
+  safer:
+    name: Debugging safe to test job
+    runs-on: ubuntu-20.04
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
+      API_URL: /repos/${{ github.repository }}/issues/96
+    steps:
+      - name: List Event number labels
+        run: |
+          gh api -H "Accept: application/vnd.github.v3+json" $API_URL --jq .labels | grep 'safe to test'
+        shell: bash
+      - name: Fail if safe to test label not added
+        run: >-
+          gh api -H "Accept: application/vnd.github.v3+json" $API_URL --jq .labels | grep 'safe to test'
+        shell: bash
