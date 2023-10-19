@@ -1,6 +1,17 @@
 name: CI
 on:
   pull_request:
+    types:
+      - opened
+      - reopened
+      - labeled
+      - unlabeled
+      - synchronize
+    branches:
+      - main
+      - stable-*
+    tags:
+      - '*'
 
 jobs:
   changelog:
