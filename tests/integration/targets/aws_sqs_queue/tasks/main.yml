@@ -1,0 +1,156 @@
+---
+# Copyright (c) Ansible Project
+# GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
+- environment:
+    AWS_ACCESS_KEY_ID: "{{ aws_access_key | default(omit) }}"
+    AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key | default(omit) }}"
+    AWS_SESSION_TOKEN: "{{ security_token | default(omit) }}"
+    AWS_REGION: "{{ aws_region | default(omit) }}"
+
+  block:
+    - set_fact:
+        test_basedir: "{{ test_basedir | default(output_dir) }}"
+        resource_id: "{{ resource_prefix }}-sqs"
+    - set_fact:
+        test_role_name: "{{ resource_id }}-role"
+
+    - name: Copy terraform files to workspace
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ test_basedir }}/{{ item }}"
+      loop:
+        - cloud.tf
+
+    # iam_role_info - amazon.aws > 6.5.0 needed, tags need to be returned
+    - &verification
+      block:
+        - name: Fetch IAM role info
+          amazon.aws.iam_role_info:
+            name: "{{ test_role_name }}"
+          register: role_info
+
+        - name: Assert that there are {{ number_of_roles }} roles with role_name={{ test_role_name }}'
+          assert:
+            that:
+              - (role_info.iam_roles | length) == number_of_roles
+        # TODO: uncomment when iam_role_info does return tags
+        # - name: Assert that role {{ test_role_name }} is present and the info matches
+        #  assert:
+        #    that:
+        #      - role_info.iam_roles[0].tags.Name == "{{ resource_id }}"
+        #  when: number_of_roles == 1
+      vars:
+        number_of_roles: 0
+
+    - name: Terraform in present check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: present
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: true
+
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is changed
+
+    - <<: *verification
+      vars:
+        number_of_roles: 0
+
+    - name: Terraform in present non-check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: present
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: false
+
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is changed
+
+    - <<: *verification
+      vars:
+        number_of_roles: 1
+
+    - name: Terraform in present non-check mode (idempotency)
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: present
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: false
+
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is not changed
+
+    - <<: *verification
+      vars:
+        number_of_roles: 1
+
+    - name: Terraform in absent check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: absent
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: true
+
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is changed
+
+    - <<: *verification
+      vars:
+        number_of_roles: 1
+
+    - name: Terraform in absent non-check mode
+      cloud.terraform.terraform:
+        project_path: "{{ test_basedir }}"
+        state: absent
+        force_init: true
+        variables:
+          cloud_terraform_integration_id: "{{ resource_id }}"
+      register: terraform_result
+      check_mode: false
+
+    - assert:
+        that:
+          - terraform_result is not failed
+          - terraform_result is changed
+
+    - <<: *verification
+      vars:
+        number_of_roles: 0
+
+  # Clean up all integration test resources
+  always:
+    - name: Fetch IAM role info
+      amazon.aws.iam_role_info:
+        name: "{{ test_role_name }}"
+      register: role_info
+      ignore_errors: true
+
+    - name: Delete IAM role
+      amazon.aws.iam_role:
+        name: "{{ item.role_name }}"
+        state: absent
+      loop: "{{ role_info.iam_roles }}"
+      ignore_errors: true
+
+    # TODO remove SQS, when amazon.aws has module for SQS
