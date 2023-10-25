@@ -14,6 +14,16 @@ variable "cloud_terraform_integration_id" {
   type = string
 }
 
+output "aws_sqs_queue_tags" {
+  description = "AWS SQS queue tags"
+  value       = resource.aws_sqs_queue.this.tags
+}
+
+output "aws_sqs_role_tags" {
+  description = "AWS IAM role tags"
+  value       = resource.aws_iam_role.this.tags
+}
+
 resource "aws_sqs_queue" "this" {
   name = "${var.cloud_terraform_integration_id}-queue"
   tags = {

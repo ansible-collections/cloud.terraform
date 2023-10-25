@@ -13,6 +13,7 @@
         test_basedir: "{{ test_basedir | default(output_dir) }}"
         resource_id: "{{ resource_prefix }}-sqs"
     - set_fact:
+        test_queue_name: "{{ resource_id }}-queue"
         test_role_name: "{{ resource_id }}-role"
 
     - name: Copy terraform files to workspace
@@ -25,21 +26,21 @@
     # iam_role_info - amazon.aws > 6.5.0 needed, tags need to be returned
     - &verification
       block:
-        - name: Fetch IAM role info
-          amazon.aws.iam_role_info:
-            name: "{{ test_role_name }}"
-          register: role_info
-
-        - name: Assert that there are {{ number_of_roles }} roles with role_name={{ test_role_name }}'
+        - name: Get terraform plan outputs
+          cloud.terraform.terraform_output:
+            project_path: "{{ test_basedir }}"
+          register: tf_result
+        - name: Assert returned output is empty
           assert:
             that:
-              - (role_info.iam_roles | length) == number_of_roles
-        # TODO: uncomment when iam_role_info does return tags
-        # - name: Assert that role {{ test_role_name }} is present and the info matches
-        #  assert:
-        #    that:
-        #      - role_info.iam_roles[0].tags.Name == "{{ resource_id }}"
-        #  when: number_of_roles == 1
+              - tf_result.outputs == {}
+          when: number_of_roles == 0
+        - name: Assert returned output tags are set
+          assert:
+            that:
+              - tf_result.outputs.aws_sqs_queue_tags.value.Name == resource_id
+              - tf_result.outputs.aws_sqs_role_tags.value.Name == resource_id
+          when: number_of_roles == 1
       vars:
         number_of_roles: 0
 
@@ -140,17 +141,14 @@
 
   # Clean up all integration test resources
   always:
-    - name: Fetch IAM role info
-      amazon.aws.iam_role_info:
-        name: "{{ test_role_name }}"
-      register: role_info
-      ignore_errors: true
-
-    - name: Delete IAM role
-      amazon.aws.iam_role:
-        name: "{{ item.role_name }}"
+    - name: Delete SQS queue
+      community.aws.sqs_queue:
+        name: "{{ test_queue_name }}"
         state: absent
-      loop: "{{ role_info.iam_roles }}"
-      ignore_errors: true
 
-    # TODO remove SQS, when amazon.aws has module for SQS
+    # TODO uncomment after amazon.aws 7.0.0 is released
+    # - name: Delete IAM role
+    #  amazon.aws.iam_role:
+    #    name: "{{ test_role_name }}"
+    #    state: absent
+    #  ignore_errors: true
