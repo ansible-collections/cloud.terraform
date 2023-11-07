@@ -46,6 +46,11 @@ options:
       - The C(TF_DATA_DIR) environment variable is respected.
     type: path
     version_added: 1.0.0
+  workspace:
+    description:
+      - The terraform workspace to work with.
+    type: str
+    version_added: 1.2.0
 requirements: [ "terraform" ]
 author: "Polona Mihalič (@PolonaM)"
 """
@@ -75,6 +80,11 @@ EXAMPLES = """
     project_path: project_dir
     name: individual_output
     format: raw
+
+- name: List outputs from workspace 'dev' in project_dir
+  cloud.terraform.terraform_output:
+    project_path: project_dir
+    workspace: dev
 """
 
 # language=yaml
@@ -124,6 +134,7 @@ def main() -> None:
             format=dict(type="str", choices=["json", "raw"], default="json"),
             binary_path=dict(type="path"),
             state_file=dict(type="path"),
+            workspace=dict(type="str"),
         ),
         required_if=[("format", "raw", ("name",))],
     )
@@ -133,6 +144,7 @@ def main() -> None:
     state_file: Optional[str] = module.params.get("state_file")
     name: Optional[str] = module.params.get("name")
     output_format: str = module.params.get("format")
+    workspace: Optional[str] = module.params.get("workspace")
 
     if bin_path is not None:
         terraform_binary = bin_path
@@ -148,6 +160,7 @@ def main() -> None:
             state_file=state_file,
             name=name,
             output_format=output_format,
+            workspace=workspace,
         )
     except TerraformWarning as e:
         module.warn(e.message)

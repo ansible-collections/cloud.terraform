@@ -29,10 +29,15 @@ def get_outputs(
     state_file: Optional[str],
     output_format: str,
     name: Optional[str] = None,
+    workspace: Optional[str] = None,
 ) -> Union[TJsonObject, TJsonBareValue]:
     outputs_command = [terraform_binary, "output", "-no-color", "-{0}".format(output_format)]
     outputs_command += get_state_args(state_file) + ([name] if name else [])
-    rc, outputs_text, outputs_err = run_command_fp(outputs_command, cwd=project_path)
+    if workspace:
+        tf_env = {"TF_WORKSPACE": workspace}
+        rc, outputs_text, outputs_err = run_command_fp(outputs_command, cwd=project_path, environ_update=tf_env)
+    else:
+        rc, outputs_text, outputs_err = run_command_fp(outputs_command, cwd=project_path)
     if rc == 1:
         message = (
             "Could not get Terraform outputs. "

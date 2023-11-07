@@ -629,6 +629,7 @@ def main() -> None:
             project_path=project_path,
             state_file=state_file,
             output_format="json",
+            workspace=workspace,
         )
 
         # Restore the Terraform workspace found when running the module

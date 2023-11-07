@@ -84,3 +84,44 @@
       - terraform_output is not changed
       - terraform_output.outputs is not defined
       - terraform_output.value == "file generated"
+
+# terraform lookup using workspace
+- name: Test cloud.terraform.terraform_output using workspace
+  block:
+    - name: Create temporary directory to work in
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: .tf
+      register: tf_dir
+
+    - name: Copy terraform files
+      ansible.builtin.copy:
+        src: outputs_workspace.tf
+        dest: "{{ tf_dir.path }}"
+
+    - name: Apply terraform projects
+      cloud.terraform.terraform:
+        force_init: true
+        workspace: '{{ item }}'
+        project_path: '{{ tf_dir.path }}'
+        variables:
+          workspace: "{{ item }}"
+      with_items: "{{ test_workspaces }}"
+
+    - name: Terraform checkout - specified workspace and project_path
+      cloud.terraform.terraform_output:
+        project_path: '{{ tf_dir.path }}'
+        workspace: '{{ item }}'
+      register: terraform_output
+      with_items: "{{ test_workspaces }}"
+
+    - name: Ensure module returned values as expected
+      ansible.builtin.assert:
+        that:
+          - terraform_output.results | map(attribute='outputs.my_workspace.value') | list == test_workspaces
+
+  always:
+    - name: Delete temporary directory
+      ansible.builtin.file:
+        state: absent
+        path: "{{ tf_dir.path }}"
