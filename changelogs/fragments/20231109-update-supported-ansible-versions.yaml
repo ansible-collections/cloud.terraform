@@ -3,4 +3,3 @@ breaking_changes:
   - Remove support for ansible-core < 2.14 (https://github.com/ansible-collections/cloud.terraform/pull/89).
 trivial:
   - Update CI workflows and linter versions, fix related linting errors (https://github.com/ansible-collections/cloud.terraform/pull/89).
-
