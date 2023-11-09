@@ -118,12 +118,8 @@ value:
 from typing import Optional
 
 from ansible.module_utils.basic import AnsibleModule
-
-from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
-from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
-    get_outputs,
-    validate_bin_path,
-)
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
+from ansible_collections.cloud.terraform.plugins.module_utils.utils import get_outputs, validate_bin_path
 
 
 def main() -> None:

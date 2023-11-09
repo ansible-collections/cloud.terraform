@@ -1,4 +1,4 @@
-from typing import Union, Dict, List, Callable, Tuple
+from typing import Callable, Dict, List, Tuple, Union
 
 AnyJsonType = Union[Dict[str, "AnyJsonType"], List["AnyJsonType"], str, int, float, bool, None]
 TJsonObject = Dict[str, AnyJsonType]

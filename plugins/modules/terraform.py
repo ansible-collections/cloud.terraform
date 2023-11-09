@@ -291,27 +291,23 @@ import os
 import tempfile
 from typing import List
 
-from ansible.module_utils.six import integer_types
 from ansible.module_utils.basic import AnsibleModule
-
-from ansible_collections.cloud.terraform.plugins.module_utils.types import (
-    AnyJsonType,
-    TJsonBareValue,
-)
+from ansible.module_utils.six import integer_types
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
-    TerraformWorkspaceContext,
-    TerraformShow,
-    TerraformProviderSchemaCollection,
     TerraformModuleResource,
+    TerraformProviderSchemaCollection,
+    TerraformShow,
+    TerraformWorkspaceContext,
 )
-from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import (
     TerraformCommands,
     WorkspaceCommand,
 )
+from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType, TJsonBareValue
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
-    get_state_args,
     get_outputs,
+    get_state_args,
     preflight_validation,
 )
 

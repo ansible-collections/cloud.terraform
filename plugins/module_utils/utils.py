@@ -1,17 +1,16 @@
-import os
 import json
+import os
 import shutil
 from typing import List, Optional, Union, cast
 
 from ansible.module_utils.compat.version import LooseVersion
-
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
+from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.types import (
+    AnsibleRunCommandType,
     TJsonBareValue,
     TJsonObject,
-    AnsibleRunCommandType,
 )
-from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
-from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 
 
 def get_state_args(state_file: Optional[str]) -> List[str]:

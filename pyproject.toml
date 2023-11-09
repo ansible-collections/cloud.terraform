@@ -1,8 +1,12 @@
 [tool.black]
 line-length = 120
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py39", "py310", "py311", "py312"]
 include = "\\.pyi?$"
 workers = 4
+
+[tool.isort]
+profile = "black"
+line_length = 120
 
 [tool.mypy]
 strict = true

@@ -1,4 +1,5 @@
-name: CI
+name: Integration tests
+
 on:
   pull_request_target:
     types:
@@ -10,37 +11,22 @@ on:
     branches:
       - main
       - stable-*
+
 jobs:
   safe-to-test:
     if: ${{ github.event.label.name == 'safe to test' }} || ${{ github.event.action != 'labeled' }}
     uses: ansible-network/github_actions/.github/workflows/safe-to-test.yml@main
-  integration:
+
+  integration-tests:
     needs:
       - safe-to-test
     runs-on: ubuntu-latest
-    name: Integration (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }}+tf${{ matrix.terraform }})
     env:
       source: "./source"
       aws_dir: "./amazon_aws"
-    strategy:
-      fail-fast: false
-      matrix:
-        ansible:
-          - stable-2.13
-          - stable-2.14
-        python:
-          - '3.8'
-          - '3.9'
-          - '3.10'
-        terraform:
-          - "1.3.4"
-        exclude:
-          # ansi2.14 requires py>=3.9
-          - ansible: stable-2.14
-            python: '3.8'
     steps:
       - name: Checkout collection
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: ${{ env.source }}
           ref: ${{ github.event.pull_request.head.sha }}
@@ -56,20 +42,20 @@ jobs:
         uses: ansible-network/github_actions/.github/actions/checkout_dependency@main
         with:
           repository: ansible-collections/amazon.aws
-          path: ${{ env.amazon_aws }}
+          path: ${{ env.aws_dir }}
           ref: main
 
       - name: install amazon.aws collection
         uses: ansible-network/github_actions/.github/actions/build_install_collection@main
         with:
           install_python_dependencies: true
-          source_path: ${{ env.amazon_aws }}
+          source_path: ${{ env.aws_dir }}
 
       - name: Download terraform binary
         run: >-
           curl
           -o terraform.zip
-          https://releases.hashicorp.com/terraform/${{ matrix.terraform }}/terraform_${{ matrix.terraform }}_linux_amd64.zip
+          https://releases.hashicorp.com/terraform/1.6.3/terraform_1.6.3_linux_amd64.zip
         shell: bash
 
       - name: Install terraform binary
@@ -98,5 +84,5 @@ jobs:
         uses: ansible-network/github_actions/.github/actions/ansible_test_integration@main
         with:
           collection_path: ${{ steps.install-collection.outputs.collection_path }}
-          python_version: ${{ matrix.python }}
-          ansible_version: ${{ matrix.ansible }}
+          python_version: "3.12"
+          ansible_version: stable-2.16
