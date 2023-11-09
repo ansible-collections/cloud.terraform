@@ -85,4 +85,4 @@ jobs:
         with:
           collection_path: ${{ steps.install-collection.outputs.collection_path }}
           python_version: "3.12"
-          ansible_version: stable-2.16
+          ansible_version: milestone
