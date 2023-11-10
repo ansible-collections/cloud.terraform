@@ -31,25 +31,19 @@ jobs:
           path: ${{ env.source }}
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Pre install collections dependencies first so the collection install does not
+        run: >-
+          ansible-galaxy collection install
+          --pre "-r${{ env.source }}/tests/integration/requirements.yml"
+          -p /home/runner/collections/
+        shell: bash
+
       - name: Build and install collection
         id: install-collection
         uses: ansible-network/github_actions/.github/actions/build_install_collection@main
         with:
           install_python_dependencies: true
           source_path: ${{ env.source }}
-
-      - name: checkout ansible-collections/amazon.aws
-        uses: ansible-network/github_actions/.github/actions/checkout_dependency@main
-        with:
-          repository: ansible-collections/amazon.aws
-          path: ${{ env.aws_dir }}
-          ref: main
-
-      - name: install amazon.aws collection
-        uses: ansible-network/github_actions/.github/actions/build_install_collection@main
-        with:
-          install_python_dependencies: true
-          source_path: ${{ env.aws_dir }}
 
       - name: Download terraform binary
         run: >-
