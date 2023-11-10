@@ -541,21 +541,21 @@ class TestTerraformAttributeSpec:
                         "description": "Git password",
                         "description_kind": "plain",
                         "required": True,
-                        "sensitive": True
+                        "sensitive": True,
                     },
                     "username": {
                         "type": "string",
                         "description": "Git username",
                         "description_kind": "plain",
-                        "required": True
-                    }
+                        "required": True,
+                    },
                 },
-                "nesting_mode": "single"
+                "nesting_mode": "single",
             },
             "description": "Basic authentication details for Git consisting of `username` and `password`",
             "description_kind": "plain",
             "optional": True,
-            "sensitive": True
+            "sensitive": True,
         }
 
         expected_terraform_attribute_spec = TerraformNestedAttributeSpec(

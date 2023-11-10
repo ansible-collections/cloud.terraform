@@ -171,7 +171,7 @@ class TerraformNestedAttributeSpec(TerraformAttributeSpec):
         return cls(
             nested_attributes={
                 sub_attribute_name: TerraformAttributeSpec.from_json(sub_attribute_item)
-                for sub_attribute_name, sub_attribute_item in json["nested_type"]["attributes"].items()
+                for sub_attribute_name, sub_attribute_item in json.get("nested_type", {}).get("attributes", {}).items()
             },
             description_kind=json["description_kind"],
             description=json.get("description"),
