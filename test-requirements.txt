@@ -3,7 +3,6 @@ awscli
 google-auth
 google-cloud
 pytest
-pytest-ansible
 pytest-forked
 pytest-mock
 pytest-xdist
