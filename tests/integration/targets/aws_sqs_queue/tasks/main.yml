@@ -146,9 +146,8 @@
         name: "{{ test_queue_name }}"
         state: absent
 
-    # TODO uncomment after amazon.aws 7.0.0 is released
-    # - name: Delete IAM role
-    #  amazon.aws.iam_role:
-    #    name: "{{ test_role_name }}"
-    #    state: absent
-    #  ignore_errors: true
+    - name: Delete IAM role
+      amazon.aws.iam_role:
+        name: "{{ test_role_name }}"
+        state: absent
+        ignore_errors: true
