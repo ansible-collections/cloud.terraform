@@ -13,17 +13,31 @@ class TestTerraformModuleResource:
             "provider_name": "registry.terraform.io/hashicorp/aws",
             "schema_version": 0,
             "values": {
-                "assume_role_policy": '{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Sid":""}],"Version":"2012-10-17"}',
+                "assume_role_policy": (
+                    '{"Statement":[{"Action":"sts:AssumeRole","Effect":"Allow",'
+                    '"Principal":{"Service":"lambda.amazonaws.com"},"Sid":""}],"Version":"2012-10-17"}'
+                ),
                 "description": None,
                 "force_detach_policies": False,
                 "max_session_duration": 3600,
                 "name": "ansible-test-59219564-jcpc-sqs-role",
                 "path": "/",
                 "permissions_boundary": None,
-                "tags": {"Name": "ansible-test-59219564-jcpc-sqs", "cloud_terraform_integration": "true"},
-                "tags_all": {"Name": "ansible-test-59219564-jcpc-sqs", "cloud_terraform_integration": "true"},
+                "tags": {
+                    "Name": "ansible-test-59219564-jcpc-sqs",
+                    "cloud_terraform_integration": "true"
+                },
+                "tags_all": {
+                    "Name": "ansible-test-59219564-jcpc-sqs",
+                    "cloud_terraform_integration": "true"
+                },
             },
-            "sensitive_values": {"inline_policy": [], "managed_policy_arns": [], "tags": {}, "tags_all": {}},
+            "sensitive_values": {
+                "inline_policy": [],
+                "managed_policy_arns": [],
+                "tags": {},
+                "tags_all": {}
+            },
         }
 
         tfm = TerraformModuleResource.from_json(json_data)
