@@ -25,18 +25,18 @@ class TestTerraformModuleResource:
                 "permissions_boundary": None,
                 "tags": {
                     "Name": "ansible-test-59219564-jcpc-sqs",
-                    "cloud_terraform_integration": "true"
+                    "cloud_terraform_integration": "true",
                 },
                 "tags_all": {
                     "Name": "ansible-test-59219564-jcpc-sqs",
-                    "cloud_terraform_integration": "true"
+                    "cloud_terraform_integration": "true",
                 },
             },
             "sensitive_values": {
                 "inline_policy": [],
                 "managed_policy_arns": [],
                 "tags": {},
-                "tags_all": {}
+                "tags_all": {},
             },
         }
 
