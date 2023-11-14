@@ -1,0 +1,49 @@
+name: Unit tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - main
+      - stable-*
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    name: Unit tests (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible:
+          - stable-2.14
+          - stable-2.15
+          - stable-2.16
+          - milestone
+          - devel
+        python:
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+        exclude:
+          - ansible: stable-2.14
+            python: '3.12'
+          - ansible: stable-2.15
+            python: '3.12'
+          - ansible: stable-2.16
+            python: '3.9'
+          - ansible: milestone
+            python: '3.9'
+          - ansible: devel
+            python: '3.9'
+    continue-on-error: ${{ matrix.ansible == 'devel' }}
+    steps:
+      - name: Perform unit testing
+        uses: ansible-community/ansible-test-gh-action@release/v1
+        with:
+          ansible-core-version: ${{ matrix.ansible }}
+          testing-type: units
+          target-python-version: ${{ matrix.python }}

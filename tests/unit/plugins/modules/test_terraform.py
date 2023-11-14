@@ -5,22 +5,22 @@
 
 import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
-    TerraformRootModule,
-    TerraformOutput,
-    TerraformRootModuleResource,
-    TerraformResourceSchema,
-    TerraformShow,
-    TerraformShowValues,
-    TerraformProviderSchema,
-    TerraformProviderSchemaCollection,
     TerraformAttributeSpec,
     TerraformBlockSensitive,
+    TerraformOutput,
+    TerraformProviderSchema,
+    TerraformProviderSchemaCollection,
+    TerraformResourceSchema,
+    TerraformRootModule,
+    TerraformRootModuleResource,
+    TerraformShow,
+    TerraformShowValues,
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
-    is_attribute_sensitive_in_providers_schema,
-    is_attribute_in_sensitive_values,
-    filter_resource_attributes,
     filter_outputs,
+    filter_resource_attributes,
+    is_attribute_in_sensitive_values,
+    is_attribute_sensitive_in_providers_schema,
     sanitize_state,
 )
 

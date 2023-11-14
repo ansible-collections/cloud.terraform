@@ -1,6 +1,6 @@
 # Terraform Collection for Ansible Automation Platform
 
-The `cloud.terraform` automates the management and provisioning of infrastructure as code using Terraform CLI tool within Ansible playbooks and Execution Environment runtimes. 
+The `cloud.terraform` automates the management and provisioning of infrastructure as code using Terraform CLI tool within Ansible playbooks and Execution Environment runtimes.
 
 It is intended to support similar automation capabilities consistent with other cloud provisioning tool integrations for Ansible such as AWS Cloudformation, Azure Resource Manager and Helm with the added challenge of effectively managing a state file.
 
@@ -22,7 +22,7 @@ This collection is not intended to manage the installation, configuration and op
 
 ## Ansible version compatibility
 
-This collection requires Ansible Core 2.13 or later and thus Python 3.8 or later.
+This collection requires Ansible Core 2.14 or later and thus Python 3.9 or later.
 
 ## Included content
 <!--start collection content-->
@@ -132,5 +132,3 @@ ansible-doc --list | grep cloud.terraform | cut -d " " -f 1 | xargs -I {} antsib
 GNU General Public License v3.0 or later.
 
 See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/main/LICENSE) to see the full text.
-
-

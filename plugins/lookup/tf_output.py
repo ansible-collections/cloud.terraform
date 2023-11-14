@@ -77,10 +77,10 @@ _value:
 
 import os
 import subprocess
-from typing import Optional, List, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
 
-from ansible.plugins.lookup import LookupBase
 from ansible.module_utils.common import process
+from ansible.plugins.lookup import LookupBase
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import get_outputs
 

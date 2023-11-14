@@ -1,3 +1,4 @@
 ---
 bugfixes:
-  - terraform - fix issue with ``plan_file`` option specified with ``check_mode=true`` and ``state`` set to one of ``present`` and ``absent``, the module is enable now to generate a Terraform file to the specified location (https://github.com/ansible-collections/cloud.terraform/issues/87).
+  - terraform - fix issue with ``plan_file`` option specified with ``check_mode=true`` and ``state`` set to one of ``present`` and ``absent``,
+    the module is enable now to generate a Terraform file to the specified location (https://github.com/ansible-collections/cloud.terraform/issues/87).

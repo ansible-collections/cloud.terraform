@@ -6,15 +6,15 @@
 
 import pytest
 from ansible.module_utils import basic
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.modules import terraform_output
 from ansible_collections.cloud.terraform.tests.unit.plugins.modules.utils import (
-    set_module_args,
-    exit_json,
-    fail_json,
     AnsibleExitJson,
     AnsibleFailJson,
+    exit_json,
+    fail_json,
+    set_module_args,
 )
-from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
 
 
 class TestTerraformOutputMain:

@@ -1,3 +1,4 @@
 ---
 bugfixes:
-  - Accept Terraform executables present on PATH passed in as binary_path without specifying their absolute path. (https://github.com/ansible-collections/cloud.terraform/issues/49)
+  - Accept Terraform executables present on PATH passed in as binary_path without specifying their absolute path.
+    (https://github.com/ansible-collections/cloud.terraform/issues/49)
