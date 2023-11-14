@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Union, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType, TJsonObject
 
