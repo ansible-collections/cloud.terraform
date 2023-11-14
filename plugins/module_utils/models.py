@@ -82,7 +82,7 @@ class TerraformAnsibleProvider:
 @dataclass
 class TerraformChildModule:
     resources: List[TerraformModuleResource]
-    child_modules: List["TerraformChildModule"]
+    child_modules: List["TerraformChildModule"] = field(default_factory=lambda: [])
 
     def get_resources(self) -> List[TerraformModuleResource]:
         return self.resources + sum([child.get_resources() for child in self.child_modules], [])
