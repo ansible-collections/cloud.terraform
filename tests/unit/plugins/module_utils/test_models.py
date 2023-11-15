@@ -1,6 +1,4 @@
-from ansible_collections.cloud.terraform.plugins.module_utils.models import (
-    TerraformModuleResource,
-)
+from ansible_collections.cloud.terraform.plugins.module_utils.models import TerraformModuleResource
 
 
 class TestTerraformModuleResource:
