@@ -1,0 +1,6 @@
+---
+test_workspaces:
+  - dev
+  - uat
+  - qa
+  - prod

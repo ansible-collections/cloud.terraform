@@ -53,72 +53,73 @@ options:
 """
 
 EXAMPLES = r"""
-# Example configuration file inventory.yml, that creates an inventory from terraform.tfstate file in cwd
-plugin: cloud.terraform.terraform_provider
-# Running command `ansible-inventory -i inventory.yml --graph --vars` would then produce the inventory:
-# @all:
-#   |--@anothergroup:
-#   |  |--somehost
-#   |  |  |--{group_hello = from group!}
-#   |  |  |--{group_variable = 11}
-#   |  |  |--{host_hello = from host!}
-#   |  |  |--{host_variable = 7}
-#   |--@childlessgroup:
-#   |--@somegroup:
-#   |  |--@anotherchild:
-#   |  |--@somechild:
-#   |  |  |--anotherhost
-#   |  |  |  |--{group_hello = from group!}
-#   |  |  |  |--{group_variable = 11}
-#   |  |  |  |--{host_hello = from anotherhost!}
-#   |  |  |  |--{host_variable = 5}
-#   |  |--somehost
-#   |  |  |--{group_hello = from group!}
-#   |  |  |--{group_variable = 11}
-#   |  |  |--{host_hello = from host!}
-#   |  |  |--{host_variable = 7}
-#   |  |--{group_hello = from group!}
-#   |  |--{group_variable = 11}
-#   |--@ungrouped:
-#   |  |--ungrupedhost
+- name: Create an inventory from state file in current directory
+  plugin: cloud.terraform.terraform_provider
 
-# Example configuration file that creates an inventory from terraform.tfstate file in selected project directory
-plugin: cloud.terraform.terraform_provider
-project_path: some/project/path
+  # Running command `ansible-inventory -i inventory.yml --graph --vars` would then produce the inventory:
+  # @all:
+  #   |--@anothergroup:
+  #   |  |--somehost
+  #   |  |  |--{group_hello = from group!}
+  #   |  |  |--{group_variable = 11}
+  #   |  |  |--{host_hello = from host!}
+  #   |  |  |--{host_variable = 7}
+  #   |--@childlessgroup:
+  #   |--@somegroup:
+  #   |  |--@anotherchild:
+  #   |  |--@somechild:
+  #   |  |  |--anotherhost
+  #   |  |  |  |--{group_hello = from group!}
+  #   |  |  |  |--{group_variable = 11}
+  #   |  |  |  |--{host_hello = from anotherhost!}
+  #   |  |  |  |--{host_variable = 5}
+  #   |  |--somehost
+  #   |  |  |--{group_hello = from group!}
+  #   |  |  |--{group_variable = 11}
+  #   |  |  |--{host_hello = from host!}
+  #   |  |  |--{host_variable = 7}
+  #   |  |--{group_hello = from group!}
+  #   |  |--{group_variable = 11}
+  #   |--@ungrouped:
+  #   |  |--ungrupedhost
 
-# Example configuration file that creates an inventory from terraform.tfstate file in multiple project directories
-plugin: cloud.terraform.terraform_provider
-project_path:
-  - some/project/path
-  - some/other/project/path
+- name: Create an inventory from state file in provided directory
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
 
-# Example configuration file that creates an inventory from specified state file
-plugin: cloud.terraform.terraform_provider
-state_file: some/state/file/path
+- name: Create an inventory from state file in multiple provided directories
+  plugin: cloud.terraform.terraform_provider
+  project_path:
+    - some/project/path
+    - some/other/project/path
 
-# Example configuration file that creates an inventory from mycustomstate.tfstate file in selected project directory
-plugin: cloud.terraform.terraform_provider
-project_path: some/project/path
-state_file: mycustomstate.tfstate
+- name: Create an inventory from provided state file
+  plugin: cloud.terraform.terraform_provider
+  state_file: some/state/file/path
+
+- name: Create an inventory from state file in provided project directory
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  state_file: mycustomstate.tfstate
 """
 
 
 import os
 import subprocess
-from typing import List, Tuple, Any, Optional
-import yaml
+from typing import Any, List, Optional, Tuple
 
+import yaml
 from ansible.errors import AnsibleParserError
-from ansible.plugins.inventory import BaseInventoryPlugin
 from ansible.module_utils.common import process
-from ansible_collections.cloud.terraform.plugins.module_utils.utils import validate_bin_path
-from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
-from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning, TerraformError
+from ansible.plugins.inventory import BaseInventoryPlugin
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
-    TerraformModuleResource,
     TerraformAnsibleProvider,
+    TerraformModuleResource,
     TerraformShow,
 )
+from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
+from ansible_collections.cloud.terraform.plugins.module_utils.utils import validate_bin_path
 
 
 # no module available here, mock functionality to be consistent throughout the rest of the codebase

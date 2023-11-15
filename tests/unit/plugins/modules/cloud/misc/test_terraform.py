@@ -4,14 +4,13 @@
 import json
 
 import pytest
-
 from ansible_collections.cloud.terraform.plugins.modules import terraform
 from ansible_collections.cloud.terraform.tests.unit.plugins.modules.utils import set_module_args
 
 
 def test_terraform_without_argument(capfd):
     set_module_args({})
-    with pytest.raises(SystemExit) as results:
+    with pytest.raises(SystemExit):
         terraform.main()
 
     out, err = capfd.readouterr()

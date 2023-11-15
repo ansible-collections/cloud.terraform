@@ -32,6 +32,11 @@ options:
     description:
       - The path of a terraform binary to use.
     type: path
+  workspace:
+    description:
+      - The terraform workspace to work with.
+    type: str
+    version_added: 1.2.0
 """
 
 # language=yaml
@@ -47,6 +52,10 @@ EXAMPLES = """
 - name: get all outputs from terraform.tfstate in cwd
   ansible.builtin.debug:
     msg: "{{ lookup('cloud.terraform.tf_output') }}"
+
+- name: get all outputs from terraform.tfstate in workspace 'dev'
+  ansible.builtin.debug:
+    msg: "{{ lookup('cloud.terraform.tf_output', workspace='dev') }}"
 """
 
 # language=yaml
@@ -66,18 +75,23 @@ _value:
 """
 
 
+import os
 import subprocess
-from typing import Optional, List, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
 
-from ansible.plugins.lookup import LookupBase
 from ansible.module_utils.common import process
+from ansible.plugins.lookup import LookupBase
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import get_outputs
 
 
 # no module available here, mock functionality to be consistent throughout the rest of the codebase
-def module_run_command(cmd: List[str], cwd: str) -> Tuple[int, str, str]:
-    completed_process = subprocess.run(cmd, capture_output=True, check=False, cwd=cwd)
+def module_run_command(
+    cmd: List[str], cwd: str, environ_update: Optional[Dict[str, str]] = None
+) -> Tuple[int, str, str]:
+    env = os.environ.copy()
+    env.update(environ_update or {})
+    completed_process = subprocess.run(cmd, capture_output=True, check=False, cwd=cwd, env=env)
     return (
         completed_process.returncode,
         completed_process.stdout.decode("utf-8"),
@@ -91,6 +105,7 @@ class LookupModule(LookupBase):  # type: ignore  # cannot subclass without avail
         project_path = self.get_option("project_path")
         state_file = self.get_option("state_file")
         bin_path = self.get_option("binary_path")
+        workspace = self.get_option("workspace")
 
         if bin_path is not None:
             terraform_binary = bin_path
@@ -100,12 +115,25 @@ class LookupModule(LookupBase):  # type: ignore  # cannot subclass without avail
         output: List[AnyJsonType] = []
         if not terms:
             output.append(
-                get_outputs(module_run_command, terraform_binary, project_path, state_file, output_format="json")
+                get_outputs(
+                    module_run_command,
+                    terraform_binary,
+                    project_path,
+                    state_file,
+                    output_format="json",
+                    workspace=workspace,
+                )
             )
         else:
             for term in terms:
                 value = get_outputs(
-                    module_run_command, terraform_binary, project_path, state_file, name=term, output_format="json"
+                    module_run_command,
+                    terraform_binary,
+                    project_path,
+                    state_file,
+                    name=term,
+                    output_format="json",
+                    workspace=workspace,
                 )
                 output.append(value)
         return output
