@@ -145,9 +145,10 @@
       community.aws.sqs_queue:
         name: "{{ test_queue_name }}"
         state: absent
+      ignore_errors: true
 
     - name: Delete IAM role
       amazon.aws.iam_role:
         name: "{{ test_role_name }}"
         state: absent
-        ignore_errors: true
+      ignore_errors: true
