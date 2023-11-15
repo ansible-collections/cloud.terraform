@@ -1,3 +1,5 @@
 ---
 collections:
-  - amazon.aws
+  - name: https://github.com/ansible-collections/amazon.aws.git
+    type: git
+    version: main
