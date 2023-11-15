@@ -23,13 +23,25 @@ jobs:
     runs-on: ubuntu-latest
     env:
       source: "./source"
-      aws_dir: "./amazon_aws"
+      ansible_version: "milestone"
+      python_version: "3.12"
     steps:
       - name: Checkout collection
         uses: actions/checkout@v4
         with:
           path: ${{ env.source }}
           ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python ${{ env.python_version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.python_version }}
+
+      - name: Install ansible-core (${{ env.ansible_version }})
+        run: >-
+          python3 -m pip install
+          https://github.com/ansible/ansible/archive/${{ env.ansible_version }}.tar.gz
+        shell: bash
 
       - name: Pre install collections dependencies first so the collection install does not
         run: >-
