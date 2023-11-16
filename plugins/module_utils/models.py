@@ -31,9 +31,9 @@ class TerraformModuleResource:
     name: str
     provider_name: str
     schema_version: int
-    values: Dict[str, AnyJsonType]
 
     # potentially undefined
+    values: Dict[str, AnyJsonType]
     sensitive_values: Dict[str, Union[bool, List[bool], Dict[str, bool]]]
     depends_on: List[str]
 
@@ -46,7 +46,7 @@ class TerraformModuleResource:
             name=json["name"],
             provider_name=json["provider_name"],
             schema_version=json["schema_version"],
-            values=json["values"],
+            values=json.get("values", {}),
             sensitive_values=json.get("sensitive_values", {}),
             depends_on=json.get("depends_on", []),
         )
