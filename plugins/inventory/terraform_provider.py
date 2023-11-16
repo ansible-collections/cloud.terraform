@@ -194,18 +194,16 @@ class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
         for state in state_content:
             if state is None:
                 continue
-            for resource in state.values.root_module.resources:
+            root_resources = (
+                state.values.root_module.resources
+                if not search_child_modules
+                else state.values.root_module.flatten_resources()
+            )
+            for resource in root_resources:
                 if resource.type == "ansible_group":
                     self._add_group(inventory, resource)
                 elif resource.type == "ansible_host":
                     self._add_host(inventory, resource)
-            if search_child_modules:
-                for module in state.values.root_module.child_modules:
-                    for resource in module.resources:
-                        if resource.type == "ansible_group":
-                            self._add_group(inventory, resource)
-                        elif resource.type == "ansible_host":
-                            self._add_host(inventory, resource)
 
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path)

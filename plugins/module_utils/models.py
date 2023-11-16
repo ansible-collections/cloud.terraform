@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType, TJsonObject
@@ -82,16 +82,26 @@ class TerraformAnsibleProvider:
 @dataclass
 class TerraformChildModule:
     resources: List[TerraformModuleResource]
+    child_modules: List["TerraformChildModule"] = field(default_factory=lambda: [])
+
+    def flatten_resources(self) -> List[TerraformModuleResource]:
+        return self.resources + sum([child.flatten_resources() for child in self.child_modules], [])
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformChildModule":
-        return cls(resources=[TerraformChildModuleResource.from_json(r) for r in json.get("resources", [])])
+        return cls(
+            resources=[TerraformChildModuleResource.from_json(r) for r in json.get("resources", [])],
+            child_modules=[TerraformChildModule.from_json(r) for r in json.get("child_modules", [])],
+        )
 
 
 @dataclass
 class TerraformRootModule:
     resources: List[TerraformModuleResource]
     child_modules: List[TerraformChildModule]
+
+    def flatten_resources(self) -> List[TerraformModuleResource]:
+        return self.resources + sum([child.flatten_resources() for child in self.child_modules], [])
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformRootModule":
