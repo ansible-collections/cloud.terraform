@@ -6,9 +6,8 @@
 import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
-    TerraformSimpleAttributeSpec,
-    TerraformNestedAttributeSpec,
     TerraformBlockSensitive,
+    TerraformNestedAttributeSpec,
     TerraformOutput,
     TerraformProviderSchema,
     TerraformProviderSchemaCollection,
@@ -17,6 +16,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformRootModuleResource,
     TerraformShow,
     TerraformShowValues,
+    TerraformSimpleAttributeSpec,
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     filter_outputs,
