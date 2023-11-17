@@ -8,6 +8,12 @@ The cloud.terraform collection Release Notes
 v2.0.0
 ======
 
+Breaking Changes / Porting Guide
+--------------------------------
+
+- Remove support for ansible-core < 2.14 (https://github.com/ansible-collections/cloud.terraform/pull/102).
+
+
 Major Changes
 -------------
 
@@ -24,10 +30,6 @@ Minor Changes
 - tf_output - add support for ``workspace`` when running ``terraform output`` (https://github.com/ansible-collections/cloud.terraform/issues/85).
 - terraform - cleanup temporary file create during module execution. (https://github.com/ansible-collections/cloud.terraform/issues/2)
 
-Breaking Changes / Porting Guide
---------------------------------
-
-- Remove support for ansible-core < 2.14 (https://github.com/ansible-collections/cloud.terraform/pull/102).
 
 Bugfixes
 --------
