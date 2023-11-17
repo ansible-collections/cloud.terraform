@@ -5,6 +5,39 @@ The cloud.terraform collection Release Notes
 .. contents:: Topics
 
 
+v2.0.0
+======
+
+Major Changes
+-------------
+
+- Added search_child_modules option to terraform_provider inventory plugin.
+- Allow project_path in terraform_provider inventory plugin to accept a list of paths.
+
+Minor Changes
+-------------
+
+- Removed integration tests workaround in terrform_provider. (https://github.com/ansible-collections/cloud.terraform/pull/84)
+- Set default of state_file in terraform_provider inventory plugin to a blank string.
+- add support for workspace when running `terraform output` in modules `cloud.terraform.terraform`, `cloud.terraform.terraform_output` and lookup `cloud.terraform.tf_output` (https://github.com/ansible-collections/cloud.terraform/issues/85).
+- terraform - cleanup temporary file create during module execution. (https://github.com/ansible-collections/cloud.terraform/issues/2)
+
+Breaking Changes / Porting Guide
+--------------------------------
+
+- Remove support for ansible-core < 2.14 (https://github.com/ansible-collections/cloud.terraform/pull/102).
+
+Bugfixes
+--------
+
+- Accept Terraform executables present on PATH passed in as binary_path without specifying their absolute path. (https://github.com/ansible-collections/cloud.terraform/issues/49)
+- Allow `nested_type` attributes in terraform schema. (https://github.com/ansible-collections/cloud.terraform/issues/93)
+- Fix AWS SQS queue creation. The `values` attribute in terraform output is optional. SQS is one of (rare) cases where `values` is absent. (https://github.com/ansible-collections/cloud.terraform/issues/86)
+- fix integration test target `terraform_provider`, add step to copy example modules into terraform working directory (https://github.com/ansible-collections/cloud.terraform/pull/89).
+- fix spaces between characters in command field in result (https://github.com/ansible-collections/cloud.terraform/pull/76).
+- move test requirements out of the requirements.txt file (https://github.com/ansible-collections/cloud.terraform/pull/67).
+- terraform - fix issue with ``plan_file`` option specified with ``check_mode=true`` and ``state`` set to one of ``present`` and ``absent``, the module is enable now to generate a Terraform file to the specified location (https://github.com/ansible-collections/cloud.terraform/issues/87).
+
 v1.1.0
 ======
 

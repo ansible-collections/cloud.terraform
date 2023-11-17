@@ -1,2 +1,0 @@
-bugfixes:
-  - fix spaces between characters in command field in result (https://github.com/ansible-collections/cloud.terraform/pull/76).

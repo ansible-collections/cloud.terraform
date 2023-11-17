@@ -1,7 +1,0 @@
----
-bugfixes:
-  - >-
-    Fix AWS SQS queue creation.
-    The `values` attribute in terraform output is optional.
-    SQS is one of (rare) cases where `values` is absent.
-    (https://github.com/ansible-collections/cloud.terraform/issues/86)
