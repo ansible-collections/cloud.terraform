@@ -7,6 +7,7 @@ import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
     TerraformBlockSensitive,
+    TerraformNestedAttributeSpec,
     TerraformOutput,
     TerraformProviderSchema,
     TerraformProviderSchemaCollection,
@@ -15,6 +16,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformRootModuleResource,
     TerraformShow,
     TerraformShowValues,
+    TerraformSimpleAttributeSpec,
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     filter_outputs,
@@ -89,7 +91,7 @@ def provider_schemas():
                     "local_file": TerraformResourceSchema(
                         version=0,
                         attributes={
-                            "content": TerraformAttributeSpec(
+                            "content": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Content to store in the file, expected to be an UTF-8 encoded string.",
@@ -99,7 +101,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "content_base64": TerraformAttributeSpec(
+                            "content_base64": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Content to store in the file, expected to be binary encoded as base64 string.",
@@ -109,7 +111,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "directory_permission": TerraformAttributeSpec(
+                            "directory_permission": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Permissions to set for directories created (in numeric notation).",
@@ -119,7 +121,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "file_permission": TerraformAttributeSpec(
+                            "file_permission": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Permissions to set for the output file (in numeric notation).",
@@ -129,7 +131,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "filename": TerraformAttributeSpec(
+                            "filename": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="The path to the file that will be created.",
@@ -139,7 +141,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "id": TerraformAttributeSpec(
+                            "id": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="description",
@@ -149,7 +151,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=True,
                             ),
-                            "sensitive_content": TerraformAttributeSpec(
+                            "sensitive_content": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Sensitive content to store in the file, expected to be an UTF-8 encoded string.",
@@ -159,7 +161,7 @@ def provider_schemas():
                                 sensitive=True,
                                 computed=False,
                             ),
-                            "source": TerraformAttributeSpec(
+                            "source": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Path to file to use as source for the one we are creating.",
@@ -177,7 +179,7 @@ def provider_schemas():
                     "local_sensitive_file": TerraformResourceSchema(
                         version=0,
                         attributes={
-                            "content": TerraformAttributeSpec(
+                            "content": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Content to store in the file, expected to be an UTF-8 encoded string.",
@@ -187,7 +189,7 @@ def provider_schemas():
                                 sensitive=True,
                                 computed=False,
                             ),
-                            "content_base64": TerraformAttributeSpec(
+                            "content_base64": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Content to store in the file, expected to be binary encoded as base64 string.",
@@ -197,7 +199,7 @@ def provider_schemas():
                                 sensitive=True,
                                 computed=False,
                             ),
-                            "directory_permission": TerraformAttributeSpec(
+                            "directory_permission": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Permissions to set for directories created (in numeric notation).",
@@ -207,7 +209,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "file_permission": TerraformAttributeSpec(
+                            "file_permission": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Permissions to set for the output file (in numeric notation).",
@@ -217,7 +219,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "filename": TerraformAttributeSpec(
+                            "filename": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="The path to the file that will be created.",
@@ -227,7 +229,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=False,
                             ),
-                            "id": TerraformAttributeSpec(
+                            "id": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="description",
@@ -237,7 +239,7 @@ def provider_schemas():
                                 sensitive=False,
                                 computed=True,
                             ),
-                            "source": TerraformAttributeSpec(
+                            "source": TerraformSimpleAttributeSpec(
                                 type="string",
                                 description_kind="plain",
                                 description="Path to file to use as source for the one we are creating.",
@@ -508,7 +510,7 @@ class TestTerraformResourceSchema:
         expected_terraform_resource_schema = TerraformResourceSchema(
             version="version",
             attributes={
-                "attribute_name": TerraformAttributeSpec(
+                "attribute_name": TerraformSimpleAttributeSpec(
                     type="type",
                     description_kind="description_kind",
                     description="description",
@@ -525,3 +527,69 @@ class TestTerraformResourceSchema:
         terraform_resource_schema = TerraformResourceSchema.from_json(resource)
 
         assert terraform_resource_schema == expected_terraform_resource_schema
+
+
+class TestTerraformAttributeSpec:
+    def test_from_json_nested(self):
+        # terraform providers schema -json | \
+        # jq '.provider_schemas["registry.terraform.io/hashicorp/waypoint"].resource_schemas.waypoint_project.block.attributes.git_auth_basic'
+        resource = {
+            "nested_type": {
+                "attributes": {
+                    "password": {
+                        "type": "string",
+                        "description": "Git password",
+                        "description_kind": "plain",
+                        "required": True,
+                        "sensitive": True,
+                    },
+                    "username": {
+                        "type": "string",
+                        "description": "Git username",
+                        "description_kind": "plain",
+                        "required": True,
+                    },
+                },
+                "nesting_mode": "single",
+            },
+            "description": "Basic authentication details for Git consisting of `username` and `password`",
+            "description_kind": "plain",
+            "optional": True,
+            "sensitive": True,
+        }
+
+        expected_terraform_attribute_spec = TerraformNestedAttributeSpec(
+            nested_attributes={
+                "password": TerraformSimpleAttributeSpec(
+                    type="string",
+                    description_kind="plain",
+                    description="Git password",
+                    required=True,
+                    optional=False,
+                    computed=False,
+                    sensitive=True,
+                    deprecated=False,
+                ),
+                "username": TerraformSimpleAttributeSpec(
+                    type="string",
+                    description_kind="plain",
+                    description="Git username",
+                    required=True,
+                    optional=False,
+                    computed=False,
+                    sensitive=False,
+                    deprecated=False,
+                ),
+            },
+            description_kind="plain",
+            description="Basic authentication details for Git consisting of `username` and `password`",
+            required=False,
+            optional=True,
+            computed=False,
+            sensitive=True,
+            deprecated=False,
+        )
+
+        terraform_attribute_spec = TerraformAttributeSpec.from_json(resource)
+
+        assert terraform_attribute_spec == expected_terraform_attribute_spec

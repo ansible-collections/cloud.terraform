@@ -144,7 +144,6 @@ class TerraformShow:
 
 @dataclass
 class TerraformAttributeSpec:
-    type: Union[str, List[str]]
     description_kind: str
 
     # potentially undefined
@@ -157,6 +156,39 @@ class TerraformAttributeSpec:
 
     @classmethod
     def from_json(cls, json: TJsonObject) -> "TerraformAttributeSpec":
+        if "nested_type" in json:
+            return TerraformNestedAttributeSpec.from_json(json)
+        else:
+            return TerraformSimpleAttributeSpec.from_json(json)
+
+
+@dataclass
+class TerraformNestedAttributeSpec(TerraformAttributeSpec):
+    nested_attributes: Dict[str, TerraformAttributeSpec]
+
+    @classmethod
+    def from_json(cls, json: TJsonObject) -> "TerraformNestedAttributeSpec":
+        return cls(
+            nested_attributes={
+                sub_attribute_name: TerraformAttributeSpec.from_json(sub_attribute_item)
+                for sub_attribute_name, sub_attribute_item in json.get("nested_type", {}).get("attributes", {}).items()
+            },
+            description_kind=json["description_kind"],
+            description=json.get("description"),
+            optional=json.get("optional", False),
+            required=json.get("required", False),
+            deprecated=json.get("deprecated", False),
+            sensitive=json.get("sensitive", False),
+            computed=json.get("computed", False),
+        )
+
+
+@dataclass
+class TerraformSimpleAttributeSpec(TerraformAttributeSpec):
+    type: Union[str, List[str]]
+
+    @classmethod
+    def from_json(cls, json: TJsonObject) -> "TerraformSimpleAttributeSpec":
         return cls(
             type=json["type"],
             description_kind=json["description_kind"],
