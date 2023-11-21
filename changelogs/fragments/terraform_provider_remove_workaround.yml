@@ -1,3 +1,0 @@
----
-minor_changes:
-  - Removed integration tests workaround in terrform_provider. (https://github.com/ansible-collections/cloud.terraform/pull/84)
