@@ -127,6 +127,22 @@ Parameters
                         <div>The <code>TF_DATA_DIR</code> environment variable is respected.</div>
                 </td>
             </tr>
+            <tr>
+                <td colspan="1">
+                    <div class="ansibleOptionAnchor" id="parameter-"></div>
+                    <b>workspace</b>
+                    <a class="ansibleOptionLink" href="#parameter-" title="Permalink to this option"></a>
+                    <div style="font-size: small">
+                        <span style="color: purple">string</span>
+                    </div>
+                    <div style="font-style: italic; font-size: small; color: darkgreen">added in 1.2.0</div>
+                </td>
+                <td>
+                </td>
+                <td>
+                        <div>The terraform workspace to work with.</div>
+                </td>
+            </tr>
     </table>
     <br/>
 
@@ -161,6 +177,11 @@ Examples
         project_path: project_dir
         name: individual_output
         format: raw
+
+    - name: List outputs from workspace 'dev' in project_dir
+      cloud.terraform.terraform_output:
+        project_path: project_dir
+        workspace: dev
 
 
 

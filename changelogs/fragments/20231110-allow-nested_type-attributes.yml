@@ -1,5 +1,0 @@
----
-bugfixes:
-  - >-
-    Allow `nested_type` attributes in terraform schema.
-    (https://github.com/ansible-collections/cloud.terraform/issues/93)

@@ -9,12 +9,12 @@ notesdir: fragments
 prelude_section_name: release_summary
 prelude_section_title: Release Summary
 sections:
+  - - breaking_changes
+    - Breaking Changes / Porting Guide
   - - major_changes
     - Major Changes
   - - minor_changes
     - Minor Changes
-  - - breaking_changes
-    - Breaking Changes / Porting Guide
   - - deprecated_features
     - Deprecated Features
   - - removed_features

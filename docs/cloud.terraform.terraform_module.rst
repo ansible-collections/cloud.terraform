@@ -254,8 +254,9 @@ Parameters
                 <td>
                 </td>
                 <td>
-                        <div>The path to an existing Terraform plan file to apply. If this is not specified, Ansible will build a new TF plan and execute it.</div>
-                        <div>Note that this option is required if &#x27;state&#x27; has the &#x27;planned&#x27; value. In this case, the plan file is only generated, but not applied.</div>
+                        <div>The path to a Terraform plan file to apply or generate.</div>
+                        <div>When &#x27;check_mode&#x27; is set to <em>True</em> or <em>state=planned</em>, a Terraform plan file with be generated and saved into the specified location.</div>
+                        <div>When &#x27;check_mode&#x27; is set to <em>False</em> and <em>state</em> is set to either <code>present</code> or <code>absent</code>, The existing Terraform plan file will be applied.</div>
                 </td>
             </tr>
             <tr>
