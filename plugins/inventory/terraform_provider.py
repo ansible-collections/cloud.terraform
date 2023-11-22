@@ -105,8 +105,7 @@ EXAMPLES = r"""
 
 
 import os
-import subprocess
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
 import yaml
 from ansible.errors import AnsibleParserError
@@ -120,16 +119,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import validate_bin_path
-
-
-# no module available here, mock functionality to be consistent throughout the rest of the codebase
-def module_run_command(cmd: List[str], cwd: str, check_rc: bool) -> Tuple[int, str, str]:
-    completed_process = subprocess.run(cmd, capture_output=True, check=check_rc, cwd=cwd)
-    return (
-        completed_process.returncode,
-        completed_process.stdout.decode("utf-8"),
-        completed_process.stderr.decode("utf-8"),
-    )
+from ansible_collections.cloud.terraform.plugins.plugin_utils.common import module_run_command
 
 
 class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
