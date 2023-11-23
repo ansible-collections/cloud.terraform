@@ -102,15 +102,14 @@ import os
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 
-import yaml
-from ansible.errors import AnsibleParserError
 from ansible.module_utils._text import to_text
 from ansible.module_utils.common import process
-from ansible.plugins.inventory import BaseInventoryPlugin, Constructable
+from ansible.plugins.inventory import Constructable
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import TerraformModuleResource
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import validate_bin_path
+from ansible_collections.cloud.terraform.plugins.plugin_utils.base import TerraformInventoryPluginBase
 from ansible_collections.cloud.terraform.plugins.plugin_utils.common import module_run_command
 
 
@@ -134,7 +133,7 @@ def get_tag_hostname(instance: TerraformModuleResource, preference: str) -> Opti
     return hostname
 
 
-def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optional[List[Any]]) -> Optional[str]:
+def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optional[List[Any]] = []) -> Optional[str]:
     if not hostnames:
         return instance.type + "_" + instance.name
 
@@ -161,22 +160,14 @@ def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optiona
     return hostname
 
 
-class InventoryModule(BaseInventoryPlugin, Constructable):  # type: ignore  # mypy ignore
-    NAME = "terraform_state"
+def write_terraform_config(backend_config: str, path: str) -> None:
+    tf_config = "terraform {\n" + backend_config + "\n}"
+    with open(path, "w") as temp_file:
+        temp_file.write(tf_config)
 
-    # instead of self._read_config_data(path), which reads paths as absolute thus creating problems
-    # in case if backend_config is provided and state_file is provided as relative path
-    def read_config_data(self, path):  # type: ignore  # mypy ignore
-        """
-        Reads and validates the inventory source file,
-        storing the provided configuration as options.
-        """
-        try:
-            with open(path, "r") as inventory_src:
-                cfg = yaml.safe_load(inventory_src)
-            return cfg
-        except Exception as e:
-            raise AnsibleParserError(e)
+
+class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ignore  # mypy ignore
+    NAME = "terraform_state"
 
     def verify_file(self, path):  # type: ignore  # mypy ignore
         """
@@ -197,11 +188,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):  # type: ignore  # my
         resources_types: List[str] = ["aws_instance"],
     ) -> List[TerraformModuleResource]:
         with TemporaryDirectory() as temp_dir:
-            tf_config_path = os.path.join(temp_dir, "main.tf")
-            tf_config = "terraform {\n" + backend_config + "\n}"
-            with open(tf_config_path, "w") as temp_file:
-                temp_file.write(tf_config)
-
+            write_terraform_config(backend_config, os.path.join(temp_dir, "main.tf"))
             terraform = TerraformCommands(module_run_command, temp_dir, terraform_binary, False)
             try:
                 terraform.init()

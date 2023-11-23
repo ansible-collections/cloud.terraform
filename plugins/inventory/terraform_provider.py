@@ -110,7 +110,6 @@ from typing import Any, List, Optional
 import yaml
 from ansible.errors import AnsibleParserError
 from ansible.module_utils.common import process
-from ansible.plugins.inventory import BaseInventoryPlugin
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAnsibleProvider,
@@ -119,10 +118,11 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import validate_bin_path
+from ansible_collections.cloud.terraform.plugins.plugin_utils.base import TerraformInventoryPluginBase
 from ansible_collections.cloud.terraform.plugins.plugin_utils.common import module_run_command
 
 
-class InventoryModule(BaseInventoryPlugin):  # type: ignore  # mypy ignore
+class InventoryModule(TerraformInventoryPluginBase):
     NAME = "terraform_provider"
 
     # instead of self._read_config_data(path), which reads paths as absolute thus creating problems
