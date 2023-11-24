@@ -1,0 +1,13 @@
+---
+plugin: cloud.terraform.terraform_state
+backend_config: |
+  backend "s3" {
+    bucket = "{{ bucket_name }}"
+    key    = "ansible/terraform.tfstate"
+    region = "{{ aws_region }}"
+  }
+keyed_groups:
+- key: instance_state
+  prefix: state
+- prefix: tag
+  key: tags

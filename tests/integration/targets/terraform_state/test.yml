@@ -1,0 +1,95 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - name: Remove existing inventory file
+      file:
+        state: absent
+        path: "{{ lookup('env', 'ANSIBLE_INVENTORY') }}"
+      ignore_errors: true
+
+    - name: Test inventories
+      vars:
+        inventory_path: "{{ lookup('env', 'ANSIBLE_INVENTORY') }}"
+      block:
+        # Simple inventory configuration
+        - name: Generate inventory file
+          template:
+            src: "inventory.yml.j2"
+            dest: "{{ inventory_path }}"
+
+        - meta: refresh_inventory
+
+        - name: 'assert that host {{ default_hostname }} is defined'
+          assert:
+            that:
+              - '"{{ default_hostname }}" in hostvars'
+
+        - name: Assert that '{{ default_hostname }}' host has required variables
+          assert:
+            that:
+              - '"{{ item }}" in hostvars["{{ default_hostname }}"]'
+          with_items: "{{ host_variables }}"
+
+        # inventory with hostnames
+        - name: Generate inventory with hostnames
+          template:
+            src: inventory_with_hostname.yml.j2
+            dest: "{{ inventory_path }}"
+
+        - meta: refresh_inventory
+
+        - name: Validate that '{{ default_hostname }}' is not defined
+          assert:
+            that:
+              - hostvars.keys() | list == [tag_hostname]
+          vars:
+            tag_hostname: "t2.micro-{{ resource_prefix }}-ec2"
+
+        # inventory with compose
+        - name: Generate inventory with compose
+          template:
+            src: inventory_with_compose.yml.j2
+            dest: "{{ inventory_path }}"
+
+        - meta: refresh_inventory
+
+        - debug: var=hostvars
+
+        - name: Validate variable for host '{{ default_hostname }}'
+          assert:
+            that:
+              - '"{{ default_hostname }}" in hostvars'
+              - '"ansible_host" in hostvars["{{ default_hostname }}"]'
+              - hostvars["{{ default_hostname }}"].ansible_host == hostvars["{{ default_hostname }}"].private_ip
+
+        # inventory with constructed
+        - name: Generate inventory with constructed
+          template:
+            src: inventory_with_constructed.yml.j2
+            dest: "{{ inventory_path }}"
+
+        - meta: refresh_inventory
+
+        - debug: var=groups
+
+        - name: Validate host groups
+          assert:
+            that:
+              - '"{{ default_hostname }}" in hostvars'
+              - '"tag_Inventory_terraform_state" in groups'
+              - '"{{ default_hostname }}" in groups.tag_Inventory_terraform_state'
+              - '"tag_Phase_integration" in groups'
+              - '"{{ default_hostname }}" in groups.tag_Phase_integration'
+              - '"state_running" in groups'
+              - '"{{ default_hostname }}" in groups.state_running'
+
+      always:
+        - name: Delete inventory file
+          file:
+            state: absent
+            path: "{{ inventory_path }}"
