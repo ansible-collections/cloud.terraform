@@ -204,10 +204,6 @@ class TestInventoryModuleSanitizeHostname:
         ["simple_hostname", "hostname:2"],
     )
     def test_sanitize_hostname(self, inventory_plugin, mocker, value):
-        mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.to_text"
-        ).side_effect = lambda x: str(x)
-
         if ":" not in value:
             assert inventory_plugin._sanitize_hostname(value) == value
         else:
@@ -256,9 +252,6 @@ class TestInventoryModuleCreateInventory:
 
         config = {f"id{id}": {"hostvar": f"fromInstanceId{id}"} for id in range(5)}
         instances = [self.create_instance(name=n, values=v) for n, v in config.items()]
-        mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule._sanitize_hostname"
-        ).side_effect = lambda n: str(n)
         get_preferred_hostname_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.get_preferred_hostname"
         )

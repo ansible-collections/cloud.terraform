@@ -79,23 +79,26 @@ class TerraformCommands:
 
     def init(
         self,
-        backend_config: Dict[str, str] = {},
-        backend_config_files: List[str] = [],
+        backend_config: Optional[Dict[str, str]] = None,
+        backend_config_files: Optional[List[str]] = None,
         reconfigure: bool = False,
         upgrade: bool = False,
-        plugin_paths: List[str] = [],
+        plugin_paths: Optional[List[str]] = None,
     ) -> None:
         command = ["init", "-input=false", "-no-color"]
-        for key, val in backend_config.items():
-            command.extend(["-backend-config", "{0}={1}".format(key, val)])
-        for f in backend_config_files:
-            command.extend(["-backend-config", f])
+        if backend_config:
+            for key, val in backend_config.items():
+                command.extend(["-backend-config", "{0}={1}".format(key, val)])
+        if backend_config_files:
+            for f in backend_config_files:
+                command.extend(["-backend-config", f])
         if reconfigure:
             command.extend(["-reconfigure"])
         if upgrade:
             command.extend(["-upgrade"])
-        for plugin_path in plugin_paths:
-            command.extend(["-plugin-dir", plugin_path])
+        if plugin_paths:
+            for plugin_path in plugin_paths:
+                command.extend(["-plugin-dir", plugin_path])
         self._run(*command, check_rc=True)
 
     def plan(

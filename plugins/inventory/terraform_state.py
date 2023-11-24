@@ -29,7 +29,6 @@ options:
     description:
       - A Terraform backend configuration to an existing state file.
     type: str
-    no_log: true
   search_child_modules:
     description:
       - Whether to include resources from Terraform child modules.
@@ -122,7 +121,7 @@ def get_tag_hostname(instance: TerraformModuleResource, preference: str) -> Opti
     return hostname
 
 
-def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optional[List[Any]] = []) -> Optional[str]:
+def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optional[List[Any]] = None) -> Optional[str]:
     if not hostnames:
         return instance.type + "_" + instance.name
 
@@ -174,8 +173,10 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         terraform_binary: str,
         backend_config: str,
         search_child_modules: bool,
-        resources_types: List[str] = ["aws_instance"],
+        resources_types: Optional[List[str]] = None,
     ) -> List[TerraformModuleResource]:
+        if resources_types is None:
+            resources_types = ["aws_instance"]
         with TemporaryDirectory() as temp_dir:
             write_terraform_config(backend_config, os.path.join(temp_dir, "main.tf"))
             terraform = TerraformCommands(module_run_command, temp_dir, terraform_binary, False)
