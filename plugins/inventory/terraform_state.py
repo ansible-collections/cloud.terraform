@@ -72,16 +72,6 @@ options:
 """
 
 EXAMPLES = r"""
-# Minimal example using backend configuration
-plugin: cloud.terraform.terraform_state
-backend_config: |
-  backend "http" {
-      address = "https://localhost:8043/api/v2/state/3/"
-      skip_cert_verification = true
-      username = "ansible"
-      password = "test123!"
-  }
-
 # Example using constructed features to set ansible_host
 plugin: cloud.terraform.terraform_state
 backend_config: |
@@ -91,7 +81,6 @@ backend_config: |
       username = "ansible"
       password = "test123!"
   }
-# Set individual variables with compose
 compose:
   # Use the public IP address to connect to the host
   ansible_host: public_ip
