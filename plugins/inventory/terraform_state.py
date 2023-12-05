@@ -12,6 +12,7 @@ short_description: Builds an inventory from resources created by cloud providers
 description:
   - This plugin works with an existing state file to create an inventory from resources created by cloud providers.
   - The plugin accepts a Terraform backend config to an existing state file or a path to an existing state file.
+  - Uses a YAML configuration file that ends with terraform_state.(yml|yaml).
   - To read the state file command ``Terraform show`` is used.
   - Does not support caching.
 extends_documentation_fragment:
@@ -71,18 +72,144 @@ options:
 """
 
 EXAMPLES = r"""
+# Inventory with state file stored into http backend
+- name: Create an inventory from state file stored into http backend
+  plugin: cloud.terraform.terraform_state
+  backend_config: |
+    backend "http" {
+        address = "https://localhost:8043/api/v2/state/3/"
+        skip_cert_verification = true
+        username = "ansible"
+        password = "test123!"
+    }
+
+  # Running command `ansible-inventory -i basic_terraform_state.yaml --graph --vars` would then produce the inventory:
+  # @all:
+  # |--@ungrouped:
+  # |  |--aws_instance_test
+  # |  |  |--{ami = ami-01d00f1bdb42735ac}
+  # |  |  |--{arn = arn:aws:ec2:us-east-1:721066863947:instance/i-09c4a5b5d74c9b941}
+  # |  |  |--{associate_public_ip_address = True}
+  # |  |  |--{availability_zone = us-east-1b}
+  # |  |  |--{capacity_reservation_specification = [{'capacity_reservation_preference': 'open', 'capacity_reservation_target': []}]}
+  # |  |  |--{cpu_core_count = 1}
+  # |  |  |--{cpu_options = [{'amd_sev_snp': '', 'core_count': 1, 'threads_per_core': 1}]}
+  # |  |  |--{cpu_threads_per_core = 1}
+  # |  |  |--{credit_specification = [{'cpu_credits': 'standard'}]}
+  # |  |  |--{disable_api_stop = False}
+  # |  |  |--{disable_api_termination = False}
+  # |  |  |--{ebs_block_device = []}
+  # |  |  |--{ebs_optimized = False}
+  # |  |  |--{enclave_options = [{'enabled': False}]}
+  # |  |  |--{ephemeral_block_device = []}
+  # |  |  |--{get_password_data = False}
+  # |  |  |--{hibernation = False}
+  # |  |  |--{host_id = }
+  # |  |  |--{host_resource_group_arn = None}
+  # |  |  |--{iam_instance_profile = }
+  # |  |  |--{id = i-09c4a5b5d74c9b941}
+  # |  |  |--{instance_initiated_shutdown_behavior = stop}
+  # |  |  |--{instance_lifecycle = }
+  # |  |  |--{instance_market_options = []}
+  # |  |  |--{instance_state = running}
+  # |  |  |--{instance_type = t2.micro}
+  # |  |  |--{ipv6_address_count = 0}
+  # |  |  |--{ipv6_addresses = []}
+  # |  |  |--{key_name = connect-key-20231127}
+  # |  |  |--{launch_template = []}
+  # |  |  |--{maintenance_options = [{'auto_recovery': 'default'}]}
+  # |  |  |--{metadata_options = [{...}]}
+  # |  |  |--{monitoring = False}
+  # |  |  |--{network_interface = []}
+  # |  |  |--{outpost_arn = }
+  # |  |  |--{password_data = }
+  # |  |  |--{placement_group = }
+  # |  |  |--{placement_partition_number = 0}
+  # |  |  |--{primary_network_interface_id = eni-0d5ccb55032b5e01c}
+  # |  |  |--{private_dns = ip-168-10-1-178.us-east-1.compute.internal}
+  # |  |  |--{private_dns_name_options = [{...}]}
+  # |  |  |--{private_ip = 168.10.1.178}
+  # |  |  |--{public_dns = }
+  # |  |  |--{public_ip = 34.244.225.201}
+  # |  |  |--{root_block_device = [{...}]}
+  # |  |  |--{secondary_private_ips = []}
+  # |  |  |--{security_groups = []}
+  # |  |  |--{source_dest_check = True}
+  # |  |  |--{spot_instance_request_id = }
+  # |  |  |--{subnet_id = subnet-0e5159474f5fc6a17}
+  # |  |  |--{tags = {'Inventory': 'terraform_state', 'Name': 'test-ec2', 'Phase': 'integration'}}
+  # |  |  |--{tags_all = {'Inventory': 'terraform_state', 'Name': 'test-ec2', 'Phase': 'integration'}}
+  # |  |  |--{tenancy = default}
+  # |  |  |--{timeouts = None}
+  # |  |  |--{user_data = None}
+  # |  |  |--{user_data_base64 = None}
+  # |  |  |--{user_data_replace_on_change = False}
+  # |  |  |--{volume_tags = None}
+  # |  |  |--{vpc_security_group_ids = ['sg-0795c8f75883b0927']}
+
+
 # Example using constructed features to set ansible_host
-plugin: cloud.terraform.terraform_state
-backend_config: |
-  backend "http" {
-      address = "https://localhost:8043/api/v2/state/3/"
-      skip_cert_verification = true
-      username = "ansible"
-      password = "test123!"
-  }
-compose:
-  # Use the public IP address to connect to the host
-  ansible_host: public_ip
+- name: Using compose feature to set the ansible_host
+  plugin: cloud.terraform.terraform_state
+  backend_config: |
+    backend "http" {
+        address = "https://localhost:8043/api/v2/state/3/"
+        skip_cert_verification = true
+        username = "ansible"
+        password = "test123!"
+    }
+  compose:
+    ansible_host: public_ip
+
+  # Running command `ansible-inventory -i compose_terraform_state.yaml --graph --vars` would then produce the inventory:
+  # @all:
+  # |--@ungrouped:
+  # |  |--aws_instance_test
+  # |  |  |--{ami = ami-01d00f1bdb42735ac}
+  # |  |  |--{ansible_host = 34.244.225.201}
+  # (...)
+  # |  |  |--{public_ip = 34.244.225.201}
+  # (...)
+
+# Example using constructed features to create inventory groups
+- name: Using keyed_groups feature to add host into group
+  plugin: cloud.terraform.terraform_state
+  backend_config: |
+    backend "http" {
+        address = "https://localhost:8043/api/v2/state/3/"
+        skip_cert_verification = true
+        username = "ansible"
+        password = "test123!"
+    }
+  keyed_groups:
+  - key: instance_state
+    prefix: state
+
+  # Running command `ansible-inventory -i keyed_terraform_state.yaml --graph` would then produce the inventory:
+  # @all:
+  # |--@ungrouped:
+  # |--@state_running:
+  # |  |--aws_instance_test
+
+# Example using hostnames feature to define inventory hostname
+- name: Using hostnames feature to define inventory hostname
+  plugin: cloud.terraform.terraform_state
+  backend_config: |
+    backend "http" {
+        address = "https://localhost:8043/api/v2/state/3/"
+        skip_cert_verification = true
+        username = "ansible"
+        password = "test123!"
+    }
+  hostnames:
+  - name: 'tag:Phase'
+    separator: "-"
+    prefix: 'instance_state'
+
+  # Running command `ansible-inventory -i hostnames_terraform_state.yaml --graph` would then produce the inventory:
+  # @all:
+  # |--@ungrouped:
+  # |  |--running-integration
 """
 
 
@@ -101,9 +228,10 @@ from ansible_collections.cloud.terraform.plugins.plugin_utils.base import Terraf
 from ansible_collections.cloud.terraform.plugins.plugin_utils.common import module_run_command
 
 
-def filter_instances(resources: List[TerraformModuleResource], types: List[str]) -> List[TerraformModuleResource]:
-    # should we add additional filtering on provider (provider_name='registry.terraform.io/hashicorp/aws') ?
-    return [r for r in resources if r.type in types]
+def filter_instances(
+    resources: List[TerraformModuleResource], types: List[str], provider_name: str
+) -> List[TerraformModuleResource]:
+    return [r for r in resources if r.type in types and r.provider_name == provider_name]
 
 
 def get_tag_hostname(instance: TerraformModuleResource, preference: str) -> Optional[str]:
@@ -155,7 +283,7 @@ def write_terraform_config(backend_config: str, path: str) -> None:
 
 
 class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ignore  # mypy ignore
-    NAME = "terraform_state"
+    NAME = "cloud.terraform.terraform_state"
 
     def verify_file(self, path):  # type: ignore  # mypy ignore
         """
@@ -173,10 +301,9 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         terraform_binary: str,
         backend_config: str,
         search_child_modules: bool,
-        resources_types: Optional[List[str]] = None,
+        resources_types: List[str],
+        provider_name: str,
     ) -> List[TerraformModuleResource]:
-        if resources_types is None:
-            resources_types = ["aws_instance"]
         with TemporaryDirectory() as temp_dir:
             write_terraform_config(backend_config, os.path.join(temp_dir, "main.tf"))
             terraform = TerraformCommands(module_run_command, temp_dir, terraform_binary, False)
@@ -187,7 +314,7 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
                 if result:
                     root_module = result.values.root_module
                     resources = root_module.resources if not search_child_modules else root_module.flatten_resources()
-                    instances = filter_instances(resources, resources_types)
+                    instances = filter_instances(resources, resources_types, provider_name)
                 return instances
             except TerraformWarning as e:
                 raise TerraformError(e.message)
@@ -238,9 +365,11 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:
-            terraform_binary = process.get_bin_path("terraform", required=True)
+            terraform_binary = process.get_bin_path("terraform")
 
-        instances = self._query(terraform_binary, backend_config, search_child_modules)
+        provider_name = "registry.terraform.io/hashicorp/aws"
+        resources_types = ["aws_instance"]
+        instances = self._query(terraform_binary, backend_config, search_child_modules, resources_types, provider_name)
         self.create_inventory(
             instances, cfg.get("hostnames"), cfg.get("compose"), cfg.get("keyed_groups"), cfg.get("strict")
         )

@@ -107,8 +107,6 @@ EXAMPLES = r"""
 import os
 from typing import Any, List, Optional
 
-import yaml
-from ansible.errors import AnsibleParserError
 from ansible.module_utils.common import process
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
@@ -123,21 +121,7 @@ from ansible_collections.cloud.terraform.plugins.plugin_utils.common import modu
 
 
 class InventoryModule(TerraformInventoryPluginBase):
-    NAME = "terraform_provider"
-
-    # instead of self._read_config_data(path), which reads paths as absolute thus creating problems
-    # in case if project_path is provided and state_file is provided as relative path
-    def read_config_data(self, path):  # type: ignore  # mypy ignore
-        """
-        Reads and validates the inventory source file,
-        storing the provided configuration as options.
-        """
-        try:
-            with open(path, "r") as inventory_src:
-                cfg = yaml.safe_load(inventory_src)
-            return cfg
-        except Exception as e:
-            raise AnsibleParserError(e)
+    NAME = "cloud.terraform.terraform_provider"
 
     # If check of the name of the cfg file is needed, this should be uncommented
     # def verify_file(self, path):

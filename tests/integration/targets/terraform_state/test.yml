@@ -27,12 +27,12 @@
         - name: 'assert that host {{ default_hostname }} is defined'
           assert:
             that:
-              - '"{{ default_hostname }}" in hostvars'
+              - default_hostname in hostvars
 
         - name: Assert that '{{ default_hostname }}' host has required variables
           assert:
             that:
-              - '"{{ item }}" in hostvars["{{ default_hostname }}"]'
+              - item in hostvars[default_hostname]
           with_items: "{{ host_variables }}"
 
         # inventory with hostnames
@@ -63,9 +63,9 @@
         - name: Validate variable for host '{{ default_hostname }}'
           assert:
             that:
-              - '"{{ default_hostname }}" in hostvars'
-              - '"ansible_host" in hostvars["{{ default_hostname }}"]'
-              - hostvars["{{ default_hostname }}"].ansible_host == hostvars["{{ default_hostname }}"].private_ip
+              - default_hostname in hostvars
+              - "'ansible_host' in hostvars[default_hostname]"
+              - hostvars[default_hostname].ansible_host == hostvars[default_hostname].private_ip
 
         # inventory with constructed
         - name: Generate inventory with constructed
@@ -80,13 +80,13 @@
         - name: Validate host groups
           assert:
             that:
-              - '"{{ default_hostname }}" in hostvars'
-              - '"tag_Inventory_terraform_state" in groups'
-              - '"{{ default_hostname }}" in groups.tag_Inventory_terraform_state'
-              - '"tag_Phase_integration" in groups'
-              - '"{{ default_hostname }}" in groups.tag_Phase_integration'
-              - '"state_running" in groups'
-              - '"{{ default_hostname }}" in groups.state_running'
+              - default_hostname in hostvars
+              - "'tag_Inventory_terraform_state' in groups"
+              - default_hostname in groups.tag_Inventory_terraform_state
+              - "'tag_Phase_integration' in groups"
+              - default_hostname in groups.tag_Phase_integration
+              - "'state_running' in groups"
+              - default_hostname in groups.state_running
 
       always:
         - name: Delete inventory file

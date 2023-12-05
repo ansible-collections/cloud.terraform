@@ -96,7 +96,7 @@ class TestFilterInstances:
                 mode="managed",
                 type=type,
                 name=f"test{i}",
-                provider_name=f"registry.terraform.io/hashicorp/{type.split('_')[0]}",
+                provider_name=self.compute_provider_name(type),
                 schema_version="0",
                 sensitive_values={},
                 depends_on=[],
@@ -104,6 +104,9 @@ class TestFilterInstances:
             )
             for i, type in enumerate(types)
         ]
+
+    def compute_provider_name(self, instance_type: str) -> str:
+        return f"registry.terraform.io/hashicorp/{instance_type.split('_')[0]}"
 
     @pytest.mark.parametrize(
         "number_instance",
@@ -113,8 +116,7 @@ class TestFilterInstances:
         _types = ["aws_instance", "gcp_instance", "azure_instance", "openshift_instance"]
         instances = self.generate_module_resources(random.choices(_types, k=number_instance))
         for t in _types:
-            assert all(item.type == t for item in filter_instances(instances, [t]) or [])
-        assert filter_instances(instances, _types) == instances
+            assert all(item.type == t for item in filter_instances(instances, [t], self.compute_provider_name(t)) or [])
 
 
 class TestGetTagHostName:
@@ -323,8 +325,9 @@ class TestInventoryModuleQuery:
 
         terraform_binary = MagicMock()
         resources_types = MagicMock()
+        provider_name = MagicMock()
         result = inventory_plugin._query(
-            terraform_binary, terraform_backend_config, search_child_modules, resources_types
+            terraform_binary, terraform_backend_config, search_child_modules, resources_types, provider_name
         )
         assert instances == result
         write_terraform_config_patch.assert_called_once_with(terraform_backend_config, ANY)
@@ -396,6 +399,8 @@ class TestInventoryModuleParse:
                 config.get("binary_path") or terraform_bin_mock,
                 config.get("backend_config"),
                 config.get("search_child_modules"),
+                ["aws_instance"],
+                "registry.terraform.io/hashicorp/aws",
             )
             inventory_plugin.create_inventory.assert_called_once_with(
                 instances,
@@ -409,7 +414,7 @@ class TestInventoryModuleParse:
                 validate_bin_patch.assert_called_once_with(config.get("binary_path"))
                 process_patch.get_bin_path.assert_not_called()
             else:
-                process_patch.get_bin_path.assert_called_once_with("terraform", required=True)
+                process_patch.get_bin_path.assert_called_once_with("terraform")
                 validate_bin_patch.assert_not_called()
 
         super_parse_patch.assert_called_once_with(inventory, loader, path, cache=cache)
