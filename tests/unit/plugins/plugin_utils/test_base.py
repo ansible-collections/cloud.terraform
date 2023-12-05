@@ -21,7 +21,7 @@ def inventory_plugin():
 class TestInventoryModuleReadConfigData:
     def test_read_config_data(self, inventory_plugin, mocker, tmp_path):
         mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.yaml.safe_load"
+            "ansible_collections.cloud.terraform.plugins.plugin_utils.base.yaml.safe_load"
         ).return_value = dict(plugin="cloud.terraform.terraform_provider", state_file="mystate.tfstate")
         my_path = tmp_path / "terraform_provider.yaml"
         my_path.write_text("plugin: cloud.terraform.terraform_provider")
