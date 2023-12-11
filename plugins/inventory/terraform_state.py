@@ -182,8 +182,8 @@ EXAMPLES = r"""
         password = "test123!"
     }
   keyed_groups:
-  - key: instance_state
-    prefix: state
+    - key: instance_state
+      prefix: state
 
   # Running command `ansible-inventory -i keyed_terraform_state.yaml --graph` would then produce the inventory:
   # @all:
@@ -202,9 +202,9 @@ EXAMPLES = r"""
         password = "test123!"
     }
   hostnames:
-  - name: 'tag:Phase'
-    separator: "-"
-    prefix: 'instance_state'
+    - name: 'tag:Phase'
+      separator: "-"
+      prefix: 'instance_state'
 
   # Running command `ansible-inventory -i hostnames_terraform_state.yaml --graph` would then produce the inventory:
   # @all:
