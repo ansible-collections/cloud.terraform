@@ -1,0 +1,10 @@
+---
+plugin: cloud.terraform.terraform_state
+backend_config: |
+  backend "s3" {
+    bucket = "{{ bucket_name }}"
+    key    = "ansible/terraform.tfstate"
+    region = "{{ aws_region }}"
+  }
+compose:
+  ansible_host: 'private_ip'
