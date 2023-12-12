@@ -30,6 +30,7 @@ options:
     description:
       - A Terraform backend configuration to an existing state file.
     type: str
+    required: true
   search_child_modules:
     description:
       - Whether to include resources from Terraform child modules.
