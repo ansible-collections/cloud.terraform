@@ -1,8 +1,10 @@
+terraform
 .idea/
 output/
 .collection_root/*
 
 tests/integration/inventory
+tests/integration/cloud-config-*
 
 **/.terraform/*
 *.tfstate
