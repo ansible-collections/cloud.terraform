@@ -1,0 +1,3 @@
+---
+bugfixes:
+  - Remove superfluous parameter `required` from process.get_bin_path API usage.
