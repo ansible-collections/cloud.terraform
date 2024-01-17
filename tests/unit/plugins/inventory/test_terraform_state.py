@@ -14,7 +14,9 @@ from ansible.module_utils._text import to_text
 from ansible.template import Templar
 from ansible_collections.cloud.terraform.plugins.inventory.terraform_state import (
     InventoryModule,
+    ProvidersMapping,
     TerraformError,
+    TerraformProviderInstance,
     filter_instances,
     get_preferred_hostname,
     get_tag_hostname,
@@ -114,10 +116,16 @@ class TestFilterInstances:
         range(5),
     )
     def test_filter_instances(self, number_instance):
-        _types = ["aws_instance", "gcp_instance", "azure_instance", "openshift_instance"]
-        instances = self.generate_module_resources(random.choices(_types, k=number_instance))
+        _types = ["aws_instance", "azurerm_virtual_machine", "google_compute_instance"]
+        resources = self.generate_module_resources(random.choices(_types, k=number_instance))
+        TerraformProviderInstance
         for t in _types:
-            assert all(item.type == t for item in filter_instances(instances, [t], self.compute_provider_name(t)) or [])
+            assert all(
+                item.type == t
+                for item in filter_instances(
+                    resources, [TerraformProviderInstance(provider_name=self.compute_provider_name(t), types=[t])]
+                )
+            )
 
 
 class TestGetTagHostName:
@@ -329,8 +337,6 @@ class TestInventoryModuleQuery:
         terraform_command_patch.return_value = terraform_commands
 
         terraform_binary = MagicMock()
-        resources_types = MagicMock()
-        provider_name = MagicMock()
         tf_backend_type = MagicMock()
         tf_backend_config = MagicMock()
         tf_backend_config_files = MagicMock()
@@ -340,8 +346,12 @@ class TestInventoryModuleQuery:
             tf_backend_config,
             tf_backend_config_files,
             search_child_modules,
-            resources_types,
-            provider_name,
+            [
+                TerraformProviderInstance(
+                    provider_name=MagicMock(),
+                    types=MagicMock(),
+                )
+            ],
         )
         assert instances == result
         write_terraform_config_patch.assert_called_once_with(tf_backend_type, ANY)
@@ -411,8 +421,7 @@ class TestInventoryModuleParse:
             config.get("backend_config"),
             config.get("backend_config_files"),
             config.get("search_child_modules", False),
-            ["aws_instance"],
-            "registry.terraform.io/hashicorp/aws",
+            [v for k, v in ProvidersMapping.items()],
         )
         self.get_mock("create_inventory").assert_called_once_with(
             self.get_mock("_query_instances"),

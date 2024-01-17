@@ -1,0 +1,62 @@
+---
+- name: Delete infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  environment:
+    ARM_CLIENT_ID: "{{ lookup('env', 'AZURE_CLIENT_ID', default=Undefined) }}"
+    ARM_CLIENT_SECRET: "{{ lookup('env', 'AZURE_SECRET', default=Undefined) }}"
+    ARM_SUBSCRIPTION_ID: "{{ lookup('env', 'AZURE_SUBSCRIPTION_ID', default=Undefined) }}"
+    ARM_TENANT_ID: "{{ lookup('env', 'AZURE_TENANT', default=Undefined) }}"
+
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - name: Read storage account name from resource group
+      azure.azcollection.azure_rm_storageaccount_info:
+        resource_group: "{{ resource_group }}"
+      register: storage_accounts
+
+    - name: Destroy resources using Terraform configuration
+      when: storage_accounts.storageaccounts | length > 0
+      block:
+        - name: Create temporary dir
+          ansible.builtin.tempfile:
+            state: directory
+          register: terraform_dir
+
+        - name: Generate Terraform configuration
+          ansible.builtin.template:
+            src: main.tf.j2
+            dest: "{{ terraform_dir.path }}/main.tf"
+          vars:
+            test_storage_account_name: "{{ storage_accounts.storageaccounts.0.name }}"
+
+        - name: Destroy infrastructure using Terraform configuration
+          cloud.terraform.terraform:
+            project_path: "{{ terraform_dir.path }}"
+            force_init: true
+            variables:
+              azure_resource_group: "{{ resource_group }}"
+            state: absent
+
+        - name: Delete Container (force deletion even if it contains blob)
+          azure.azcollection.azure_rm_storageblob:
+            resource_group: "{{ resource_group }}"
+            storage_account_name: "{{ storage_accounts.storageaccounts.0.name }}"
+            container: "{{ azurerm_backend_container_name }}"
+            state: absent
+            force: true
+
+        - name: Delete Storage account
+          azure.azcollection.azure_rm_storageaccount:
+            resource_group: "{{ resource_group }}"
+            name: "{{ storage_accounts.storageaccounts.0.name }}"
+            state: absent
+
+      always:
+        - name: Delete temporary directory
+          ansible.builtin.file:
+            state: absent
+            path: "{{ terraform_dir.path }}"
