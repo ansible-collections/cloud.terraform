@@ -371,8 +371,6 @@ EXAMPLES = r"""
   # |  |  |--{terraform_labels = {}}
   # |  |  |--{timeouts = None}
   # |  |  |--{zone = us-east1-c}
-
-
 """
 
 
