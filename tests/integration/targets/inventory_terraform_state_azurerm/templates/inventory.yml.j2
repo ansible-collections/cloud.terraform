@@ -1,0 +1,9 @@
+---
+plugin: cloud.terraform.terraform_state
+backend_config: |
+  backend "azurerm" {
+    resource_group_name = "{{ resource_group }}"
+    storage_account_name = "{{ test_storage_account_name }}"
+    container_name = "{{ azurerm_backend_container_name }}"
+    key = "{{ azurerm_backend_container_key }}"
+  }

@@ -1,0 +1,7 @@
+---
+plugin: cloud.terraform.terraform_state
+backend_config: |
+  backend "gcs" {
+    bucket  = "{{ gcp_storage_bucket_name }}"
+    prefix  = "{{ gcp_storage_bucket_prefix }}"
+  }
