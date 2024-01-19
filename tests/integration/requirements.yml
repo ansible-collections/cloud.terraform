@@ -6,3 +6,6 @@ collections:
   - name: https://github.com/ansible-collections/community.aws.git
     type: git
     version: main
+  - name: https://github.com/ansible-collections/azure.git
+    type: git
+    version: dev
