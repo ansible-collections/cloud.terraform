@@ -96,7 +96,7 @@ options:
 
 EXAMPLES = r"""
 # Inventory with state file stored into http backend
-- name: Create an inventory from state file stored into http backend
+- name: Create an inventory from state file stored in an s3 backend
   plugin: cloud.terraform.terraform_state
   backend_config: |
     backend "s3" {
