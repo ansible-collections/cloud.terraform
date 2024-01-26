@@ -26,11 +26,22 @@ options:
     required: true
     type: str
     choices: [ cloud.terraform.terraform_state ]
-  backend_config:
+  backend_type:
     description:
-      - A Terraform backend configuration to an existing state file.
+      - The Terraform backend type from which the state file will be retrieved.
+      - Possible values include C(s3), C(remote), C(azurerm), C(local), C(consul), C(cos), C(gcs), C(http)
     type: str
     required: true
+  backend_config:
+    description:
+      - A group of key-values used to configure the backend.
+      - These values will be provided at init stage to the -backend-config parameter.
+    type: dict
+  backend_config_files:
+    description:
+      - The path to a configuration file to provide at init state to the -backend-config parameter.
+        This can accept a list of paths to multiple configuration files.
+    type: raw
   search_child_modules:
     description:
       - Whether to include resources from Terraform child modules.
@@ -76,13 +87,12 @@ EXAMPLES = r"""
 # Inventory with state file stored into http backend
 - name: Create an inventory from state file stored into http backend
   plugin: cloud.terraform.terraform_state
-  backend_config: |
-    backend "http" {
-        address = "https://localhost:8043/api/v2/state/3/"
-        skip_cert_verification = true
-        username = "ansible"
-        password = "test123!"
-    }
+  backend_type: http
+  backend_config:
+    address: https://localhost:8043/api/v2/state/3/
+    skip_cert_verification: true
+    username: ansible
+    password: test123!
 
   # Running command `ansible-inventory -i basic_terraform_state.yaml --graph --vars` would then produce the inventory:
   # @all:
@@ -152,13 +162,11 @@ EXAMPLES = r"""
 # Example using constructed features to set ansible_host
 - name: Using compose feature to set the ansible_host
   plugin: cloud.terraform.terraform_state
-  backend_config: |
-    backend "http" {
-        address = "https://localhost:8043/api/v2/state/3/"
-        skip_cert_verification = true
-        username = "ansible"
-        password = "test123!"
-    }
+  backend_type: s3
+  backend_config:
+    region: us-east-1
+    key: terraform/state
+    bucket: my-sample-bucket
   compose:
     ansible_host: public_ip
 
@@ -175,13 +183,11 @@ EXAMPLES = r"""
 # Example using constructed features to create inventory groups
 - name: Using keyed_groups feature to add host into group
   plugin: cloud.terraform.terraform_state
-  backend_config: |
-    backend "http" {
-        address = "https://localhost:8043/api/v2/state/3/"
-        skip_cert_verification = true
-        username = "ansible"
-        password = "test123!"
-    }
+  backend_type: s3
+  backend_config:
+    region: us-east-1
+    key: terraform/state
+    bucket: my-sample-bucket
   keyed_groups:
     - key: instance_state
       prefix: state
@@ -195,13 +201,11 @@ EXAMPLES = r"""
 # Example using hostnames feature to define inventory hostname
 - name: Using hostnames feature to define inventory hostname
   plugin: cloud.terraform.terraform_state
-  backend_config: |
-    backend "http" {
-        address = "https://localhost:8043/api/v2/state/3/"
-        skip_cert_verification = true
-        username = "ansible"
-        password = "test123!"
-    }
+  backend_type: s3
+  backend_config:
+    region: us-east-1
+    key: terraform/state
+    bucket: my-sample-bucket
   hostnames:
     - name: 'tag:Phase'
       separator: "-"
@@ -211,6 +215,27 @@ EXAMPLES = r"""
   # @all:
   # |--@ungrouped:
   # |  |--running-integration
+
+# Example using backend_config_files option to configure the backend
+- name: Using backend_config_files to configure the backend
+  plugin: cloud.terraform.terraform_state
+  backend_type: s3
+  backend_config:
+    region: us-east-1
+  backend_config_files:
+    - /path/to/config1
+    - /path/to/config2
+
+  # With the following content for config1
+  #
+  # key = terraform/tfstate
+  # bucket = my-tf-backend-bucket
+  #
+  # and the following content for config2
+  #
+  # access_key = xxxxxxxxxxxxxx
+  # secret_key = xxxxxxxxxxxxxx
+  # token = xxxxxxxxxxxxx
 """
 
 
@@ -277,8 +302,10 @@ def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optiona
     return hostname
 
 
-def write_terraform_config(backend_config: str, path: str) -> None:
-    tf_config = "terraform {\n" + backend_config + "\n}"
+def write_terraform_config(backend_type: str, path: str) -> None:
+    tf_config = "terraform {\n"
+    tf_config += 'backend "%s" {}' % backend_type
+    tf_config += "\n}"
     with open(path, "w") as temp_file:
         temp_file.write(tf_config)
 
@@ -300,16 +327,18 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
     def _query(
         self,
         terraform_binary: str,
-        backend_config: str,
+        backend_type: str,
+        backend_config: Optional[Dict[str, str]],
+        backend_config_files: Optional[List[str]],
         search_child_modules: bool,
         resources_types: List[str],
         provider_name: str,
     ) -> List[TerraformModuleResource]:
         with TemporaryDirectory() as temp_dir:
-            write_terraform_config(backend_config, os.path.join(temp_dir, "main.tf"))
+            write_terraform_config(backend_type, os.path.join(temp_dir, "main.tf"))
             terraform = TerraformCommands(module_run_command, temp_dir, terraform_binary, False)
             try:
-                terraform.init()
+                terraform.init(backend_config=backend_config, backend_config_files=backend_config_files)
                 result = terraform.show()
                 instances: List[TerraformModuleResource] = []
                 if result:
@@ -357,20 +386,39 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         cfg = self.read_config_data(path)  # type: ignore  # mypy ignore
 
         backend_config = cfg.get("backend_config")
+        backend_config_files = cfg.get("backend_config_files")
+        backend_type = cfg.get("backend_type")
         terraform_binary = cfg.get("binary_path")
         search_child_modules = cfg.get("search_child_modules", False)
 
-        if not backend_config:
-            raise TerraformError("'backend_config' option is required to read existing state file.")
+        if not backend_type:
+            raise TerraformError("The parameter 'backend_type' is required to use this inventory plugin.")
+
+        if not backend_config and not backend_config_files:
+            raise TerraformError(
+                "At least one of 'backend_config' or 'backend_config_files' option is required to configure the Terraform backend."
+            )
 
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:
             terraform_binary = process.get_bin_path("terraform")
 
+        # Transform the backend_config_files from Str to List[Str]
+        if backend_config_files and not isinstance(backend_config_files, list):
+            backend_config_files = [backend_config_files]
+
         provider_name = "registry.terraform.io/hashicorp/aws"
         resources_types = ["aws_instance"]
-        instances = self._query(terraform_binary, backend_config, search_child_modules, resources_types, provider_name)
+        instances = self._query(
+            terraform_binary,
+            backend_type,
+            backend_config,
+            backend_config_files,
+            search_child_modules,
+            resources_types,
+            provider_name,
+        )
         self.create_inventory(
             instances, cfg.get("hostnames"), cfg.get("compose"), cfg.get("keyed_groups"), cfg.get("strict")
         )
