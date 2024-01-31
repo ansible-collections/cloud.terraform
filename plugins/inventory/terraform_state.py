@@ -41,7 +41,8 @@ options:
     description:
       - The path to a configuration file to provide at init state to the -backend-config parameter.
         This can accept a list of paths to multiple configuration files.
-    type: raw
+    type: list
+    elements: path
   search_child_modules:
     description:
       - Whether to include resources from Terraform child modules.
@@ -228,14 +229,14 @@ EXAMPLES = r"""
 
   # With the following content for config1
   #
-  # key = terraform/tfstate
-  # bucket = my-tf-backend-bucket
+  # key = "terraform/tfstate"
+  # bucket = "my-tf-backend-bucket"
   #
   # and the following content for config2
   #
-  # access_key = xxxxxxxxxxxxxx
-  # secret_key = xxxxxxxxxxxxxx
-  # token = xxxxxxxxxxxxx
+  # access_key = "xxxxxxxxxxxxxx"
+  # secret_key = "xxxxxxxxxxxxxx"
+  # token = "xxxxxxxxxxxxx"
 """
 
 
