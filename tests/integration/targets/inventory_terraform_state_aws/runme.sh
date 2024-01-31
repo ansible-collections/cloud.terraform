@@ -17,7 +17,9 @@ export ANSIBLE_INVENTORY_ENABLED="cloud.terraform.terraform_state"
 
 export ANSIBLE_INVENTORY=test.terraform_state.yml
 
+set +x
 source aws_credentials.sh
+set -x
 
 ansible-playbook test.yml "$@"
 

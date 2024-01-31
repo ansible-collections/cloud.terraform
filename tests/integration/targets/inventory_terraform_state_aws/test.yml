@@ -16,11 +16,42 @@
       vars:
         inventory_path: "{{ lookup('env', 'ANSIBLE_INVENTORY') }}"
       block:
+        - name: Create temporary file to store backend configuration
+          tempfile:
+            suffix: ".hcl"
+          register: tmpfile
+
+        - name: Generate backend configuration file
+          template:
+            src: backend.hcl.j2
+            dest: "{{ tmpfile.path }}"
+
         # Simple inventory configuration
-        - name: Generate inventory file
+        - name: Generate inventory file with backend_config
           template:
             src: "inventory.yml.j2"
             dest: "{{ inventory_path }}"
+
+        - meta: refresh_inventory
+
+        - name: 'assert that host {{ default_hostname }} is defined'
+          assert:
+            that:
+              - default_hostname in hostvars
+
+        - name: Assert that '{{ default_hostname }}' host has required variables
+          assert:
+            that:
+              - item in hostvars[default_hostname]
+          with_items: "{{ host_variables }}"
+
+        # Inventory with backend_config_files
+        - name: Generate inventory file with backend_config_files
+          template:
+            src: "inventory_with_backend_files.yml.j2"
+            dest: "{{ inventory_path }}"
+          vars:
+            backend_config_files: "{{ tmpfile.path }}"
 
         - meta: refresh_inventory
 
@@ -89,6 +120,11 @@
               - default_hostname in groups.state_running
 
       always:
+        - name: Delete temporary file
+          file:
+            state: absent
+            path: "{{ tmpfile.path }}"
+
         - name: Delete inventory file
           file:
             state: absent

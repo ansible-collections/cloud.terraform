@@ -14,6 +14,7 @@ from ansible.module_utils._text import to_text
 from ansible.template import Templar
 from ansible_collections.cloud.terraform.plugins.inventory.terraform_state import (
     InventoryModule,
+    TerraformError,
     filter_instances,
     get_preferred_hostname,
     get_tag_hostname,
@@ -27,7 +28,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformShowValues,
 )
 
-from plugins.module_utils.errors import TerraformError
+# from plugins.module_utils.errors import TerraformError
 
 
 @pytest.fixture
@@ -283,11 +284,15 @@ class TestInventoryModuleCreateInventory:
 
 
 class TestWriteTerraformConfig:
-    def test_write_terraform_config(self, terraform_backend_config, tmp_path):
+    @pytest.mark.parametrize(
+        "backend_type",
+        ["s3", "remote", "azurerm", "local", "consul", "cos", "gcs", "http"],
+    )
+    def test_write_terraform_config(self, backend_type, tmp_path):
         main_tf = tmp_path / "main.tf"
-        write_terraform_config(terraform_backend_config, str(main_tf))
+        write_terraform_config(backend_type, str(main_tf))
 
-        assert main_tf.read_text() == "terraform {\n" + terraform_backend_config + "\n}"
+        assert main_tf.read_text() == "terraform {\n" + 'backend "%s" {}' % backend_type + "\n}"
 
 
 class TestInventoryModuleQuery:
@@ -295,7 +300,7 @@ class TestInventoryModuleQuery:
         "search_child_modules",
         [True, False],
     )
-    def test__query(self, inventory_plugin, terraform_backend_config, mocker, search_child_modules):
+    def test__query(self, inventory_plugin, mocker, search_child_modules):
         write_terraform_config_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.write_terraform_config"
         )
@@ -326,96 +331,203 @@ class TestInventoryModuleQuery:
         terraform_binary = MagicMock()
         resources_types = MagicMock()
         provider_name = MagicMock()
+        tf_backend_type = MagicMock()
+        tf_backend_config = MagicMock()
+        tf_backend_config_files = MagicMock()
         result = inventory_plugin._query(
-            terraform_binary, terraform_backend_config, search_child_modules, resources_types, provider_name
+            terraform_binary,
+            tf_backend_type,
+            tf_backend_config,
+            tf_backend_config_files,
+            search_child_modules,
+            resources_types,
+            provider_name,
         )
         assert instances == result
-        write_terraform_config_patch.assert_called_once_with(terraform_backend_config, ANY)
-        terraform_commands.init.assert_called_once()
+        write_terraform_config_patch.assert_called_once_with(tf_backend_type, ANY)
+        terraform_commands.init.assert_called_once_with(
+            backend_config=tf_backend_config, backend_config_files=tf_backend_config_files
+        )
         terraform_commands.show.assert_called_once()
 
 
 class TestInventoryModuleParse:
-    @pytest.mark.parametrize(
-        "has_backend_config",
-        [True, False],
-    )
-    @pytest.mark.parametrize(
-        "has_binary_path",
-        [True, False],
-    )
-    def test_parse(self, inventory_plugin, mocker, has_backend_config, has_binary_path):
-        loader = MagicMock()
-        path = MagicMock()
-        inventory = MagicMock()
-        cache = MagicMock()
+    mockers = {}
 
+    def get_mock(self, name):
+        if name not in self.mockers:
+            self.mockers[name] = MagicMock(name=name)
+        return self.mockers.get(name)
+
+    def test_parse_missing_backend_type(self, inventory_plugin, mocker):
         config = {
-            "backend_config": MagicMock(),
-            "binary_path": MagicMock(),
-            "search_child_modules": MagicMock(),
+            "backend_config": {"some": "configuration"},
+            "backend_config_files": ["config1", "config2"],
+            "binary_path": "path_to_my_binary",
         }
-
-        if not has_backend_config:
-            del config["backend_config"]
-
-        if not has_binary_path:
-            del config["binary_path"]
 
         read_config_data_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
         )
         read_config_data_patch.side_effect = lambda _: config
-        validate_bin_patch = mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.validate_bin_path"
-        )
-        validate_bin_patch.return_value = True
 
         super_parse_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformInventoryPluginBase.parse"
         )
         super_parse_patch.return_value = True
+        with pytest.raises(TerraformError) as exc:
+            inventory_plugin.parse(
+                self.get_mock("inventory"), self.get_mock("loader"), self.get_mock("path"), cache=True
+            )
 
+        assert "The parameter 'backend_type' is required to use this inventory plugin." == str(exc.value)
+
+    def test_parse_missing_backend_configure(self, inventory_plugin, mocker):
+        config = {
+            "backend_type": "s3",
+            "binary_path": "path_to_my_binary",
+        }
+
+        read_config_data_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+        )
+        read_config_data_patch.side_effect = lambda _: config
+
+        super_parse_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformInventoryPluginBase.parse"
+        )
+        super_parse_patch.return_value = True
+        with pytest.raises(TerraformError) as exc:
+            inventory_plugin.parse(
+                self.get_mock("inventory"), self.get_mock("loader"), self.get_mock("path"), cache=True
+            )
+        err = "At least one of 'backend_config' or 'backend_config_files' option is required to configure the Terraform backend."
+        assert err == str(exc.value)
+
+    def assert_calls(self, config, super_parse_patch, read_config_data_patch):
+        self.get_mock("inventory_query").assert_called_once_with(
+            self.get_mock("terraform"),
+            config.get("backend_type"),
+            config.get("backend_config"),
+            config.get("backend_config_files"),
+            config.get("search_child_modules", False),
+            ["aws_instance"],
+            "registry.terraform.io/hashicorp/aws",
+        )
+        self.get_mock("create_inventory").assert_called_once_with(
+            self.get_mock("_query_instances"),
+            config.get("hostnames"),
+            config.get("compose"),
+            config.get("keyed_groups"),
+            config.get("strict"),
+        )
+
+        super_parse_patch.assert_called_once_with(
+            self.get_mock("inventory"), self.get_mock("loader"), self.get_mock("path"), cache=True
+        )
+        read_config_data_patch.assert_called_once_with(self.get_mock("path"))
+
+    def test_parse_missing_terraform_binary(self, inventory_plugin, mocker):
+        config = {
+            "backend_type": "http",
+            "backend_config": {"some": "key"},
+        }
+
+        read_config_data_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+        )
+        read_config_data_patch.side_effect = lambda _: config
+
+        super_parse_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformInventoryPluginBase.parse"
+        )
+        super_parse_patch.return_value = True
         process_patch = mocker.patch("ansible_collections.cloud.terraform.plugins.inventory.terraform_state.process")
-        process_patch.get_bin_path = MagicMock()
-        terraform_bin_mock = MagicMock()
-        process_patch.get_bin_path.return_value = terraform_bin_mock
+        process_patch.get_bin_path = self.get_mock("get_bin_path")
+        process_patch.get_bin_path.return_value = self.get_mock("terraform")
 
-        if not has_backend_config:
-            with pytest.raises(Exception):
-                try:
-                    inventory_plugin.parse(inventory, loader, path, cache=cache)
-                except TerraformError as e:
-                    assert "'backend_config' option is required to read existing state file." in str(e.value)
-                    raise
-        else:
-            instances = MagicMock()
-            inventory_plugin._query = MagicMock()
-            inventory_plugin._query.return_value = instances
-            inventory_plugin.create_inventory = MagicMock()
-            inventory_plugin.parse(inventory, loader, path, cache=cache)
+        validate_bin_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.validate_bin_path"
+        )
+        validate_bin_patch.return_value = True
 
-            inventory_plugin._query.assert_called_once_with(
-                config.get("binary_path") or terraform_bin_mock,
-                config.get("backend_config"),
-                config.get("search_child_modules"),
-                ["aws_instance"],
-                "registry.terraform.io/hashicorp/aws",
-            )
-            inventory_plugin.create_inventory.assert_called_once_with(
-                instances,
-                config.get("hostnames"),
-                config.get("compose"),
-                config.get("keyed_groups"),
-                config.get("strict"),
-            )
+        inventory_plugin._query = self.get_mock("inventory_query")
+        inventory_plugin._query.return_value = self.get_mock("_query_instances")
+        inventory_plugin.create_inventory = self.get_mock("create_inventory")
+        inventory_plugin.parse(self.get_mock("inventory"), self.get_mock("loader"), self.get_mock("path"), cache=True)
 
-            if has_binary_path:
-                validate_bin_patch.assert_called_once_with(config.get("binary_path"))
-                process_patch.get_bin_path.assert_not_called()
-            else:
-                process_patch.get_bin_path.assert_called_once_with("terraform")
-                validate_bin_patch.assert_not_called()
+        process_patch.get_bin_path.assert_called_once_with("terraform")
+        validate_bin_patch.assert_not_called()
 
-        super_parse_patch.assert_called_once_with(inventory, loader, path, cache=cache)
-        read_config_data_patch.assert_called_once_with(path)
+        self.assert_calls(config, super_parse_patch, read_config_data_patch)
+
+    def test_parse_with_backend_config_files_as_string(self, inventory_plugin, mocker):
+        config = {
+            "backend_type": "remote",
+            "backend_config": {"some": "key"},
+            "backend_config_files": "backend.hcl",
+        }
+
+        read_config_data_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+        )
+        read_config_data_patch.side_effect = lambda _: config
+
+        super_parse_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformInventoryPluginBase.parse"
+        )
+        super_parse_patch.return_value = True
+        process_patch = mocker.patch("ansible_collections.cloud.terraform.plugins.inventory.terraform_state.process")
+        process_patch.get_bin_path = self.get_mock("get_bin_path")
+        process_patch.get_bin_path.return_value = self.get_mock("terraform")
+
+        validate_bin_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.validate_bin_path"
+        )
+        validate_bin_patch.return_value = True
+
+        inventory_plugin._query = self.get_mock("inventory_query")
+        inventory_plugin._query.return_value = self.get_mock("_query_instances")
+        inventory_plugin.create_inventory = self.get_mock("create_inventory")
+        inventory_plugin.parse(self.get_mock("inventory"), self.get_mock("loader"), self.get_mock("path"), cache=True)
+
+        process_patch.get_bin_path.assert_called_once_with("terraform")
+        validate_bin_patch.assert_not_called()
+
+        config.update({"backend_config_files": ["backend.hcl"]})
+        self.assert_calls(config, super_parse_patch, read_config_data_patch)
+
+    def test_parse_with_backend_config_files_as_list(self, inventory_plugin, mocker):
+        config = {
+            "backend_type": "gcs",
+            "backend_config": {"some": "key"},
+            "backend_config_files": ["backend.hcl"],
+        }
+
+        read_config_data_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+        )
+        read_config_data_patch.side_effect = lambda _: config
+
+        super_parse_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformInventoryPluginBase.parse"
+        )
+        super_parse_patch.return_value = True
+        process_patch = mocker.patch("ansible_collections.cloud.terraform.plugins.inventory.terraform_state.process")
+        process_patch.get_bin_path = self.get_mock("get_bin_path")
+        process_patch.get_bin_path.return_value = self.get_mock("terraform")
+
+        validate_bin_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.validate_bin_path"
+        )
+        validate_bin_patch.return_value = True
+
+        inventory_plugin._query = self.get_mock("inventory_query")
+        inventory_plugin._query.return_value = self.get_mock("_query_instances")
+        inventory_plugin.create_inventory = self.get_mock("create_inventory")
+        inventory_plugin.parse(self.get_mock("inventory"), self.get_mock("loader"), self.get_mock("path"), cache=True)
+
+        process_patch.get_bin_path.assert_called_once_with("terraform")
+        validate_bin_patch.assert_not_called()
+
+        self.assert_calls(config, super_parse_patch, read_config_data_patch)
