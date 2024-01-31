@@ -29,7 +29,6 @@ options:
   backend_type:
     description:
       - The Terraform backend type from which the state file will be retrieved.
-      - Possible values include C(s3), C(remote), C(azurerm), C(local), C(consul), C(cos), C(gcs), C(http)
     type: str
     required: true
   backend_config:
