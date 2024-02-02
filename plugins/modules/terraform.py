@@ -64,7 +64,7 @@ options:
   plan_file:
     description:
       - The path to a Terraform plan file to apply or generate.
-      - When 'check_mode' is set to I(True) or I(state=planned), a Terraform plan file with be generated and
+      - When 'check_mode' is set to I(True) or I(state=planned), a Terraform plan file will be generated and
         saved into the specified location.
       - When 'check_mode' is set to I(False) and I(state) is set to either C(present) or C(absent),
         The existing Terraform plan file will be applied.
