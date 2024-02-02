@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-# Copyright: Contributors to the Ansible project
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Copyright (c) 2024, Aubin Bikouo <abikouo>
+# GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 DOCUMENTATION = r"""
 ---
@@ -47,25 +47,8 @@ RETURN = r"""
 """
 
 import base64
-import keyword
 
 from ansible.module_utils.basic import AnsibleModule
-
-
-def _is_valid_variable_name(var_name: str) -> bool:
-    if not isinstance(var_name, str):
-        return False
-
-    if not var_name.isascii():
-        return False
-
-    if not var_name.isidentifier():
-        return False
-
-    if keyword.iskeyword(var_name):
-        return False
-
-    return True
 
 
 def main() -> None:
@@ -91,12 +74,6 @@ def main() -> None:
 
     if not data:
         module.fail_json(msg="The following file '{0}' is empty.".format(terrafom_plan_file))
-
-    if not _is_valid_variable_name(var_name):
-        module.fail_json(
-            msg="The variable name '%s' is not valid. Variables must start with a letter or underscore character, and contain only "
-            "letters, numbers and underscores." % var_name
-        )
 
     # encode binary data
     try:

@@ -1,0 +1,62 @@
+- name: Create temporary directory to work in
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: .tfplan
+  register: test_dir
+
+- name: Run tests
+  block:
+    - name: Copy terraform configuration into working directory
+      copy:
+        src: main.tf
+        dest: "{{ test_dir.path }}"
+
+    - name: Run terraform plan
+      cloud.terraform.terraform:
+        force_init: true
+        project_path: "{{ test_dir.path }}"
+        plan_file: "{{ test_dir.path }}/terraform_plan_file.tfplan"
+      check_mode: true
+
+    - set_fact:
+        plan_file_b64encoded: "{{ lookup('file', test_dir.path + '/terraform_plan_file.tfplan') | b64encode }}"
+
+    - name: Save the terraform plan into stats
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/terraform_plan_file.tfplan"
+        per_host: true
+      register: plan_stash
+
+    - name: Ensure terraform plan file has been saved as expected
+      ansible.builtin.assert:
+        that:
+          - plan_stash is not changed
+          - '"ansible_stats" in plan_stash'
+          - '"data" in plan_stash.ansible_stats'
+          - '"tfplan" in plan_stash.ansible_stats.data'
+          - plan_stash.ansible_stats.data.tfplan == plan_file_b64encoded
+          - '"per_host" in plan_stash.ansible_stats'
+          - plan_stash.ansible_stats.per_host
+
+    - name: Save the terraform plan into a custom variable name
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/terraform_plan_file.tfplan"
+        var_name: "terraform_plan_custom_variable"
+      register: plan_stash
+
+    - name: Ensure terraform plan file has been saved as expected
+      ansible.builtin.assert:
+        that:
+          - plan_stash is not changed
+          - '"ansible_stats" in plan_stash'
+          - '"data" in plan_stash.ansible_stats'
+          - '"terraform_plan_custom_variable" in plan_stash.ansible_stats.data'
+          - plan_stash.ansible_stats.data.terraform_plan_custom_variable == plan_file_b64encoded
+          - '"per_host" in plan_stash.ansible_stats'
+          - not plan_stash.ansible_stats.per_host
+
+  always:
+    - name: Delete temporary directory
+      ansible.builtin.file:
+        path: "{{ test_dir.path }}"
+        state: absent
