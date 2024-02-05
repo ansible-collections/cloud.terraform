@@ -25,10 +25,10 @@ options:
       - The variable name to be set into stats.
       - Variables must start with a letter or underscore character, and contain only letters,
         numbers and underscores.
-      - By default the module will set the I(tfplan) with the base64-encoded data of the
+      - By default the module will set the I(terraform_plan) with the base64-encoded data of the
         terraform plan file.
     type: str
-    default: tfplan
+    default: terraform_plan
   per_host:
     description:
       - whether the stats are per host or for all hosts in the run.
@@ -55,7 +55,7 @@ def main() -> None:
     module = AnsibleModule(
         argument_spec=dict(
             path=dict(required=True, type="path"),
-            var_name=dict(type="str", default="tfplan"),
+            var_name=dict(type="str", default="terraform_plan"),
             per_host=dict(type="bool", default=False),
         ),
         supports_check_mode=True,

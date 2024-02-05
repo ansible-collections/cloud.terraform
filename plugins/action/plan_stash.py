@@ -33,7 +33,7 @@ class ActionModule(ActionBase):  # type: ignore  # mypy ignore
         del tmp  # tmp no longer has any effect
 
         if self._task.args:
-            var_name = self._task.args.get("var_name", "tfplan")
+            var_name = self._task.args.get("var_name", "terraform_plan")
             path = self._task.args.get("path", "")
             per_host = self._task.args.get("per_host", None)
 
