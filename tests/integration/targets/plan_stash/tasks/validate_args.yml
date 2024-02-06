@@ -1,0 +1,26 @@
+# Ensure the 'path' argument is required
+- name: Run module without path argument
+  cloud.terraform.plan_stash:
+  register: missing_path
+  ignore_errors: true
+
+- name: Assert that module failed when path is not specified
+  assert:
+    that:
+      - missing_path is failed
+      - missing_path.msg == "missing required arguments: path"
+
+# Ensure the module failed when 'var_name' is not a valid variable name
+- name: Run module with invalid variable name
+  cloud.terraform.plan_stash:
+    path: path_to_plan_file
+    var_name: .testing_plan
+  register: invalid_var_name
+  ignore_errors: true
+
+- name: Ensure the module failed with invalid variable name
+  assert:
+    that:
+      - invalid_var_name is failed
+      - invalid_var_name.msg == "The variable name '.testing_plan' is not valid. Variables must start with a letter or underscore character, and contain only letters, numbers and underscores."
+      

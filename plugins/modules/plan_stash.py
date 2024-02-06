@@ -49,15 +49,12 @@ RETURN = r"""
 import base64
 
 from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.cloud.terraform.plugins.module_utils.plan_stash_args import PLAN_STASH_ARG_SPEC
 
 
 def main() -> None:
     module = AnsibleModule(
-        argument_spec=dict(
-            path=dict(required=True, type="path"),
-            var_name=dict(type="str", default="terraform_plan"),
-            per_host=dict(type="bool", default=False),
-        ),
+        argument_spec=PLAN_STASH_ARG_SPEC,
         supports_check_mode=True,
     )
 
