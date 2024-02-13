@@ -34,6 +34,9 @@ options:
       - whether the stats are per host or for all hosts in the run.
     type: bool
     default: false
+notes:
+  - For security reasons, this module should be used with B(no_log=true) and (register) functionalities
+    as the plan file can contain unencrypted secrets.
 """
 
 EXAMPLES = r"""
