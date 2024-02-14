@@ -23,4 +23,34 @@
     that:
       - invalid_var_name is failed
       - invalid_var_name.msg == "The variable name '.testing_plan' is not valid. Variables must start with a letter or underscore character, and contain only letters, numbers and underscores."
-      
+
+# Validate that module failed with both 'binary_data' and 'var_name' are specified with state=load
+- name: Try to run module with both 'binary_data' and 'var_name' and state==load
+  cloud.terraform.plan_stash:
+    path: plan_to_plan_file
+    var_name: terraform_plan
+    binary_data: ""
+    state: load
+  ignore_errors: true
+  register: validate_load
+
+- name: Ensure module failed with proper message
+  assert:
+    that:
+      - validate_load is failed
+      - validate_load.msg == "You cannot specify both 'var_name' and 'binary_data' to load the terraform plan file."
+
+# Try to load terraform plan using undefined variable
+- name: Load terraform plan from undefined variable
+  cloud.terraform.plan_stash:
+    path: plan_to_plan_file
+    var_name: this_ansible_variable_is_undefined
+    state: load
+  ignore_errors: true
+  register: undef_variable
+
+- name: Ensure module failed with proper message
+  assert:
+    that:
+      - undef_variable is failed
+      - undef_variable.msg == "No variable found with this name: this_ansible_variable_is_undefined"

@@ -21,13 +21,40 @@ class ActionModule(ActionBase):  # type: ignore  # mypy ignore
 
         # Validate that 'var_name' is a valid variable name
         var_name = new_module_args.get("var_name")
-        if not isidentifier(var_name):
-            result["failed"] = True
-            result["msg"] = (
-                "The variable name '%s' is not valid. Variables must start with a letter or underscore character, and contain only "
-                "letters, numbers and underscores." % var_name
-            )
-            return result
+        binary_data = new_module_args.get("binary_data")
+        if var_name:
+            if not isidentifier(var_name):
+                result["failed"] = True
+                result["msg"] = (
+                    "The variable name '%s' is not valid. Variables must start with a letter or underscore character, and contain only "
+                    "letters, numbers and underscores." % var_name
+                )
+                return result
+
+        state = new_module_args.get("state")
+        if state == "load":
+            if var_name is not None and binary_data is not None:
+                result["failed"] = True
+                result["msg"] = "You cannot specify both 'var_name' and 'binary_data' to load the terraform plan file."
+                return result
+
+            if binary_data is None:
+                var_name = new_module_args.get("var_name") or "terraform_plan"
+                try:
+                    value = task_vars[var_name]
+                except KeyError:
+                    try:
+                        value = task_vars["hostvars"][task_vars["inventory_hostname"]][var_name]
+                    except KeyError:
+                        result["failed"] = True
+                        result["msg"] = "No variable found with this name: %s" % var_name
+                        return result
+
+                new_module_args.pop("var_name")
+                new_module_args["binary_data"] = value
+        elif state == "stash":
+            var_name = new_module_args.get("var_name") or "terraform_plan"
+            new_module_args.update({"var_name": var_name})
 
         # Execute the plan_stash module.
         module_return = self._execute_module(
@@ -37,5 +64,4 @@ class ActionModule(ActionBase):  # type: ignore  # mypy ignore
         )
 
         result.update(module_return)
-        result["changed"] = False
         return result
