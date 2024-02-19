@@ -1,0 +1,76 @@
+- name: Create infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    azurerm_client_id: "{{ lookup('env', 'AZURE_CLIENT_ID', default=Undefined) }}"
+    azurerm_client_secret: "{{ lookup('env', 'AZURE_SECRET', default=Undefined) }}"
+    azurerm_subscription_id: "{{ lookup('env', 'AZURE_SUBSCRIPTION_ID', default=Undefined) }}"
+    azurerm_tenant_id: "{{ lookup('env', 'AZURE_TENANT', default=Undefined) }}"
+
+  vars_files:
+    - vars/main.yml
+
+  environment:
+    ARM_CLIENT_ID: "{{ lookup('env', 'AZURE_CLIENT_ID', default=Undefined) }}"
+    ARM_CLIENT_SECRET: "{{ lookup('env', 'AZURE_SECRET', default=Undefined) }}"
+    ARM_SUBSCRIPTION_ID: "{{ lookup('env', 'AZURE_SUBSCRIPTION_ID', default=Undefined) }}"
+    ARM_TENANT_ID: "{{ lookup('env', 'AZURE_TENANT', default=Undefined) }}"
+
+  tasks:
+    # Create Storage account and Container to be used as Backend for Terraform deployment
+    - name: Create Storage account
+      azure.azcollection.azure_rm_storageaccount:
+        resource_group: "{{ resource_group }}"
+        name: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_lowercase', 'digits'], length=12) }}"
+        type: "Standard_LRS"
+      register: create_storage
+      retries: 300
+      delay: 1
+      until: create_storage is successful
+
+    - name: Set storage account name
+      set_fact:
+        test_storage_account_name: "{{ create_storage.state.name }}"
+
+    - name: Create Container
+      azure.azcollection.azure_rm_storageblob:
+        resource_group: "{{ resource_group }}"
+        storage_account_name: "{{ create_storage.state.name }}"
+        container: "{{ azurerm_backend_container_name }}"
+
+    # Create AzureRM virtual machine using Terraform configuration
+    - block:
+        - name: Create temporary dir
+          ansible.builtin.tempfile:
+            state: directory
+          register: terraform_dir
+
+        - name: Generate Terraform configuration
+          ansible.builtin.template:
+            src: main.tf.j2
+            dest: "{{ terraform_dir.path }}/main.tf"
+
+        - name: Create infrastructure using Terraform configuration
+          cloud.terraform.terraform:
+            project_path: "{{ terraform_dir.path }}"
+            force_init: true
+            variables:
+              azure_resource_group: "{{ resource_group }}"
+      always:
+        - name: Delete temporary directory
+          ansible.builtin.file:
+            state: absent
+            path: "{{ terraform_dir.path }}"
+
+    # Generate inventory file
+    - name: Generate inventory file
+      ansible.builtin.template:
+        src: inventory.yml.j2
+        dest: "{{ inventory_file_path }}"
+
+    # Generate credentials file
+    - name: Generate AzureRM credentials file
+      ansible.builtin.template:
+        src: azure_credentials.sh.j2
+        dest: azure_credentials.sh

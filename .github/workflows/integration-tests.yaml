@@ -57,23 +57,20 @@ jobs:
           install_python_dependencies: true
           source_path: ${{ env.source }}
 
-      - name: Download terraform binary
-        run: >-
-          curl
-          -o terraform.zip
-          https://releases.hashicorp.com/terraform/1.6.3/terraform_1.6.3_linux_amd64.zip
-        shell: bash
-
-      - name: Install terraform binary
-        run: |-
-          zcat terraform.zip > terraform
-          chmod +x terraform
-          sudo mv terraform /usr/bin
-          terraform -v
-        shell: bash
+      - name: Install Terraform binary
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+          terraform_version: "1.6.3"
 
       - name: Create AWS/sts session credentials
         uses: ansible-network/github_actions/.github/actions/ansible_aws_test_provider@main
+        with:
+          collection_path: ${{ steps.install-collection.outputs.collection_path }}
+          ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}
+
+      - name: Create AzureRM session credentials
+        uses: ansible-network/github_actions/.github/actions/ansible_azure_test_provider@main
         with:
           collection_path: ${{ steps.install-collection.outputs.collection_path }}
           ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}

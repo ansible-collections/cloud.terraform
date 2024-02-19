@@ -236,10 +236,146 @@ EXAMPLES = r"""
   # access_key = "xxxxxxxxxxxxxx"
   # secret_key = "xxxxxxxxxxxxxx"
   # token = "xxxxxxxxxxxxx"
+# Inventory built from state file containing AWS, AzureRM and GCP instances
+- name: Create inventory from state file containing AWS, AzureRM and GCP instances
+  plugin: cloud.terraform.terraform_state
+  backend_type: azurerm
+  backend_config:
+    resource_group_name: my-resource-group
+    storage_account_name: mystorageaccount
+    container_name: terraformstate
+    key: inventory.tfstate
+  # Running command `ansible-inventory -i aws_and_azure_terraform_state.yaml --graph --vars` would then produce the inventory:
+  # @all:
+  # |--@ungrouped:
+  # |  |--aws_instance_test
+  # |  |  |--{ami = ami-01d00f1bdb42735ac}
+  # |  |  |--{arn = arn:aws:ec2:us-east-1:721066863947:instance/i-09c4a5b5d74c9b941}
+  # |  |  |--{associate_public_ip_address = True}
+  # |  |  |--{availability_zone = us-east-1b}
+  # |  |  |--{capacity_reservation_specification = [{'capacity_reservation_preference': 'open', 'capacity_reservation_target': []}]}
+  # |  |  |--{cpu_core_count = 1}
+  # |  |  |--{cpu_options = [{'amd_sev_snp': '', 'core_count': 1, 'threads_per_core': 1}]}
+  # |  |  |--{cpu_threads_per_core = 1}
+  # |  |  |--{credit_specification = [{'cpu_credits': 'standard'}]}
+  # |  |  |--{disable_api_stop = False}
+  # |  |  |--{disable_api_termination = False}
+  # |  |  |--{ebs_block_device = []}
+  # |  |  |--{ebs_optimized = False}
+  # |  |  |--{enclave_options = [{'enabled': False}]}
+  # |  |  |--{ephemeral_block_device = []}
+  # |  |  |--{get_password_data = False}
+  # |  |  |--{hibernation = False}
+  # |  |  |--{host_id = }
+  # |  |  |--{host_resource_group_arn = None}
+  # |  |  |--{iam_instance_profile = }
+  # |  |  |--{id = i-09c4a5b5d74c9b941}
+  # |  |  |--{instance_initiated_shutdown_behavior = stop}
+  # |  |  |--{instance_lifecycle = }
+  # |  |  |--{instance_market_options = []}
+  # |  |  |--{instance_state = running}
+  # |  |  |--{instance_type = t2.micro}
+  # |  |  |--{ipv6_address_count = 0}
+  # |  |  |--{ipv6_addresses = []}
+  # |  |  |--{key_name = connect-key-20231127}
+  # |  |  |--{launch_template = []}
+  # |  |  |--{maintenance_options = [{'auto_recovery': 'default'}]}
+  # |  |  |--{metadata_options = [{...}]}
+  # |  |  |--{monitoring = False}
+  # |  |  |--{network_interface = []}
+  # |  |  |--{outpost_arn = }
+  # |  |  |--{password_data = }
+  # |  |  |--{placement_group = }
+  # |  |  |--{placement_partition_number = 0}
+  # |  |  |--{primary_network_interface_id = eni-0d5ccb55032b5e01c}
+  # |  |  |--{private_dns = ip-168-10-1-178.us-east-1.compute.internal}
+  # |  |  |--{private_dns_name_options = [{...}]}
+  # |  |  |--{private_ip = 168.10.1.178}
+  # |  |  |--{public_dns = }
+  # |  |  |--{public_ip = 34.244.225.201}
+  # |  |  |--{root_block_device = [{...}]}
+  # |  |  |--{secondary_private_ips = []}
+  # |  |  |--{security_groups = []}
+  # |  |  |--{source_dest_check = True}
+  # |  |  |--{spot_instance_request_id = }
+  # |  |  |--{subnet_id = subnet-0e5159474f5fc6a17}
+  # |  |  |--{tags = {'Inventory': 'terraform_state', 'Name': 'test-ec2', 'Phase': 'integration'}}
+  # |  |  |--{tags_all = {'Inventory': 'terraform_state', 'Name': 'test-ec2', 'Phase': 'integration'}}
+  # |  |  |--{tenancy = default}
+  # |  |  |--{timeouts = None}
+  # |  |  |--{user_data = None}
+  # |  |  |--{user_data_base64 = None}
+  # |  |  |--{user_data_replace_on_change = False}
+  # |  |  |--{volume_tags = None}
+  # |  |  |--{vpc_security_group_ids = ['sg-0795c8f75883b0927']}
+  # |  |--azurerm_virtual_machine_main
+  # |  |  |--{additional_capabilities = []}
+  # |  |  |--{availability_set_id = None}
+  # |  |  |--{boot_diagnostics = []}
+  # |  |  |--{delete_data_disks_on_termination = True}
+  # |  |  |--{delete_os_disk_on_termination = True}
+  # |  |  |--{id = /subscriptions/xxxxx-xxxx-xxxx-xxxx-xxxxxxxx/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/test-vm}
+  # |  |  |--{identity = []}
+  # |  |  |--{license_type = None}
+  # |  |  |--{location = westeurope}
+  # |  |  |--{name = test-vm}
+  # |  |  |--{network_interface_ids = ['/subscriptions/xxxxx-xxxx-xxxx-xxxx-xxxxxxxx/resourceGroups/rg/providers/Microsoft.Network/networkInterfaces/test']}
+  # |  |  |--{os_profile = [{'admin_password': '', 'admin_username': 'ansible', 'computer_name': 'hostname', 'custom_data': ''}]}
+  # |  |  |--{os_profile_linux_config = [{'disable_password_authentication': False, 'ssh_keys': []}]}
+  # |  |  |--{os_profile_secrets = []}
+  # |  |  |--{os_profile_windows_config = []}
+  # |  |  |--{plan = []}
+  # |  |  |--{primary_network_interface_id = None}
+  # |  |  |--{proximity_placement_group_id = None}
+  # |  |  |--{resource_group_name = rg}
+  # |  |  |--{storage_data_disk = []}
+  # |  |  |--{storage_image_reference = [{'id': '', 'offer': 'xxxxx', 'publisher': 'Canonical', 'sku': '22_04-lts', 'version': 'latest'}]}
+  # |  |  |--{timeouts = None}
+  # |  |  |--{vm_size = Standard_DS1_v2}
+  # |  |  |--{zones = []}
+  # |  |--google_compute_instance_default
+  # |  |  |--{advanced_machine_features = []}
+  # |  |  |--{allow_stopping_for_update = None}
+  # |  |  |--{attached_disk = []}
+  # |  |  |--{boot_disk = [{'auto_delete': True, 'device_name': 'persistent-disk-0', 'disk_encryption_key_raw': ''}]
+  # |  |  |--{can_ip_forward = False}
+  # |  |  |--{confidential_instance_config = []}
+  # |  |  |--{cpu_platform = Intel Cascade Lake}
+  # |  |  |--{current_status = RUNNING}
+  # |  |  |--{deletion_protection = False}
+  # |  |  |--{description = }
+  # |  |  |--{desired_status = None}
+  # |  |  |--{effective_labels = {}}
+  # |  |  |--{enable_display = False}
+  # |  |  |--{guest_accelerator = []}
+  # |  |  |--{hostname = }
+  # |  |  |--{id = projects/xxxx/zones/us-east1-c/instances/ansible-cloud-001}
+  # |  |  |--{instance_id = 0123456789012345678}
+  # |  |  |--{label_fingerprint = 42WmSpB8rSM=}
+  # |  |  |--{labels = {}}
+  # |  |  |--{machine_type = n2-standard-2}
+  # |  |  |--{metadata = {}}
+  # |  |  |--{metadata_fingerprint = WP5-7HGjCUM=}
+  # |  |  |--{metadata_startup_script = None}
+  # |  |  |--{min_cpu_platform = }
+  # |  |  |--{name = ansible-cloud-001}
+  # |  |  |--{network_performance_config = []}
+  # |  |  |--{params = []}
+  # |  |  |--{project = agcp-001-dev}
+  # |  |  |--{reservation_affinity = []}
+  # |  |  |--{resource_policies = []}
+  # |  |  |--{scratch_disk = [{'device_name': 'local-ssd-0', 'interface': 'NVME', 'size': 375}]}
+  # |  |  |--{service_account = []}
+  # |  |  |--{tags = []}
+  # |  |  |--{tags_fingerprint = 42WmSpB8rSM=}
+  # |  |  |--{terraform_labels = {}}
+  # |  |  |--{timeouts = None}
+  # |  |  |--{zone = us-east1-c}
 """
 
 
 import os
+from dataclasses import dataclass
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 
@@ -254,10 +390,31 @@ from ansible_collections.cloud.terraform.plugins.plugin_utils.base import Terraf
 from ansible_collections.cloud.terraform.plugins.plugin_utils.common import module_run_command
 
 
+@dataclass
+class TerraformProviderInstance:
+    provider_name: str
+    types: List[str]
+
+
+ProvidersMapping = {
+    "aws": TerraformProviderInstance(provider_name="registry.terraform.io/hashicorp/aws", types=["aws_instance"]),
+    "azurerm": TerraformProviderInstance(
+        provider_name="registry.terraform.io/hashicorp/azurerm", types=["azurerm_virtual_machine"]
+    ),
+    "google": TerraformProviderInstance(
+        provider_name="registry.terraform.io/hashicorp/google", types=["google_compute_instance"]
+    ),
+}
+
+
 def filter_instances(
-    resources: List[TerraformModuleResource], types: List[str], provider_name: str
+    resources: List[TerraformModuleResource], providers: List[TerraformProviderInstance]
 ) -> List[TerraformModuleResource]:
-    return [r for r in resources if r.type in types and r.provider_name == provider_name]
+    return [
+        r
+        for r in resources
+        if any(r.type in provider.types and r.provider_name == provider.provider_name for provider in providers)
+    ]
 
 
 def get_tag_hostname(instance: TerraformModuleResource, preference: str) -> Optional[str]:
@@ -331,8 +488,7 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         backend_config: Optional[Dict[str, str]],
         backend_config_files: Optional[List[str]],
         search_child_modules: bool,
-        resources_types: List[str],
-        provider_name: str,
+        providers: List[TerraformProviderInstance],
     ) -> List[TerraformModuleResource]:
         with TemporaryDirectory() as temp_dir:
             write_terraform_config(backend_type, os.path.join(temp_dir, "main.tf"))
@@ -344,7 +500,7 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
                 if result:
                     root_module = result.values.root_module
                     resources = root_module.resources if not search_child_modules else root_module.flatten_resources()
-                    instances = filter_instances(resources, resources_types, provider_name)
+                    instances = filter_instances(resources, providers)
                 return instances
             except TerraformWarning as e:
                 raise TerraformError(e.message)
@@ -408,16 +564,14 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         if backend_config_files and not isinstance(backend_config_files, list):
             backend_config_files = [backend_config_files]
 
-        provider_name = "registry.terraform.io/hashicorp/aws"
-        resources_types = ["aws_instance"]
+        providers = [v for k, v in ProvidersMapping.items()]
         instances = self._query(
             terraform_binary,
             backend_type,
             backend_config,
             backend_config_files,
             search_child_modules,
-            resources_types,
-            provider_name,
+            providers,
         )
         self.create_inventory(
             instances, cfg.get("hostnames"), cfg.get("compose"), cfg.get("keyed_groups"), cfg.get("strict")
