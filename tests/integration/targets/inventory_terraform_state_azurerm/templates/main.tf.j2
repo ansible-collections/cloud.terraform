@@ -1,0 +1,85 @@
+terraform {
+  required_providers {
+    azurerm = {
+      source = "hashicorp/azurerm"
+      version = "3.87.0"
+    }
+  }
+  backend "azurerm" {
+    resource_group_name = "{{ resource_group }}"
+    storage_account_name = "{{ test_storage_account_name }}"
+    container_name = "{{ azurerm_backend_container_name }}"
+    key = "{{ azurerm_backend_container_key }}"
+  }
+}
+
+variable "azure_resource_group" {
+  type = string
+}
+
+provider "azurerm" {
+  skip_provider_registration = true
+  features {}
+}
+
+data "azurerm_resource_group" "main" {
+  name = var.azure_resource_group
+}
+
+resource "azurerm_virtual_network" "main" {
+  name                = "test-network"
+  resource_group_name = data.azurerm_resource_group.main.name
+  location            = data.azurerm_resource_group.main.location
+  address_space       = ["168.10.0.0/16"]
+}
+
+resource "azurerm_subnet" "main" {
+  name                 = "test-subnet"
+  resource_group_name  = data.azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["168.10.1.0/24"]
+}
+
+resource "azurerm_network_interface" "main" {
+  name                = "ansible-test-nic"
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
+
+  ip_configuration {
+    name                          = "config1"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_virtual_machine" "main" {
+  name                  = "ansible-test-vm"
+  location              = data.azurerm_resource_group.main.location
+  resource_group_name   = data.azurerm_resource_group.main.name
+  network_interface_ids = [azurerm_network_interface.main.id]
+  vm_size               = "Standard_DS1_v2"
+
+  delete_os_disk_on_termination = true
+  delete_data_disks_on_termination = true
+
+  storage_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+  storage_os_disk {
+    name              = "myosdisk1"
+    caching           = "ReadWrite"
+    create_option     = "FromImage"
+    managed_disk_type = "Standard_LRS"
+  }
+  os_profile {
+    computer_name  = "hostname"
+    admin_username = "ansible"
+    admin_password = "testing123!"
+  }
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }
+}

@@ -1,0 +1,23 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Ensure host is defined with expected variables
+      assert:
+        that:
+          - '"google_compute_instance_default" in hostvars'
+          - 'item in hostvars["google_compute_instance_default"]'
+      with_items:
+        - advanced_machine_features
+        - allow_stopping_for_update
+        - attached_disk
+        - boot_disk
+        - can_ip_forward
+        - confidential_instance_config
+        - deletion_protection
+        - id
+        - machine_type
+        - network_interface
+        - scheduling
+        - scratch_disk
