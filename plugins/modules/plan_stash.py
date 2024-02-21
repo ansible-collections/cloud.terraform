@@ -8,7 +8,7 @@ DOCUMENTATION = r"""
 ---
 module: plan_stash
 version_added: 2.1.0
-short_description: Handle the base64 encoding or decoding of a terraform plan file.
+short_description: Handle the base64 encoding or decoding of a terraform plan file
 description:
   - This module performs base64-encoding of a terraform plan file and saves it into playbook execution stats similar
     to M(ansible.builtin.set_stats) module.
@@ -51,7 +51,7 @@ options:
     type: bool
     default: false
 notes:
-  - For security reasons, this module should be used with O(no_log=true) and O(register) functionalities
+  - For security reasons, this module should be used with I(no_log=true) and I(register) functionalities
     as the plan file can contain unencrypted secrets.
 """
 
