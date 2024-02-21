@@ -61,6 +61,7 @@ EXAMPLES = r"""
   cloud.terraform.plan_stash:
     path: /path/to/terraform_plan_file
     state: stash
+  no_log: true
 
 # Encode terraform plan file into variable 'stashed_plan'
 - name: Encode a terraform plan file into terraform_plan variable
@@ -68,6 +69,7 @@ EXAMPLES = r"""
     path: /path/to/terraform_plan_file
     var_name: stashed_plan
     state: stash
+  no_log: true
 
 # Load terraform plan file from variable 'stashed_plan'
 - name: Load a terraform plan file data from variable 'stashed_plan' into file 'tfplan'
@@ -75,6 +77,7 @@ EXAMPLES = r"""
     path: tfplan
     var_name: stashed_plan
     state: load
+  no_log: true
 
 # Load terraform plan file from binary data
 - name: Load a terraform plan file data from binary data
@@ -82,6 +85,7 @@ EXAMPLES = r"""
     path: tfplan
     binary_data: "{{ terraform_binary_data }}"
     state: load
+  no_log: true
 """
 
 RETURN = r"""
@@ -118,16 +122,7 @@ def main() -> None:
     result = {}
     if state == "stash":
         # Stash: base64-encode the terraform plan file and set stats
-        data = b""
-        try:
-            with open(terrafom_plan_file, "rb") as f:
-                data = f.read()
-        except FileNotFoundError:
-            module.fail_json(msg="The following file '{0}' does not exist.".format(terrafom_plan_file))
-
-        if not data:
-            module.fail_json(msg="The following file '{0}' is empty.".format(terrafom_plan_file))
-
+        data = read_file_content(terrafom_plan_file, module)
         # encode binary data
         try:
             encoded_data = base64.b64encode(data)
