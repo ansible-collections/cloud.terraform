@@ -1,0 +1,4 @@
+---
+minor_changes:
+  - inventory/terraform_state - To support the inventory source plugin in AAP add support for the ``backend_config_files``
+    and ``backend_config`` parameters (https://github.com/ansible-collections/cloud.terraform/pull/112).

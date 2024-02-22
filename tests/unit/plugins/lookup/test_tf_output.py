@@ -11,13 +11,13 @@ from ansible_collections.cloud.terraform.plugins.lookup import tf_output
 
 class TestModuleRunCommand:
     def test_module_run_command(self, mocker):
-        mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.lookup.tf_output.subprocess.run"
-        ).return_value = CompletedProcess(
-            args="args",
-            returncode="returncode",
-            stdout="stdout".encode("utf-8"),
-            stderr="stderr".encode("utf-8"),
+        mocker.patch("ansible_collections.cloud.terraform.plugins.lookup.tf_output.subprocess.run").return_value = (
+            CompletedProcess(
+                args="args",
+                returncode="returncode",
+                stdout="stdout".encode("utf-8"),
+                stderr="stderr".encode("utf-8"),
+            )
         )
         result = tf_output.module_run_command(["commands"], "cwd")
 

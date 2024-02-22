@@ -91,9 +91,9 @@ class TestTerraformOutputMain:
             }
         )
         mocker.patch("ansible_collections.cloud.terraform.plugins.modules.terraform_output.validate_bin_path")
-        mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.modules.terraform_output.get_outputs"
-        ).side_effect = TerraformWarning("Could not get Terraform outputs.")
+        mocker.patch("ansible_collections.cloud.terraform.plugins.modules.terraform_output.get_outputs").side_effect = (
+            TerraformWarning("Could not get Terraform outputs.")
+        )
 
         with pytest.raises(AnsibleExitJson) as exc:
             terraform_output.main()
@@ -112,9 +112,9 @@ class TestTerraformOutputMain:
             }
         )
         mocker.patch("ansible_collections.cloud.terraform.plugins.modules.terraform_output.validate_bin_path")
-        mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.modules.terraform_output.get_outputs"
-        ).side_effect = TerraformError("Failure when getting Terraform outputs.")
+        mocker.patch("ansible_collections.cloud.terraform.plugins.modules.terraform_output.get_outputs").side_effect = (
+            TerraformError("Failure when getting Terraform outputs.")
+        )
 
         with pytest.raises(AnsibleFailJson) as exc:
             terraform_output.main()
