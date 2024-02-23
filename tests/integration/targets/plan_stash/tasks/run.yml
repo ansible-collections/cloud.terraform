@@ -1,0 +1,139 @@
+- name: Create temporary directory to work in
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: .tfplan
+  register: test_dir
+
+- name: Run tests
+  block:
+    - name: Copy terraform configuration into working directory
+      copy:
+        src: main.tf
+        dest: "{{ test_dir.path }}"
+
+    - name: Run terraform plan
+      cloud.terraform.terraform:
+        force_init: true
+        project_path: "{{ test_dir.path }}"
+        plan_file: "{{ test_dir.path }}/terraform.tfplan"
+      check_mode: true
+
+    - set_fact:
+        encoded_data: "{{ lookup('file', test_dir.path + '/terraform.tfplan') | b64encode }}"
+
+    # Stash the terraform plan file
+    - name: Save the terraform plan into stats
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/terraform.tfplan"
+        per_host: true
+      register: plan_stash
+
+    - name: Ensure terraform plan file has been saved as expected
+      ansible.builtin.assert:
+        that:
+          - plan_stash is not changed
+          - '"ansible_stats" in plan_stash'
+          - '"data" in plan_stash.ansible_stats'
+          - '"terraform_plan" in plan_stash.ansible_stats.data'
+          - plan_stash.ansible_stats.data.terraform_plan == encoded_data
+          - '"per_host" in plan_stash.ansible_stats'
+          - plan_stash.ansible_stats.per_host
+
+    - name: Save the terraform plan into a custom variable name
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/terraform.tfplan"
+        var_name: "terraform_plan_custom_variable"
+      register: plan_stash
+
+    - name: Ensure terraform plan file has been saved as expected
+      ansible.builtin.assert:
+        that:
+          - plan_stash is not changed
+          - '"ansible_stats" in plan_stash'
+          - '"data" in plan_stash.ansible_stats'
+          - '"terraform_plan_custom_variable" in plan_stash.ansible_stats.data'
+          - plan_stash.ansible_stats.data.terraform_plan_custom_variable == encoded_data
+          - '"per_host" in plan_stash.ansible_stats'
+          - not plan_stash.ansible_stats.per_host
+
+    - name: Save terraform base64-encoded data into variable
+      set_fact:
+        stashed_data: "{{ plan_stash.ansible_stats.data.terraform_plan_custom_variable }}"
+
+    # Load the terraform plan file
+    - name: Load the terraform plan (check_mode=true)
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/load.tfplan"
+        var_name: stashed_data
+        state: load
+      register: load_plan_check_mode
+      check_mode: true
+
+    - name: Stat the terraform plan file
+      stat:
+        path: "{{ test_dir.path }}/load.tfplan"
+      register: stat_tf
+
+    - name: Ensure the module reported changed but the file was not created
+      assert:
+        that:
+          - load_plan_check_mode is changed
+          - not stat_tf.stat.exists
+
+    - name: Load the terraform plan using var_name
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/load.tfplan"
+        var_name: stashed_data
+        state: load
+      register: load_plan
+
+    - name: Ensure the terraform plan file has been loaded with the original content
+      assert:
+        that:
+          - load_plan is changed
+          - lookup('file', test_dir.path + '/load.tfplan') == lookup('file', test_dir.path + '/terraform.tfplan')
+
+    - name: Load the terraform plan using var_name once again (idempotency)
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/load.tfplan"
+        var_name: stashed_data
+        state: load
+      register: load_idempotency
+
+    - name: Ensure result is not changed
+      assert:
+        that:
+          - load_idempotency is not changed
+          - lookup('file', test_dir.path + '/load.tfplan') == lookup('file', test_dir.path + '/terraform.tfplan')
+
+    - name: Load the terraform plan using 'binary_data' parameter
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/load2.tfplan"
+        binary_data: "{{ stashed_data }}"
+        state: load
+      register: load_using_binary
+
+    - name: Ensure the terraform plan file has been loaded with the original content
+      assert:
+        that:
+          - load_using_binary is changed
+          - lookup('file', test_dir.path + '/load2.tfplan') == lookup('file', test_dir.path + '/terraform.tfplan')
+
+    - name: Load the terraform plan using 'binary_data' parameter once again (idempotency)
+      cloud.terraform.plan_stash:
+        path: "{{ test_dir.path }}/load2.tfplan"
+        binary_data: "{{ stashed_data }}"
+        state: load
+      register: load_using_binary_idempotency
+
+    - name: Ensure result is not changed
+      assert:
+        that:
+          - load_using_binary_idempotency is not changed
+          - lookup('file', test_dir.path + '/load2.tfplan') == lookup('file', test_dir.path + '/terraform.tfplan')
+
+  always:
+    - name: Delete temporary directory
+      ansible.builtin.file:
+        path: "{{ test_dir.path }}"
+        state: absent

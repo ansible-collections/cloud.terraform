@@ -1,0 +1,5 @@
+- name: Validate plan_stash module
+  ansible.builtin.include_tasks: 'tasks/{{ item }}.yml'
+  with_items:
+    - validate_args
+    - run
