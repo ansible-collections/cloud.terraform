@@ -1,4 +1,4 @@
 ---
 trivial:
-  - fix integration test target ``awscc``.
+  - fix integration test target ``awscc`` (https://github.com/ansible-collections/cloud.terraform/pull/118).
 
