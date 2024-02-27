@@ -564,7 +564,7 @@ def main() -> None:
             plan_file_to_apply = plan_file
             if not plan_file:
                 f, new_plan_file = tempfile.mkstemp(suffix=".tfplan")
-                module.add_cleanup_file(new_plan_file)
+                # module.add_cleanup_file(new_plan_file)
                 plan_file_to_apply = new_plan_file
 
             plan_result_changed, plan_result_any_destroyed, plan_stdout, plan_stderr = terraform.plan(

@@ -1,0 +1,4 @@
+---
+trivial:
+  - fix integration test target ``awscc``.
+
