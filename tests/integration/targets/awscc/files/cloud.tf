@@ -10,26 +10,15 @@ terraform {
 provider "awscc" {
 }
 
-variable "cloud_terraform_integration_id" {
+variable "vpc_id" {
   type    = string
-  default = "jci93"
 }
 
 variable "cidr_block" {
   type    = string
-  default = "10.1.2.0/24"
 }
 
-resource "awscc_ec2_vpc" "test_vpc" {
+resource "awscc_ec2_subnet" "main" {
+  vpc_id     = var.vpc_id
   cidr_block = var.cidr_block
-  tags = [
-    {
-      key   = "Name",
-      value = var.cloud_terraform_integration_id,
-    },
-    {
-      key   = "cloud_terraform_integration",
-      value = "true",
-    },
-  ]
 }
