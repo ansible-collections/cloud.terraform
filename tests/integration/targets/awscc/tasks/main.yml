@@ -172,7 +172,7 @@
       with_items: "{{ subnet_info.subnets }}"
       ignore_errors: true
 
-    - name: Create VPC
+    - name: Delete VPC
       amazon.aws.ec2_vpc_net:
         name: "{{ vpc_name }}"
         cidr_block:
