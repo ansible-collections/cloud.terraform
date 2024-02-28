@@ -1,0 +1,3 @@
+---
+azurerm_backend_container_name: "tfstate"
+azurerm_backend_container_key: "terraform.tfstate"

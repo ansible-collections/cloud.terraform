@@ -1,0 +1,64 @@
+- name: Delete aws resources
+  hosts: localhost
+  gather_facts: false
+
+  module_defaults:
+    group/aws:
+      access_key: '{{ aws_access_key }}'
+      secret_key: '{{ aws_secret_key }}'
+      session_token: '{{ security_token | default(omit) }}'
+      region: '{{ aws_region }}'
+
+  environment:
+    AWS_ACCESS_KEY_ID: "{{ aws_access_key | default(omit) }}"
+    AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key | default(omit) }}"
+    AWS_SESSION_TOKEN: "{{ security_token | default(omit) }}"
+    AWS_REGION: "{{ aws_region | default(omit) }}"
+
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - name: Delete testing resources from aws
+      block:
+        - name: Create temporary directory to store main.tf configuration
+          tempfile:
+            state: directory
+            suffix: .terraform
+          register: temp_dir
+
+        - name: Generate Terraform configuration
+          template:
+            src: main.tf.j2
+            dest: "{{ temp_dir.path }}/main.tf"
+
+        - name: Destroy terraform resource
+          cloud.terraform.terraform:
+            project_path: "{{ temp_dir.path }}"
+            force_init: true
+            state: absent
+
+        - name: Delete s3 bucket for testing
+          amazon.aws.s3_bucket:
+            name: "{{ bucket_name }}"
+            state: absent
+            force: true
+
+      rescue:
+        - name: Delete s3 bucket for testing
+          amazon.aws.s3_bucket:
+            name: "{{ bucket_name }}"
+            state: absent
+            force: true
+
+        - name: Delete credentials file
+          file:
+            state: absent
+            path: "aws_credentials.sh"
+          ignore_errors: true
+
+        - name: Delete temporary directory
+          file:
+            state: absent
+            path: "{{ temp_dir.path }}"
+          when: temp_dir is defined

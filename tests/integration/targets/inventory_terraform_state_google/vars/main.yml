@@ -1,0 +1,4 @@
+---
+gcp_storage_bucket_name: "{{ resource_prefix }}-bucket"
+gcp_storage_bucket_prefix: "terraform_state"
+gcp_instance_name: "{{ resource_prefix }}-instance"

@@ -1,0 +1,11 @@
+---
+plugin: cloud.terraform.terraform_state
+backend_type: s3
+backend_config:
+  bucket: {{ bucket_name }}
+  key: ansible/terraform.tfstate
+  region: {{ aws_region }}
+hostnames:
+  - name: 'tag:Name'
+    separator: "-"
+    prefix: 'instance_type'
