@@ -1,0 +1,57 @@
+---
+- name: Delete infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - vars/main.yml
+
+  environment:
+    GOOGLE_PROJECT: "{{ gcp_project }}"
+    GOOGLE_REGION: "us-east-1"
+    GOOGLE_CREDENTIALS: "{{ gcp_cred_file }}"
+
+  tasks:
+    # Delete GCP instance
+    - block:
+        - name: Create temporary dir
+          ansible.builtin.tempfile:
+            state: directory
+          register: terraform_dir
+
+        - name: Generate Terraform configuration
+          ansible.builtin.template:
+            src: main.tf.j2
+            dest: "{{ terraform_dir.path }}/main.tf"
+
+        - name: Delete infrastructure using Terraform configuration
+          cloud.terraform.terraform:
+            project_path: "{{ terraform_dir.path }}"
+            force_init: true
+            state: absent
+            variables:
+              instance_name: "{{ gcp_instance_name }}"
+      always:
+        - name: Delete temporary directory
+          ansible.builtin.file:
+            state: absent
+            path: "{{ terraform_dir.path }}"
+
+    - name: Delete object from bucket
+      google.cloud.gcp_storage_object:
+        bucket: "{{ gcp_storage_bucket_name }}"
+        src: "{{ gcp_storage_bucket_prefix }}/default.tfstate"
+        action: delete
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+      ignore_errors: true
+
+    - name: Delete a Storage bucket
+      google.cloud.gcp_storage_bucket:
+        name: "{{ gcp_storage_bucket_name }}"
+        state: absent
+        project: "{{ gcp_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+      ignore_errors: true

@@ -1,0 +1,22 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Ensure host is defined with expected variables
+      assert:
+        that:
+          - '"azurerm_virtual_machine_main" in hostvars'
+          - 'item in hostvars["azurerm_virtual_machine_main"]'
+      with_items:
+        - availability_set_id
+        - boot_diagnostics
+        - delete_data_disks_on_termination
+        - delete_os_disk_on_termination
+        - id
+        - location
+        - os_profile
+        - os_profile_linux_config
+        - storage_image_reference
+        - storage_os_disk
+        - vm_size
