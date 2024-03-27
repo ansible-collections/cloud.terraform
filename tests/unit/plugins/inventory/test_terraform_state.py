@@ -258,6 +258,7 @@ class TestInventoryModuleCreateInventory:
     def test_create_inventory(self, inventory_plugin, mocker):
         hostnames = MagicMock()
         keyed_groups = MagicMock()
+        groups = MagicMock()
         strict = MagicMock()
         compose = MagicMock()
 
@@ -270,9 +271,10 @@ class TestInventoryModuleCreateInventory:
 
         inventory_plugin._set_composite_vars = MagicMock()
         inventory_plugin._add_host_to_keyed_groups = MagicMock()
+        inventory_plugin._add_host_to_composed_groups = MagicMock()
         inventory_plugin.inventory = self.ansibleInventory()
 
-        inventory_plugin.create_inventory(instances, hostnames, compose, keyed_groups, strict)
+        inventory_plugin.create_inventory(instances, hostnames, compose, keyed_groups, groups, strict)
 
         for name, value in config.items():
             inventory_plugin.inventory.assert_value(name, value)
@@ -287,6 +289,10 @@ class TestInventoryModuleCreateInventory:
         )
         inventory_plugin._add_host_to_keyed_groups.assert_has_calls(
             [call(keyed_groups, vars, name, strict=strict) for name, vars in config.items()],
+            any_order=True,
+        )
+        inventory_plugin._add_host_to_composed_groups.assert_has_calls(
+            [call(groups, vars, name, strict=strict) for name, vars in config.items()],
             any_order=True,
         )
 
@@ -428,6 +434,7 @@ class TestInventoryModuleParse:
             config.get("hostnames"),
             config.get("compose"),
             config.get("keyed_groups"),
+            config.get("groups"),
             config.get("strict"),
         )
 
