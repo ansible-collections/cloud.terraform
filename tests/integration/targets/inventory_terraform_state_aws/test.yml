@@ -118,6 +118,8 @@
               - default_hostname in groups.tag_Phase_integration
               - "'state_running' in groups"
               - default_hostname in groups.state_running
+              - "'no_public_ip' in groups"
+              - default_hostname in groups.no_public_ip
 
       always:
         - name: Delete temporary file

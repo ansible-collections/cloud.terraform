@@ -6,7 +6,9 @@ backend_config:
   key: ansible/terraform.tfstate
   region: {{ aws_region }}
 keyed_groups:
-- key: instance_state
-  prefix: state
-- prefix: tag
-  key: tags
+  - key: instance_state
+    prefix: state
+  - prefix: tag
+    key: tags
+groups:
+  no_public_ip: public_ip == ""
