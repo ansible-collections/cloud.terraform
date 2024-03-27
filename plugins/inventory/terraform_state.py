@@ -399,7 +399,8 @@ class TerraformProviderInstance:
 ProvidersMapping = {
     "aws": TerraformProviderInstance(provider_name="registry.terraform.io/hashicorp/aws", types=["aws_instance"]),
     "azurerm": TerraformProviderInstance(
-        provider_name="registry.terraform.io/hashicorp/azurerm", types=["azurerm_virtual_machine"]
+        provider_name="registry.terraform.io/hashicorp/azurerm",
+        types=["azurerm_virtual_machine", "azurerm_linux_virtual_machine", "azurerm_windows_virtual_machine"],
     ),
     "google": TerraformProviderInstance(
         provider_name="registry.terraform.io/hashicorp/google", types=["google_compute_instance"]
