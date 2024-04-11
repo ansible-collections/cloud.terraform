@@ -4,7 +4,7 @@
 Using cloud.terraform in Ansible Automation Platform
 *************************************************************
 
-The ``cloud.terraform`` collection requires some extra configuration to run in `Ansible Automation Platform (AAP) <https://www.redhat.com/en/technologies/management/ansible>`_; in particular the default execution environment in AAP does not include a Terraform binary due to Terraform licensing restrictions. You must create an execution environment containing a Terraform binary in order to run any Terraform commands from within AAP.
+The ``cloud.terraform`` collection requires some extra configuration to run in `Ansible Automation Platform (AAP) <https://www.redhat.com/en/technologies/management/ansible>`_; in particular the default execution environment in AAP does not include a Terraform binary due to `Terraform licensing restrictions <https://www.hashicorp.com/license-faq>`_. You must create an execution environment containing a Terraform binary in order to run any Terraform commands from within AAP.
 
 In addition, a remote Terraform backend should be used to store Terraform state as any local state files created in AAP jobs are ephemeral. The Terraform backend credential type allows secure storage of remote backend configuration to enable this.
 
@@ -55,7 +55,7 @@ Instructions
 
     ansible-builder build
 
-The Containerfile and build files should now be in ``/context`` and you can see your newly created image in podman:
+The Containerfile/Dockerfile and build files should now be in ``/context`` and you can see your newly created image in podman or docker:
 
 .. code-block:: console
 
@@ -84,7 +84,7 @@ Credentials
 Using built-in cloud credentials in AAP
 ---------------------------------------
 
-When running job templates that use cloud.terraform to deploy cloud resources, the built-in `credential types <https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/controller-credentials#ref-controller-credential-types>`_ can be used to securely store and pass cloud credentials to those jobs as environment variables. However, the built-in Azure and GCE credential types store env variables that are slightly different from the ones Terraform expects (the AWS credential type stores env variables that Terraform can read as is). To use the Azure and GCE credentials, you can pass the Ansible ``environment`` option to provide new env variables to playbooks using the env variables from stored credentials. Here is an example converting the relevant Azure and GCE env variables in a playbook using ``cloud.terraform.terraform`` to deploy resources:
+When running job templates that use ``cloud.terraform`` to deploy cloud resources, the built-in `credential types <https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/controller-credentials#ref-controller-credential-types>`_ can be used to securely store and pass cloud credentials to those jobs as environment variables. However, the built-in Azure and GCE credential types store env variables that are slightly different from the ones Terraform expects (the AWS credential type stores env variables that Terraform can read as is). To use the Azure and GCE credentials, you can pass the Ansible ``environment`` option to provide new env variables to playbooks using the env variables from stored credentials. Here is an example converting the relevant Azure and GCE env variables in a playbook using ``cloud.terraform.terraform`` to deploy resources:
 
 .. code-block:: yaml
 
@@ -108,7 +108,7 @@ When running job templates that use cloud.terraform to deploy cloud resources, t
 Terraform backend credential
 ----------------------------
 
-The Terraform backend credential type in Ansible Automation Platform allows secure storage of a Terraform backend configuration, which can be provided to playbooks using the ``cloud.terraform`` modules to configure and use the remote backend. This credential is also required to use the Terraform state inventory source in AAP, which creates Ansible hosts from a Terraform state file and thus needs access to the remote backend configuration. Refer to the `Automation Controller User Guide <https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/index>`_ for details on creating and using this credential type. An example job using the credential type with an S3 backend would look something like this:
+The Terraform backend credential type in AAP allows secure storage of a Terraform backend configuration, which can be provided to playbooks using the ``cloud.terraform`` modules to configure and use the remote backend. This credential is also required to use the Terraform state inventory source in AAP, which creates Ansible hosts from a Terraform state file and thus needs access to the remote backend configuration. Refer to the `Automation Controller User Guide <https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/index>`_ for details on creating and using this credential type. An example job using the credential type with an S3 backend would look something like this:
 
 Terraform configuration file:
 
