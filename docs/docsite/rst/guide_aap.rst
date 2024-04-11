@@ -32,7 +32,7 @@ Instructions
 
     images:
     base_image:
-      name: quay.io/centos/centos:stream9
+      name: registry.redhat.io/ubi9:latest
 
     dependencies:
     ansible_core:
@@ -68,14 +68,20 @@ The Containerfile/Dockerfile and build files should now be in ``/context`` and y
     quay.io/centos/centos            stream9     94714b8dc9d7  2 days ago      168 MB
 
 
-4. Publish the image:
+4. Tag the image for publication to your desired container register. The example below demonstrates using a private automation hub but you could use any suitable container registry:
 
 .. code-block:: console
 
-    podman login quay.io
-    podman push localhost/ansible-execution-env quay.io/<username>/<repository>
+    podman tag localhost/ansible-execution-env:latest <your_private_automation_hub_url>/<your-desired-image-name>
 
-5. You can now add the execution environment to your AAP instance and use it in job templates and inventory sources. Refer to the `Automation Controller User Guide <https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/index>`_ for information on using execution environments in jobs.
+5. Publish the image:
+
+.. code-block:: console
+
+    podman login -u=<username> -p=<password> <your_private_automation_hub_url>
+    podman push <your_private_automation_hub_url>/<your-container_image_name>
+
+6. You can now add the execution environment to your AAP instance and use it in job templates and inventory sources. Refer to the `Automation Controller User Guide <https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.4/html/automation_controller_user_guide/index>`_ for information on using execution environments in jobs.
 
 ===========
 Credentials
