@@ -31,23 +31,23 @@ Instructions
     version: 3
 
     images:
-    base_image:
-      name: registry.redhat.io/ubi9:latest
+      base_image:
+        name: registry.redhat.io/ubi9:latest
 
     dependencies:
-    ansible_core:
-      package_pip: ansible-core
-    ansible_runner:
-      package_pip: ansible-runner
-    galaxy:
-      collections:
-        - name: cloud.terraform
+      ansible_core:
+        package_pip: ansible-core
+      ansible_runner:
+        package_pip: ansible-runner
+      galaxy:
+        collections:
+          - name: cloud.terraform
 
     additional_build_steps:
-    append_base: |
-      RUN yum install -y git
-      RUN curl https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo | tee /etc/yum.repos.d/terraform.repo
-      RUN yum install -y terraform
+      append_base: |
+        RUN yum install -y git
+        RUN curl https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo | tee /etc/yum.repos.d/terraform.repo
+        RUN yum install -y terraform
 
 3. Build the execution environment image:
 
@@ -164,8 +164,8 @@ Playbook file:
       tasks:
         - name: Run Terraform apply using Terraform backend credential to supply backend config
           cloud.terraform.terraform:
-          project_path: '{{ project_dir }}'
-          state: present
-          force_init: true
-          backend_config_files:
-            - "{{ lookup('ansible.builtin.env', 'TF_BACKEND_CONFIG_FILE') }}" # Note use of the env variable set by the Terraform backend credential to store the backend configuration file path
+            project_path: '{{ project_dir }}'
+            state: present
+            force_init: true
+            backend_config_files:
+              - "{{ lookup('ansible.builtin.env', 'TF_BACKEND_CONFIG_FILE') }}" # Note use of the env variable set by the Terraform backend credential to store the backend configuration file path
