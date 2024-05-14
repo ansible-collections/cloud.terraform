@@ -3,6 +3,8 @@ output/
 .collection_root/*
 
 tests/integration/inventory
+tests/integration/cloud-config-*.ini
+terraform
 
 **/.terraform/*
 *.tfstate
