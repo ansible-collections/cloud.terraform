@@ -518,6 +518,7 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         hostnames: Optional[List[Any]],
         compose: Optional[Dict[str, str]],
         keyed_groups: List[Dict[str, Any]],
+        groups: Dict[str, Any],
         strict: bool,
     ) -> None:
         for instance in instances:
@@ -536,6 +537,9 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
 
                 # Create groups based on variable values and add the corresponding hosts to it
                 self._add_host_to_keyed_groups(keyed_groups, host_vars, name, strict=strict)
+
+                # Create groups based on jinja2 conditionals
+                self._add_host_to_composed_groups(groups, host_vars, name, strict=strict)
 
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path, cache=cache)
@@ -575,5 +579,10 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
             providers,
         )
         self.create_inventory(
-            instances, cfg.get("hostnames"), cfg.get("compose"), cfg.get("keyed_groups"), cfg.get("strict")
+            instances,
+            cfg.get("hostnames"),
+            cfg.get("compose"),
+            cfg.get("keyed_groups"),
+            cfg.get("groups"),
+            cfg.get("strict"),
         )
