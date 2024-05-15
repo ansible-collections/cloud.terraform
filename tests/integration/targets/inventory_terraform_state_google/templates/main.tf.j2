@@ -1,0 +1,44 @@
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"
+      version = "5.11.0"
+    }
+  }
+  backend "gcs" {
+    bucket  = "{{ gcp_storage_bucket_name }}"
+    prefix  = "{{ gcp_storage_bucket_prefix }}"
+  }
+}
+
+provider "google" {
+}
+
+variable "instance_name" {
+  type = string
+}
+
+resource "google_compute_instance" "default" {
+  name         = var.instance_name
+  machine_type = "n2-standard-2"
+  zone         = "us-east1-c"
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+      labels = {
+        my_label = "value"
+      }
+    }
+  }
+
+  scratch_disk {
+    interface = "NVME"
+  }
+
+  network_interface {
+    network = "default"
+    access_config {
+    }
+  }
+}

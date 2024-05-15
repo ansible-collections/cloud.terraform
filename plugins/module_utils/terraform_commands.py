@@ -79,23 +79,26 @@ class TerraformCommands:
 
     def init(
         self,
-        backend_config: Dict[str, str],
-        backend_config_files: List[str],
-        reconfigure: bool,
-        upgrade: bool,
-        plugin_paths: List[str],
+        backend_config: Optional[Dict[str, str]] = None,
+        backend_config_files: Optional[List[str]] = None,
+        reconfigure: bool = False,
+        upgrade: bool = False,
+        plugin_paths: Optional[List[str]] = None,
     ) -> None:
         command = ["init", "-input=false", "-no-color"]
-        for key, val in backend_config.items():
-            command.extend(["-backend-config", "{0}={1}".format(key, val)])
-        for f in backend_config_files:
-            command.extend(["-backend-config", f])
+        if backend_config:
+            for key, val in backend_config.items():
+                command.extend(["-backend-config", "{0}={1}".format(key, val)])
+        if backend_config_files:
+            for f in backend_config_files:
+                command.extend(["-backend-config", f])
         if reconfigure:
             command.extend(["-reconfigure"])
         if upgrade:
             command.extend(["-upgrade"])
-        for plugin_path in plugin_paths:
-            command.extend(["-plugin-dir", plugin_path])
+        if plugin_paths:
+            for plugin_path in plugin_paths:
+                command.extend(["-plugin-dir", plugin_path])
         self._run(*command, check_rc=True)
 
     def plan(
@@ -172,18 +175,22 @@ class TerraformCommands:
         result = TerraformProviderSchemaCollection.from_json(json.loads(text))
         return result
 
-    def show(self, state_or_plan_file_path: str) -> Optional[TerraformShow]:
-        command = ["show", "-json", state_or_plan_file_path]
+    def show(self, state_or_plan_file_path: str = "") -> Optional[TerraformShow]:
+        command = ["show", "-json"]
+        if state_or_plan_file_path:
+            command.append(state_or_plan_file_path)
         rc, stdout, stderr = self._run(*command, check_rc=False)
         if rc == 1:
+            terraform_show_path = state_or_plan_file_path or self.project_path
             raise TerraformWarning(
-                "Could not get Terraform show from file: {0}. "
-                "\nstdout: {1}\nstderr: {2}".format(state_or_plan_file_path, stdout, stderr)
+                "Could not get Terraform show from path: {0}. "
+                "\nstdout: {1}\nstderr: {2}".format(terraform_show_path, stdout, stderr)
             )
         elif rc != 0:
+            terraform_show_path = state_or_plan_file_path or self.project_path
             raise TerraformError(
-                "Failure when getting Terraform show output from file: {0}. "
-                "Exited {1}.\nstdout: {2}\nstderr: {3}".format(state_or_plan_file_path, rc, stdout, stderr),
+                "Failure when getting Terraform show output from path: {0}. "
+                "Exited {1}.\nstdout: {2}\nstderr: {3}".format(terraform_show_path, rc, stdout, stderr),
                 command=" ".join(command),
             )
         state_json = json.loads(stdout)

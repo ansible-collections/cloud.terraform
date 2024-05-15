@@ -1,0 +1,22 @@
+---
+host_variables:
+  - ami
+  - arn
+  - cpu_core_count
+  - cpu_options
+  - disable_api_stop
+  - disable_api_termination
+  - id
+  - instance_state
+  - instance_type
+  - key_name
+  - placement_group
+  - private_dns
+  - private_ip
+  - public_dns
+  - public_ip
+  - tags
+  - user_data
+default_hostname: "aws_instance_test"
+bucket_name: "bucket-{{ resource_prefix }}"
+resource_name: "ansible-test-state"
