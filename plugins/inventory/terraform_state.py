@@ -38,7 +38,7 @@ options:
     type: dict
   backend_config_files:
     description:
-      - The path to a configuration file to provide at init state to the -backend-config parameter.
+      - The absolute path to a configuration file to provide at init state to the -backend-config parameter.
         This can accept a list of paths to multiple configuration files.
     type: list
     elements: path
@@ -399,7 +399,8 @@ class TerraformProviderInstance:
 ProvidersMapping = {
     "aws": TerraformProviderInstance(provider_name="registry.terraform.io/hashicorp/aws", types=["aws_instance"]),
     "azurerm": TerraformProviderInstance(
-        provider_name="registry.terraform.io/hashicorp/azurerm", types=["azurerm_virtual_machine"]
+        provider_name="registry.terraform.io/hashicorp/azurerm",
+        types=["azurerm_virtual_machine", "azurerm_linux_virtual_machine", "azurerm_windows_virtual_machine"],
     ),
     "google": TerraformProviderInstance(
         provider_name="registry.terraform.io/hashicorp/google", types=["google_compute_instance"]
