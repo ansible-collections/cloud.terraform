@@ -2,7 +2,7 @@
 
 namespace: cloud
 name: terraform
-version: 3.0.0-dev0
+version: 2.1.0
 readme: README.md
 authors:
   - Ansible (https://github.com/ansible)
