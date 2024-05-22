@@ -10,7 +10,7 @@ v2.1.0
 Release Summary
 ---------------
 
-The cloud.terraform 2.1.0 release includes a new module to plan_stash and a new inventory plugin terraform_state
+The cloud.terraform 2.1.0 release includes a new module to ``plan_stash`` and a new inventory plugin ``terraform_state``.
 
 New Plugins
 -----------
