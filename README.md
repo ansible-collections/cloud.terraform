@@ -22,7 +22,7 @@ This collection is not intended to manage the installation, configuration and op
 
 ## Ansible version compatibility
 
-This collection requires Ansible Core 2.14 or later and thus Python 3.9 or later.
+This collection requires Ansible Core 2.15 or later and thus Python 3.9 or later.
 
 ## Included content
 <!--start collection content-->
