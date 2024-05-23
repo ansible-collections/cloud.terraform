@@ -117,6 +117,23 @@ releases:
     - terraform-cleanup-file.yml
     - terraform_provider_remove_workaround.yml
     release_date: '2023-11-17'
+  2.1.0:
+    changes:
+      release_summary: The cloud.terraform 2.1.0 release includes a new module to
+        plan_stash and a new inventory plugin terraform_state
+    fragments:
+    - 20240217-fix-awscc-integration-test.yaml
+    - release.yaml
+    modules:
+    - description: Handle the base64 encoding or decoding of a terraform plan file
+      name: plan_stash
+      namespace: ''
+    plugins:
+      inventory:
+      - description: Builds an inventory from resources created by cloud providers.
+        name: terraform_state
+        namespace: null
+    release_date: '2024-05-21'
   3.0.0:
     changes:
       breaking_changes:
