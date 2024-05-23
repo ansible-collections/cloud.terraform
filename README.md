@@ -29,18 +29,18 @@ This collection requires Ansible Core 2.14 or later and thus Python 3.9 or later
 ### Inventory plugins
 Name | Description
 --- | ---
-[cloud.terraform.terraform_provider](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_provider_inventory.rst)|Builds an inventory from Terraform state file.
+[cloud.terraform.terraform_provider](https://github.com/ansible-collections/cloud.terraform/blob/stable-3/docs/cloud.terraform.terraform_provider_inventory.rst)|Builds an inventory from Terraform state file.
 
 ### Lookup plugins
 Name | Description
 --- | ---
-[cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
+[cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/stable-3/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
 
 ### Modules
 Name | Description
 --- | ---
-[cloud.terraform.terraform](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_module.rst)|Manages a Terraform deployment (and plans)
-[cloud.terraform.terraform_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_output_module.rst)|Returns Terraform module outputs.
+[cloud.terraform.terraform](https://github.com/ansible-collections/cloud.terraform/blob/stable-3/docs/cloud.terraform.terraform_module.rst)|Manages a Terraform deployment (and plans)
+[cloud.terraform.terraform_output](https://github.com/ansible-collections/cloud.terraform/blob/stable-3/docs/cloud.terraform.terraform_output_module.rst)|Returns Terraform module outputs.
 
 <!--end collection content-->
 
@@ -131,4 +131,4 @@ ansible-doc --list | grep cloud.terraform | cut -d " " -f 1 | xargs -I {} antsib
 
 GNU General Public License v3.0 or later.
 
-See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/main/LICENSE) to see the full text.
+See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/stable-3x/LICENSE) to see the full text.
