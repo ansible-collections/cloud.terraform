@@ -1,0 +1,2 @@
+breaking_changes:
+  - "Drop support for ansible-core < 2.15 (https://github.com/ansible-collections/cloud.terraform/pull/138)."
