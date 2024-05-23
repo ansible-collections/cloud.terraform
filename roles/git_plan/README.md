@@ -56,4 +56,4 @@ License
 
 GNU General Public License v3.0 or later
 
-See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/main/LICENSE) to see the full text.
+See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/stable-3/LICENSE) to see the full text.
