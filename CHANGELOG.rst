@@ -4,6 +4,18 @@ The cloud.terraform collection Release Notes
 
 .. contents:: Topics
 
+v3.0.0
+======
+
+Release Summary
+---------------
+
+This major release drops support for ``ansible-core < 2.15``.
+
+Breaking Changes / Porting Guide
+--------------------------------
+
+- Drop support for ansible-core < 2.15 (https://github.com/ansible-collections/cloud.terraform/pull/138).
 
 v2.0.0
 ======
@@ -13,23 +25,21 @@ Breaking Changes / Porting Guide
 
 - Remove support for ansible-core < 2.14 (https://github.com/ansible-collections/cloud.terraform/pull/102).
 
-
 Major Changes
 -------------
 
-- terraform_provider - Added ``search_child_modules`` option (https://github.com/ansible-collections/cloud.terraform/pull/55).
 - terraform_provider  - Allow ``project_path`` in terraform_provider inventory plugin to accept a list of paths (https://github.com/ansible-collections/cloud.terraform/pull/55).
+- terraform_provider - Added ``search_child_modules`` option (https://github.com/ansible-collections/cloud.terraform/pull/55).
 
 Minor Changes
 -------------
 
 - Removed integration tests workaround in terrform_provider. (https://github.com/ansible-collections/cloud.terraform/pull/84)
 - Set default of ``state_file`` in terraform_provider inventory plugin to a blank string (https://github.com/ansible-collections/cloud.terraform/pull/55).
-- terraform  - add support for ``workspace`` when running ``terraform output`` (https://github.com/ansible-collections/cloud.terraform/issues/85). 
+- terraform  - add support for ``workspace`` when running ``terraform output`` (https://github.com/ansible-collections/cloud.terraform/issues/85).
+- terraform - cleanup temporary file create during module execution. (https://github.com/ansible-collections/cloud.terraform/issues/2)
 - terraform_output -  add support for ``workspace`` when running ``terraform output`` (https://github.com/ansible-collections/cloud.terraform/issues/85).
 - tf_output - add support for ``workspace`` when running ``terraform output`` (https://github.com/ansible-collections/cloud.terraform/issues/85).
-- terraform - cleanup temporary file create during module execution. (https://github.com/ansible-collections/cloud.terraform/issues/2)
-
 
 Bugfixes
 --------
@@ -37,9 +47,9 @@ Bugfixes
 - module_utils - Accept Terraform executables present on PATH passed in as ``binary_path`` without specifying their absolute path. (https://github.com/ansible-collections/cloud.terraform/issues/49)
 - module_utils - Allow ``nested_type`` attribute in terraform schema. (https://github.com/ansible-collections/cloud.terraform/issues/93)
 - module_utils - Fix AWS SQS queue creation. The ``values`` attribute in terraform output is optional. SQS is one of (rare) cases where ``values`` is absent. (https://github.com/ansible-collections/cloud.terraform/issues/86)
-- terraform - fix spaces between characters in command field in result (https://github.com/ansible-collections/cloud.terraform/pull/76).
 - move test requirements out of the requirements.txt file (https://github.com/ansible-collections/cloud.terraform/pull/67).
 - terraform - fix issue with ``plan_file`` option specified with ``check_mode=true`` and ``state`` set to one of ``present`` and ``absent``, the module is enable now to generate a Terraform file to the specified location (https://github.com/ansible-collections/cloud.terraform/issues/87).
+- terraform - fix spaces between characters in command field in result (https://github.com/ansible-collections/cloud.terraform/pull/76).
 
 v1.1.0
 ======
