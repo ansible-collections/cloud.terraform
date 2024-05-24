@@ -255,7 +255,7 @@ Parameters
                 </td>
                 <td>
                         <div>The path to a Terraform plan file to apply or generate.</div>
-                        <div>When &#x27;check_mode&#x27; is set to <em>True</em> or <em>state=planned</em>, a Terraform plan file with be generated and saved into the specified location.</div>
+                        <div>When &#x27;check_mode&#x27; is set to <code>True</code> or <em>state=planned</em>, a Terraform plan file will be generated and saved into the specified location.</div>
                         <div>When &#x27;check_mode&#x27; is set to <em>False</em> and <em>state</em> is set to either <code>present</code> or <code>absent</code>, The existing Terraform plan file will be applied.</div>
                 </td>
             </tr>
