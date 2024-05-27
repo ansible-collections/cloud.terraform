@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  author: Ansible cloud team.
+  description: A role to clone a Git repository and apply a plan from it.
+  license: GPL-3.0-or-later
+  min_ansible_version: 2.15.0
