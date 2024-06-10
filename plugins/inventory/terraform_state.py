@@ -15,6 +15,7 @@ description:
   - Uses a YAML configuration file that ends with terraform_state.(yml|yaml).
   - To read the state file command ``Terraform show`` is used.
   - Does not support caching.
+  - The Terraform providers for AWS, Azure and Google Cloud are supported by Red Hat Ansible. Other providers are supported by the community.
 extends_documentation_fragment:
   - constructed
 version_added: 2.1.0
@@ -52,18 +53,13 @@ options:
       - The path of a terraform binary to use.
     type: path
   provider_mapping:
-    description: 
+    description:
       - List of custom provider mappings.
     type: list
     elements: dict
     default: []
-    required: False
+    version_added: 3.1.0
     suboptions:
-      name:
-        description:
-          - Arbitrary name
-        type: str
-        required: True
       provider_name:
         description:
           - Terraform provider name
@@ -409,8 +405,7 @@ EXAMPLES = r"""
   groups:
     nyc: region == 'nyc3'
   provider_mapping:
-    - name: do
-      provider_name: registry.terraform.io/digitalocean/digitalocean
+    - provider_name: registry.terraform.io/digitalocean/digitalocean
       types:
         - digitalocean_droplet
 
@@ -648,8 +643,10 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         if backend_config_files and not isinstance(backend_config_files, list):
             backend_config_files = [backend_config_files]
 
-        conf_providers = {p['name']: TerraformProviderInstance(provider_name=p['provider_name'], types=p['types']) for p
-                          in provider_mapping}
+        conf_providers = {
+            p["provider_name"]: TerraformProviderInstance(provider_name=p["provider_name"], types=p["types"])
+            for p in provider_mapping
+        }
         ProvidersMapping.update(conf_providers)
         providers = [v for k, v in ProvidersMapping.items()]
         instances = self._query(
