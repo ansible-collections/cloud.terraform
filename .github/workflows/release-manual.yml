@@ -8,7 +8,7 @@ on:
     inputs:
       release:
         required: true
-        description: Existing tag to generate release for (example: 3.0.0)
+        description: "Existing tag to generate release for (example: 3.0.0)"
         type: string
 
 jobs:
