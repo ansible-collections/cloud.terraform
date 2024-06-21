@@ -5,7 +5,8 @@
 
 
 import random
-from typing import List
+import string
+from typing import Any, Dict, Optional
 from unittest.mock import ANY, MagicMock, call
 
 import pytest
@@ -13,21 +14,20 @@ from ansible.inventory.data import InventoryData
 from ansible.module_utils._text import to_text
 from ansible.template import Templar
 from ansible_collections.cloud.terraform.plugins.inventory.terraform_state import (
+    PROVIDERS_CONFIG,
+    TERRAFORM_STATE_FILE_SUPPORT_VERSION,
     InventoryModule,
-    ProvidersMapping,
     TerraformError,
-    TerraformProviderInstance,
     filter_instances,
     get_preferred_hostname,
     get_tag_hostname,
+    parse_provider_from_state_file_resource,
     write_terraform_config,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
-    TerraformChildModule,
-    TerraformModuleResource,
-    TerraformRootModule,
-    TerraformShow,
-    TerraformShowValues,
+    TerraformState,
+    TerraformStateResource,
+    TerraformStateResourceInstance,
 )
 
 # from plugins.module_utils.errors import TerraformError
@@ -42,17 +42,13 @@ def inventory_plugin():
 
 
 @pytest.fixture
-def terraform_module_resource():
-    return TerraformModuleResource(
-        address="aws_instance.test",
-        mode="managed",
-        type="aws_instance",
-        name="test",
-        provider_name="registry.terraform.io/hashicorp/aws",
-        schema_version="0",
-        sensitive_values={},
-        depends_on=[],
-        values={
+def terraform_state_resource_instance():
+    return TerraformStateResourceInstance(
+        dependencies=[],
+        private="",
+        sensitive_attributes=[],
+        schema_version=1,
+        attributes={
             "ami": "ami-01d00f1bdb42735ac",
             "arn": "arn:aws:ec2:us-east-1:012345678901:instance/i-01abcdef012345678",
             "associate_public_ip_address": False,
@@ -91,41 +87,76 @@ def terraform_backend_config():
     )
 
 
+class TestParseProviderFromStateFileResource:
+    @pytest.mark.parametrize(
+        "provider",
+        [
+            'module.aws-ec2-instance.provider["registry.terraform.io/hashicorp/aws"]',
+            'provider["registry.terraform.io/hashicorp/aws"]',
+        ],
+    )
+    def test_parser_with_matching_values(self, provider):
+        assert parse_provider_from_state_file_resource(provider) == "registry.terraform.io/hashicorp/aws"
+
+    def test_parser_with_unmatching_values(self):
+        assert not parse_provider_from_state_file_resource('["registry.terraform.io/hashicorp/aws"]')
+
+
 class TestFilterInstances:
-    def generate_module_resources(self, types: List[str]) -> List[TerraformModuleResource]:
-        return [
-            TerraformModuleResource(
-                address=f"{type}.test_{i}",
-                mode="managed",
+    def create_state_resource(
+        self, type: str, provider_name: str, module: Optional[str] = None
+    ) -> TerraformStateResource:
+        return TerraformStateResource(
+            name="".join(random.choices(string.ascii_letters + string.digits, k=12)),
+            mode="managed",
+            module=module,
+            type=type,
+            provider=provider_name,
+            instances=[],
+        )
+
+    def test_filter_instances(self, mocker):
+        m_resources = [
+            self.create_state_resource(type=type, provider_name=instance.provider_name)
+            for instance in PROVIDERS_CONFIG
+            for type in instance.types
+        ]
+        fake_providers_config = [
+            (f"dummy_{x}_vm", f"registry.dummy.io/dummy/provider_{x}")
+            for x in random.choices(string.ascii_letters, k=6)
+        ]
+        fake_resources = [
+            self.create_state_resource(type=type, provider_name=name) for type, name in fake_providers_config
+        ]
+        m_parse_provider_from_state_file_resource = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.parse_provider_from_state_file_resource"
+        )
+        m_parse_provider_from_state_file_resource.side_effect = lambda x: x
+        assert filter_instances(m_resources + fake_resources, False, []) == m_resources
+
+    @pytest.mark.parametrize("search_child_modules", [True, False])
+    def test_filter_instances_with_search_child_modules(self, mocker, search_child_modules):
+        root_module_resources = [
+            self.create_state_resource(type=type, provider_name=instance.provider_name)
+            for instance in PROVIDERS_CONFIG
+            for type in instance.types
+        ]
+        child_modules_resources = [
+            self.create_state_resource(
                 type=type,
-                name=f"test{i}",
-                provider_name=self.compute_provider_name(type),
-                schema_version="0",
-                sensitive_values={},
-                depends_on=[],
-                values={},
+                provider_name=instance.provider_name,
+                module="module." + "".join(random.choices(string.ascii_letters + string.digits, k=8)),
             )
-            for i, type in enumerate(types)
+            for instance in PROVIDERS_CONFIG
+            for type in instance.types
         ]
 
-    def compute_provider_name(self, instance_type: str) -> str:
-        return f"registry.terraform.io/hashicorp/{instance_type.split('_')[0]}"
-
-    @pytest.mark.parametrize(
-        "number_instance",
-        range(5),
-    )
-    def test_filter_instances(self, number_instance):
-        _types = ["aws_instance", "azurerm_virtual_machine", "google_compute_instance"]
-        resources = self.generate_module_resources(random.choices(_types, k=number_instance))
-        TerraformProviderInstance
-        for t in _types:
-            assert all(
-                item.type == t
-                for item in filter_instances(
-                    resources, [TerraformProviderInstance(provider_name=self.compute_provider_name(t), types=[t])]
-                )
-            )
+        m_parse_provider_from_state_file_resource = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.parse_provider_from_state_file_resource"
+        )
+        m_parse_provider_from_state_file_resource.side_effect = lambda x: x
+        results = root_module_resources + child_modules_resources if search_child_modules else root_module_resources
+        assert filter_instances(root_module_resources + child_modules_resources, search_child_modules, []) == results
 
 
 class TestGetTagHostName:
@@ -139,14 +170,24 @@ class TestGetTagHostName:
             ("tag:Name,Phase=dev", "Phase_dev"),
         ],
     )
-    def test_get_tag_hostname(self, terraform_module_resource, preference, result):
-        assert get_tag_hostname(terraform_module_resource, preference) == result
+    def test_get_tag_hostname(self, terraform_state_resource_instance, preference, result):
+        assert get_tag_hostname(terraform_state_resource_instance, preference) == result
 
 
 class TestGetPreferredHostName:
-    def test_hostnames_not_provided(self, terraform_module_resource):
-        expected = terraform_module_resource.type + "_" + terraform_module_resource.name
-        assert get_preferred_hostname(terraform_module_resource) == expected
+    @property
+    def resource_name(self):
+        return "".join(random.choices(string.ascii_letters + string.digits, k=8))
+
+    @property
+    def resource_type(self):
+        return "".join(random.choices(string.ascii_letters + string.digits + string.punctuation, k=8))
+
+    def test_hostnames_not_provided(self, terraform_state_resource_instance):
+        resource_type = self.resource_type
+        resource_name = self.resource_name
+        result = get_preferred_hostname(resource_name, resource_type, terraform_state_resource_instance)
+        assert result == resource_type + "_" + resource_name
 
     @pytest.mark.parametrize(
         "tag_hostnames,get_tag_hostname",
@@ -158,40 +199,55 @@ class TestGetPreferredHostName:
             ("tag:Name,Phase=dev", "Phase_dev"),
         ],
     )
-    def test_with_tag_prefix(self, terraform_module_resource, mocker, tag_hostnames, get_tag_hostname):
+    def test_with_tag_prefix(self, terraform_state_resource_instance, mocker, tag_hostnames, get_tag_hostname):
         get_tag_hostname_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.get_tag_hostname"
         )
         get_tag_hostname_patch.return_value = get_tag_hostname
-        assert get_preferred_hostname(terraform_module_resource, [tag_hostnames]) == get_tag_hostname
+        result = get_preferred_hostname(
+            self.resource_name, self.resource_type, terraform_state_resource_instance, [tag_hostnames]
+        )
+        assert result == get_tag_hostname
 
-    def test_with_literal_value(self, terraform_module_resource, mocker):
+    def test_with_literal_value(self, terraform_state_resource_instance, mocker):
         get_tag_hostname_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.get_tag_hostname"
         )
-        hostname = "some_literal_value_not_part_of_terraform_module_resource_value"
-        assert get_preferred_hostname(terraform_module_resource, [hostname]) == hostname
+        hostname = "some_dummy_value"
+        result = get_preferred_hostname(
+            self.resource_name, self.resource_type, terraform_state_resource_instance, [hostname]
+        )
+        assert result == hostname
         get_tag_hostname_patch.assert_not_called()
 
-    def test_with_prefix_containig_tag(self, terraform_module_resource, mocker):
+    def test_with_prefix_containig_tag(self, terraform_state_resource_instance, mocker):
         get_tag_hostname_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.get_tag_hostname"
         )
         get_tag_hostname_patch.return_value = "ansible_host"
         hostname = {"name": "tag:Name"}
-        assert get_preferred_hostname(terraform_module_resource, [hostname]) == "ansible_host"
+        result = get_preferred_hostname(
+            self.resource_name, self.resource_type, terraform_state_resource_instance, [hostname]
+        )
+        assert result == "ansible_host"
 
-    def test_with_prefix_and_separator(self, terraform_module_resource):
+    def test_with_prefix_and_separator(self, terraform_state_resource_instance):
         hostname = {"name": "instance_type", "prefix": "instance_state", "separator": "."}
-        assert get_preferred_hostname(terraform_module_resource, [hostname]) == terraform_module_resource.values.get(
+        assert get_preferred_hostname(
+            self.resource_name, self.resource_type, terraform_state_resource_instance, [hostname]
+        ) == terraform_state_resource_instance.attributes.get(
             "instance_state"
-        ) + "." + terraform_module_resource.values.get("instance_type")
+        ) + "." + terraform_state_resource_instance.attributes.get(
+            "instance_type"
+        )
 
-    def test_with_prefix_missing_name_key(self, terraform_module_resource):
+    def test_with_prefix_missing_name_key(self, terraform_state_resource_instance):
         hostname = {"key": "private_ip"}
         with pytest.raises(Exception):
             try:
-                get_preferred_hostname(terraform_module_resource, [hostname])
+                get_preferred_hostname(
+                    self.resource_name, self.resource_type, terraform_state_resource_instance, [hostname]
+                )
             except TerraformError as e:
                 assert "A 'name' key must be defined in a hostnames dictionary." in str(e.value)
                 raise
@@ -242,17 +298,18 @@ class TestInventoryModuleCreateInventory:
             assert name in self.inventory
             assert value == self.inventory[name]
 
-    def create_instance(self, name, values):
-        return TerraformModuleResource(
-            address=f"aws_instance.{name}",
+    def create_state_resource(self, name: str, attributes: Dict[str, Any]) -> TerraformStateResource:
+        return TerraformStateResource(
+            name=name,
             mode="managed",
             type="aws_instance",
-            name=name,
-            provider_name="registry.terraform.io/hashicorp/aws",
-            schema_version="0",
-            sensitive_values={},
-            depends_on=[],
-            values=values,
+            module=None,
+            provider="registry.terraform.io/hashicorp/azurerm",
+            instances=[
+                TerraformStateResourceInstance(
+                    schema_version=4, sensitive_attributes=[], private=None, dependencies=[], attributes=attributes
+                )
+            ],
         )
 
     def test_create_inventory(self, inventory_plugin, mocker):
@@ -263,24 +320,24 @@ class TestInventoryModuleCreateInventory:
         compose = MagicMock()
 
         config = {f"id{id}": {"hostvar": f"fromInstanceId{id}"} for id in range(5)}
-        instances = [self.create_instance(name=n, values=v) for n, v in config.items()]
+        resources = [self.create_state_resource(name=n, attributes=attr) for n, attr in config.items()]
         get_preferred_hostname_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.get_preferred_hostname"
         )
-        get_preferred_hostname_patch.side_effect = lambda i, _: i.name
+        get_preferred_hostname_patch.side_effect = lambda resource_name, resource_type, instance, _: resource_name
 
         inventory_plugin._set_composite_vars = MagicMock()
         inventory_plugin._add_host_to_keyed_groups = MagicMock()
         inventory_plugin._add_host_to_composed_groups = MagicMock()
         inventory_plugin.inventory = self.ansibleInventory()
 
-        inventory_plugin.create_inventory(instances, hostnames, compose, keyed_groups, groups, strict)
+        inventory_plugin.create_inventory(resources, hostnames, compose, keyed_groups, groups, strict)
 
         for name, value in config.items():
             inventory_plugin.inventory.assert_value(name, value)
 
         get_preferred_hostname_patch.assert_has_calls(
-            [call(i, hostnames) for i in instances],
+            [call(r.name, r.type, i, hostnames) for r in resources for i in r.instances],
             any_order=True,
         )
         inventory_plugin._set_composite_vars.assert_has_calls(
@@ -311,10 +368,9 @@ class TestWriteTerraformConfig:
 
 class TestInventoryModuleQuery:
     @pytest.mark.parametrize(
-        "search_child_modules",
-        [True, False],
+        "state_file_version", [TERRAFORM_STATE_FILE_SUPPORT_VERSION, TERRAFORM_STATE_FILE_SUPPORT_VERSION + 1]
     )
-    def test__query(self, inventory_plugin, mocker, search_child_modules):
+    def test__query(self, inventory_plugin, mocker, state_file_version):
         write_terraform_config_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.write_terraform_config"
         )
@@ -326,17 +382,15 @@ class TestInventoryModuleQuery:
         filter_instances_patch.return_value = instances
 
         terraform_commands = MagicMock()
-        terraform_commands.show.return_value = TerraformShow(
-            format_version="4",
+        terraform_state = TerraformState(
+            version=state_file_version,
             terraform_version="1.6.3",
-            values=TerraformShowValues(
-                outputs={},
-                root_module=TerraformRootModule(
-                    resources=MagicMock(),
-                    child_modules=[TerraformChildModule(resources=MagicMock())],
-                ),
-            ),
+            lineage="970415ab-6c6b-82c4-112b-0415b3655014",
+            serial=4,
+            outputs={},
+            resources=[],
         )
+        terraform_commands.state_pull.return_value = terraform_state
         terraform_command_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformCommands"
         )
@@ -346,25 +400,27 @@ class TestInventoryModuleQuery:
         tf_backend_type = MagicMock()
         tf_backend_config = MagicMock()
         tf_backend_config_files = MagicMock()
+        search_child_modules = MagicMock()
+
+        inventory_plugin.warn = MagicMock()
+
         result = inventory_plugin._query(
             terraform_binary,
             tf_backend_type,
             tf_backend_config,
             tf_backend_config_files,
             search_child_modules,
-            [
-                TerraformProviderInstance(
-                    provider_name=MagicMock(),
-                    types=MagicMock(),
-                )
-            ],
+            [],
         )
         assert instances == result
         write_terraform_config_patch.assert_called_once_with(tf_backend_type, ANY)
         terraform_commands.init.assert_called_once_with(
             backend_config=tf_backend_config, backend_config_files=tf_backend_config_files
         )
-        terraform_commands.show.assert_called_once()
+        terraform_commands.state_pull.assert_called_once()
+        filter_instances_patch.assert_called_once_with(terraform_state.resources, search_child_modules, [])
+        if state_file_version != TERRAFORM_STATE_FILE_SUPPORT_VERSION:
+            inventory_plugin.warn.assert_called_once()
 
 
 class TestInventoryModuleParse:
@@ -427,7 +483,7 @@ class TestInventoryModuleParse:
             config.get("backend_config"),
             config.get("backend_config_files"),
             config.get("search_child_modules", False),
-            [v for k, v in ProvidersMapping.items()],
+            [],
         )
         self.get_mock("create_inventory").assert_called_once_with(
             self.get_mock("_query_instances"),

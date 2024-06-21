@@ -13,9 +13,11 @@ description:
   - This plugin works with an existing state file to create an inventory from resources created by cloud providers.
   - The plugin accepts a Terraform backend config to an existing state file or a path to an existing state file.
   - Uses a YAML configuration file that ends with terraform_state.(yml|yaml).
-  - To read the state file command ``Terraform show`` is used.
   - Does not support caching.
   - The Terraform providers for AWS, Azure and Google Cloud are supported by Red Hat Ansible. Other providers are supported by the community.
+notes:
+  - This plugin retrieves a local copy of the remote state file, and parses the raw state file.
+  - The current version of this plugin can parse the state file with version 4. 'version_added=3.1.0'
 extends_documentation_fragment:
   - constructed
 version_added: 2.1.0
@@ -448,6 +450,7 @@ EXAMPLES = r"""
 
 
 import os
+import re
 from dataclasses import dataclass
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
@@ -456,7 +459,10 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.common import process
 from ansible.plugins.inventory import Constructable
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
-from ansible_collections.cloud.terraform.plugins.module_utils.models import TerraformModuleResource
+from ansible_collections.cloud.terraform.plugins.module_utils.models import (
+    TerraformStateResource,
+    TerraformStateResourceInstance,
+)
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.utils import validate_bin_path
 from ansible_collections.cloud.terraform.plugins.plugin_utils.base import TerraformInventoryPluginBase
@@ -469,32 +475,53 @@ class TerraformProviderInstance:
     types: List[str]
 
 
-ProvidersMapping = {
-    "aws": TerraformProviderInstance(provider_name="registry.terraform.io/hashicorp/aws", types=["aws_instance"]),
-    "azurerm": TerraformProviderInstance(
+PROVIDERS_CONFIG = [
+    TerraformProviderInstance(provider_name="registry.terraform.io/hashicorp/aws", types=["aws_instance"]),
+    TerraformProviderInstance(
         provider_name="registry.terraform.io/hashicorp/azurerm",
         types=["azurerm_virtual_machine", "azurerm_linux_virtual_machine", "azurerm_windows_virtual_machine"],
     ),
-    "google": TerraformProviderInstance(
+    TerraformProviderInstance(
         provider_name="registry.terraform.io/hashicorp/google", types=["google_compute_instance"]
     ),
-}
+]
+TERRAFORM_STATE_FILE_SUPPORT_VERSION = 4
+
+
+def parse_provider_from_state_file_resource(provider: str) -> Optional[str]:
+    """
+    Read the provider from the State file resource.
+    Possibles format:
+      "provider[\"registry.terraform.io/hashicorp/random\"]" -> for root resources
+      "module.my-aws-module.provider[\"registry.terraform.io/hashicorp/aws\"]" -> for module resources
+    """
+    result = None
+    m = re.search('^.*provider\\["(.*)"\\]', provider)
+    if m:
+        result = m.group(1)
+    return result
 
 
 def filter_instances(
-    resources: List[TerraformModuleResource], providers: List[TerraformProviderInstance]
-) -> List[TerraformModuleResource]:
-    return [
-        r
-        for r in resources
-        if any(r.type in provider.types and r.provider_name == provider.provider_name for provider in providers)
-    ]
+    resources: List[TerraformStateResource],
+    search_child_modules: bool,
+    custom_providers: List[TerraformProviderInstance],
+) -> List[TerraformStateResource]:
+    results: List[TerraformStateResource] = []
+    for r in resources:
+        if not search_child_modules and r.module:
+            # Skip child_modules resource when search_child_modules is set to False
+            continue
+        provider_name = parse_provider_from_state_file_resource(r.provider)
+        if any(r.type in p.types and provider_name == p.provider_name for p in PROVIDERS_CONFIG + custom_providers):
+            results.append(r)
+    return results
 
 
-def get_tag_hostname(instance: TerraformModuleResource, preference: str) -> Optional[str]:
+def get_tag_hostname(instance: TerraformStateResourceInstance, preference: str) -> Optional[str]:
     # from 'tag:Name=Tag1,Name=Tag2' to ['Name=Tag1', 'Name=Tag2']
     tag_hostnames = preference.split("tag:", 1)[1].split(",")
-    instance_tags: Dict[str, str] = instance.values.get("tags", {})  # type: ignore  # mypy ignore
+    instance_tags: Dict[str, str] = instance.attributes.get("tags", {})  # type: ignore  # mypy ignore
     hostname = None
     for v in tag_hostnames:
         items = v.split("=", 1)
@@ -506,19 +533,26 @@ def get_tag_hostname(instance: TerraformModuleResource, preference: str) -> Opti
     return hostname
 
 
-def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optional[List[Any]] = None) -> Optional[str]:
+def get_preferred_hostname(
+    resource_name: str,
+    resource_type: str,
+    instance: TerraformStateResourceInstance,
+    hostnames: Optional[List[Any]] = None,
+) -> Optional[str]:
     if not hostnames:
-        return instance.type + "_" + instance.name
+        return resource_type + "_" + resource_name
 
     hostname = None
     for preference in hostnames:
         if isinstance(preference, dict):
             if "name" not in preference:
                 raise TerraformError("A 'name' key must be defined in a hostnames dictionary.")
-            hostname = get_preferred_hostname(instance, [preference["name"]])
+            hostname = get_preferred_hostname(resource_name, resource_type, instance, [preference["name"]])
             hostname_from_prefix = None
             if hostname and "prefix" in preference:
-                hostname_from_prefix = get_preferred_hostname(instance, [preference["prefix"]])
+                hostname_from_prefix = get_preferred_hostname(
+                    resource_name, resource_type, instance, [preference["prefix"]]
+                )
                 separator = preference.get("separator", "_")
                 if hostname_from_prefix:
                     hostname = hostname_from_prefix + separator + hostname
@@ -526,8 +560,8 @@ def get_preferred_hostname(instance: TerraformModuleResource, hostnames: Optiona
             hostname = get_tag_hostname(instance, preference)
         else:
             hostname = preference
-            if preference in instance.values:
-                hostname = str(instance.values.get(preference, ""))
+            if preference in instance.attributes:
+                hostname = str(instance.attributes.get(preference, ""))
         if hostname:
             break
     return hostname
@@ -562,20 +596,21 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         backend_config: Optional[Dict[str, str]],
         backend_config_files: Optional[List[str]],
         search_child_modules: bool,
-        providers: List[TerraformProviderInstance],
-    ) -> List[TerraformModuleResource]:
+        custom_providers: List[TerraformProviderInstance],
+    ) -> List[TerraformStateResource]:
         with TemporaryDirectory() as temp_dir:
             write_terraform_config(backend_type, os.path.join(temp_dir, "main.tf"))
             terraform = TerraformCommands(module_run_command, temp_dir, terraform_binary, False)
             try:
                 terraform.init(backend_config=backend_config, backend_config_files=backend_config_files)
-                result = terraform.show()
-                instances: List[TerraformModuleResource] = []
-                if result:
-                    root_module = result.values.root_module
-                    resources = root_module.resources if not search_child_modules else root_module.flatten_resources()
-                    instances = filter_instances(resources, providers)
-                return instances
+                state_file = terraform.state_pull()
+                if state_file.version != TERRAFORM_STATE_FILE_SUPPORT_VERSION:
+                    self.warn(
+                        "Plugin may produce inconsistent results due to state file version incompatibility."
+                        "The plugin supports version %d while state file has version %d"
+                        % (TERRAFORM_STATE_FILE_SUPPORT_VERSION, state_file.version)
+                    )
+                return filter_instances(state_file.resources, search_child_modules, custom_providers)
             except TerraformWarning as e:
                 raise TerraformError(e.message)
 
@@ -587,32 +622,33 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
 
     def create_inventory(
         self,
-        instances: List[TerraformModuleResource],
+        resources: List[TerraformStateResource],
         hostnames: Optional[List[Any]],
         compose: Optional[Dict[str, str]],
         keyed_groups: List[Dict[str, Any]],
         groups: Dict[str, Any],
         strict: bool,
     ) -> None:
-        for instance in instances:
-            name = get_preferred_hostname(instance, hostnames)
-            if name:
-                name = self._sanitize_hostname(name)
-                self.inventory.add_host(name)
-                host_vars = instance.values
+        for resource in resources:
+            for instance in resource.instances:
+                name = get_preferred_hostname(resource.name, resource.type, instance, hostnames)
+                if name:
+                    name = self._sanitize_hostname(name)
+                    self.inventory.add_host(name)
+                    host_vars = instance.attributes
 
-                # Set individuals host variables
-                for k, v in host_vars.items():
-                    self.inventory.set_variable(name, k, v)
+                    # Set individuals host variables
+                    for k, v in host_vars.items():
+                        self.inventory.set_variable(name, k, v)
 
-                # Composed variables
-                self._set_composite_vars(compose, host_vars, name, strict=strict)
+                    # Composed variables
+                    self._set_composite_vars(compose, host_vars, name, strict=strict)
 
-                # Create groups based on variable values and add the corresponding hosts to it
-                self._add_host_to_keyed_groups(keyed_groups, host_vars, name, strict=strict)
+                    # Create groups based on variable values and add the corresponding hosts to it
+                    self._add_host_to_keyed_groups(keyed_groups, host_vars, name, strict=strict)
 
-                # Create groups based on jinja2 conditionals
-                self._add_host_to_composed_groups(groups, host_vars, name, strict=strict)
+                    # Create groups based on jinja2 conditionals
+                    self._add_host_to_composed_groups(groups, host_vars, name, strict=strict)
 
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path, cache=cache)
@@ -643,19 +679,17 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         if backend_config_files and not isinstance(backend_config_files, list):
             backend_config_files = [backend_config_files]
 
-        conf_providers = {
-            p["provider_name"]: TerraformProviderInstance(provider_name=p["provider_name"], types=p["types"])
-            for p in provider_mapping
-        }
-        ProvidersMapping.update(conf_providers)
-        providers = [v for k, v in ProvidersMapping.items()]
+        conf_providers = [
+            TerraformProviderInstance(provider_name=p["provider_name"], types=p["types"]) for p in provider_mapping
+        ]
+
         instances = self._query(
             terraform_binary,
             backend_type,
             backend_config,
             backend_config_files,
             search_child_modules,
-            providers,
+            conf_providers,
         )
         self.create_inventory(
             instances,
