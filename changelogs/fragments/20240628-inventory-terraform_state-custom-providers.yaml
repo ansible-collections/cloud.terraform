@@ -1,0 +1,3 @@
+---
+minor_changes:
+  - inventory/terraform_state - Support for custom Terraform providers (https://github.com/ansible-collections/cloud.terraform/pull/146).
