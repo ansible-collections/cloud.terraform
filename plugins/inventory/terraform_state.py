@@ -15,6 +15,7 @@ description:
   - Uses a YAML configuration file that ends with terraform_state.(yml|yaml).
   - To read the state file command ``Terraform show`` is used.
   - Does not support caching.
+  - The Terraform providers for AWS, Azure and Google Cloud are supported by Red Hat Ansible. Other providers are supported by the community.
 extends_documentation_fragment:
   - constructed
 version_added: 2.1.0
@@ -51,6 +52,25 @@ options:
     description:
       - The path of a terraform binary to use.
     type: path
+  provider_mapping:
+    description:
+      - List of custom provider mappings.
+    type: list
+    elements: dict
+    default: []
+    version_added: 3.1.0
+    suboptions:
+      provider_name:
+        description:
+          - Terraform provider name
+        type: str
+        required: True
+      types:
+        description:
+          - A list of terraform resources should be added to the inventory.
+        type: list
+        elements: str
+        required: True
   hostnames:
     description:
       - A list in order of precedence for hostname variables.
@@ -371,6 +391,59 @@ EXAMPLES = r"""
   # |  |  |--{terraform_labels = {}}
   # |  |  |--{timeouts = None}
   # |  |  |--{zone = us-east1-c}
+
+# Example using custom terraform providers
+- name: Using DigitalOcean provider definition
+  plugin: cloud.terraform.terraform_state
+  backend_type: s3
+  backend_config:
+    region: us-east-1
+    key: terraform/state
+    bucket: my-sample-bucket
+  hostnames:
+    - id
+  groups:
+    nyc: region == 'nyc3'
+  provider_mapping:
+    - provider_name: registry.terraform.io/digitalocean/digitalocean
+      types:
+        - digitalocean_droplet
+
+  # Running command `ansible-inventory -i digitalocean_terraform_state.yaml --graph --vars` would then produce the inventory:
+  # #all:
+  #  |--@ungrouped:
+  #  |--@nyc:
+  #  |  |--422579352
+  #  |  |  |--{backups = False}
+  #  |  |  |--{created_at = 2024-05-31T21:21:31Z}
+  #  |  |  |--{disk = 25}
+  #  |  |  |--{droplet_agent = None}
+  #  |  |  |--{graceful_shutdown = False}
+  #  |  |  |--{id = 422579352}
+  #  |  |  |--{image = ubuntu-24-04-x64}
+  #  |  |  |--{ipv4_address = 138.197.0.49}
+  #  |  |  |--{ipv4_address_private = 10.132.0.2}
+  #  |  |  |--{ipv6 = False}
+  #  |  |  |--{ipv6_address = }
+  #  |  |  |--{locked = False}
+  #  |  |  |--{memory = 1024}
+  #  |  |  |--{monitoring = False}
+  #  |  |  |--{name = web-1}
+  #  |  |  |--{price_hourly = 0.00893}
+  #  |  |  |--{price_monthly = 6}
+  #  |  |  |--{private_networking = True}
+  #  |  |  |--{region = nyc3}
+  #  |  |  |--{resize_disk = True}
+  #  |  |  |--{size = s-1vcpu-1gb}
+  #  |  |  |--{ssh_keys = None}
+  #  |  |  |--{status = active}
+  #  |  |  |--{tags = None}
+  #  |  |  |--{timeouts = None}
+  #  |  |  |--{urn = do:droplet:422579352}
+  #  |  |  |--{user_data = None}
+  #  |  |  |--{vcpus = 1}
+  #  |  |  |--{volume_ids = []}
+  #  |  |  |--{vpc_uuid = 9bdd6e60-dc84-11e8-80bc-3cfdfea9fba1}
 """
 
 
@@ -549,6 +622,7 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         backend_config = cfg.get("backend_config")
         backend_config_files = cfg.get("backend_config_files")
         backend_type = cfg.get("backend_type")
+        provider_mapping = cfg.get("provider_mapping", [])
         terraform_binary = cfg.get("binary_path")
         search_child_modules = cfg.get("search_child_modules", False)
 
@@ -569,6 +643,11 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         if backend_config_files and not isinstance(backend_config_files, list):
             backend_config_files = [backend_config_files]
 
+        conf_providers = {
+            p["provider_name"]: TerraformProviderInstance(provider_name=p["provider_name"], types=p["types"])
+            for p in provider_mapping
+        }
+        ProvidersMapping.update(conf_providers)
         providers = [v for k, v in ProvidersMapping.items()]
         instances = self._query(
             terraform_binary,
