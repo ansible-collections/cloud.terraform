@@ -10,10 +10,11 @@ author:
   - Aubin Bikouo (@abikouo)
 short_description: Builds an inventory from resources created by cloud providers.
 description:
-  - This plugin works with an existing state file to create an inventory from resources created by cloud providers.
-  - The plugin accepts a Terraform backend config to an existing state file or a path to an existing state file.
-  - Uses a YAML configuration file that ends with terraform_state.(yml|yaml).
-  - To read the state file command ``Terraform show`` is used.
+  - This plugin works by making a temporary directory, writing a C(main.tf) file with the configured backend, then running C(terraform init),
+    followed by C(terraform show) in JSON format to read state.
+  - The plugin accepts a Terraform backend config to an existing backend, or path(s) to files containing backend config.
+  - Uses a YAML configuration file that ends with C(terraform_state.yml) or C(terraform_state.yaml).  For example, C(aws_terraform_state.yaml).
+  - Currently only supports the following Terraform providers - C(aws), C(azurerm), C(google).
   - Does not support caching.
   - The Terraform providers for AWS, Azure and Google Cloud are supported by Red Hat Ansible. Other providers are supported by the community.
 extends_documentation_fragment:
