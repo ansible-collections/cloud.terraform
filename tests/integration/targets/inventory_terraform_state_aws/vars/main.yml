@@ -18,5 +18,7 @@ host_variables:
   - tags
   - user_data
 default_hostname: "aws_instance_test"
+child_default_hostname: "aws_instance_test_tiny"
+child_module_path: "tiny-instance"
 bucket_name: "bucket-{{ resource_prefix }}"
 resource_name: "ansible-test-state"

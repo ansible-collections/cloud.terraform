@@ -143,6 +143,70 @@ class TerraformShow:
 
 
 @dataclass
+class TerraformStateResourceInstance:
+    schema_version: int
+    attributes: Dict[str, TJsonObject]
+    sensitive_attributes: List[str]
+    private: str
+    dependencies: List[str]
+
+    @classmethod
+    def from_json(cls, json: TJsonObject) -> "TerraformStateResourceInstance":
+        return cls(
+            schema_version=json.get("schema_version"),
+            attributes=json.get("attributes"),
+            sensitive_attributes=json.get("sensitive_attributes", []),
+            private=json.get("private"),
+            dependencies=json.get("dependencies", []),
+        )
+
+
+@dataclass
+class TerraformStateResource:
+    name: str
+    mode: str
+    module: str
+    type: str
+    provider: str
+    instances: List[TerraformStateResourceInstance]
+
+    @classmethod
+    def from_json(cls, json: TJsonObject) -> "TerraformStateResource":
+        return cls(
+            module=json.get("module"),
+            mode=json.get("mode"),
+            type=json.get("type"),
+            name=json.get("name"),
+            provider=json.get("provider"),
+            instances=[TerraformStateResourceInstance.from_json(i) for i in json.get("instances", [])],
+        )
+
+
+@dataclass
+class TerraformState:
+    version: int
+    terraform_version: str
+    lineage: str
+    serial: int
+    outputs: Dict[str, TerraformOutput]
+    resources: List[TerraformStateResource]
+
+    @classmethod
+    def from_json(cls, json: TJsonObject) -> "TerraformState":
+        return cls(
+            version=json["version"],
+            terraform_version=json["terraform_version"],
+            lineage=json["lineage"],
+            serial=json["serial"],
+            outputs={
+                output_name: TerraformOutput.from_json(output_value)
+                for output_name, output_value in json.get("outputs", {}).items()
+            },
+            resources=[TerraformStateResource.from_json(resource) for resource in json.get("resources")],
+        )
+
+
+@dataclass
 class TerraformAttributeSpec:
     description_kind: str
 
