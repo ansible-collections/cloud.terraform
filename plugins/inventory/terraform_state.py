@@ -15,9 +15,6 @@ description:
   - Uses a YAML configuration file that ends with terraform_state.(yml|yaml).
   - Does not support caching.
   - The Terraform providers for AWS, Azure and Google Cloud are supported by Red Hat Ansible. Other providers are supported by the community.
-notes:
-  - This plugin retrieves a local copy of the remote state file, and parses the raw state file.
-  - The current version of this plugin can parse the state file with version 4. 'version_added=3.1.0'
 extends_documentation_fragment:
   - constructed
 version_added: 2.1.0
