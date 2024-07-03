@@ -31,10 +31,9 @@
             suffix: .terraform
           register: temp_dir
 
-        - name: Generate Terraform configuration
-          template:
-            src: main.tf.j2
-            dest: "{{ temp_dir.path }}/main.tf"
+        - include_tasks: tasks/generate_tf.yml
+          vars:
+            terraform_src_dir: "{{ temp_dir.path }}"
 
         - name: Create terraform resource
           cloud.terraform.terraform:

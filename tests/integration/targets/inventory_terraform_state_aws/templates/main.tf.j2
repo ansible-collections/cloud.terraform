@@ -91,3 +91,10 @@ resource "aws_instance" "test" {
     Phase = "integration"
   }
 }
+
+module "child_module" {
+  source = "./{{ child_module_path }}"
+  child_ami_id = data.aws_ami.fedora.id
+  child_group_id = aws_security_group.allow_ssh.id
+  child_subnet_id = aws_subnet.main.id
+}
