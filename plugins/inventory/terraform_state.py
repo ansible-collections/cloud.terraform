@@ -493,7 +493,7 @@ def parse_provider_from_state_file_resource(provider: str) -> Optional[str]:
       "module.my-aws-module.provider[\"registry.terraform.io/hashicorp/aws\"]" -> for module resources
     """
     result = None
-    m = re.search('^.*provider\\["(.*)"\\]', provider)
+    m = re.search(r'^.*provider\["(.*)"\]', provider)
     if m:
         result = m.group(1)
     return result
