@@ -7,6 +7,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.errors import Terr
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformProviderSchemaCollection,
     TerraformShow,
+    TerraformState,
     TerraformWorkspaceContext,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnsibleRunCommandType
@@ -219,6 +220,23 @@ class TerraformCommands:
             result = state_json
 
         return TerraformShow.from_json(result)
+
+    def state_pull(self) -> TerraformState:
+        command = ["state", "pull"]
+        rc, stdout, stderr = self._run(*command, check_rc=False)
+        if rc == 1:
+            raise TerraformWarning(
+                "Could not Pull state file from path: {0}. "
+                "\nstdout: {1}\nstderr: {2}".format(self.project_path, stdout, stderr)
+            )
+        elif rc != 0:
+            raise TerraformError(
+                "Failure when pulling state filefrom path: {0}. "
+                "Exited {1}.\nstdout: {2}\nstderr: {3}".format(self.project_path, rc, stdout, stderr),
+                command=" ".join(command),
+            )
+
+        return TerraformState.from_json(json.loads(stdout))
 
     def validate(self, version: LooseVersion, variables_args: List[str]) -> None:
         command = ["validate"]
