@@ -4,3 +4,6 @@ profile: production
 exclude_paths:
   - changelogs/changelog.yaml
   - tests/integration
+
+supported_ansible_also:
+  - "2.14"
