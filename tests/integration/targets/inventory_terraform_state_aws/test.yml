@@ -26,7 +26,7 @@
             src: backend.hcl.j2
             dest: "{{ tmpfile.path }}"
 
-        # Simple inventory configuration
+        # Simple inventory configuration (default value for search_child_modules is false)
         - name: Generate inventory file with backend_config
           template:
             src: "inventory.yml.j2"
@@ -39,10 +39,36 @@
             that:
               - default_hostname in hostvars
 
+        - name: 'assert that host {{ child_default_hostname }} is undefined (search_child_modules=false)'
+          assert:
+            that:
+              - child_default_hostname not in hostvars
+
         - name: Assert that '{{ default_hostname }}' host has required variables
           assert:
             that:
               - item in hostvars[default_hostname]
+          with_items: "{{ host_variables }}"
+
+        # Inventory with search_child_modules=true
+        - name: Generate inventory file with 'search_child_modules=true'
+          template:
+            src: "inventory_search_child_module.yml.j2"
+            dest: "{{ inventory_path }}"
+
+        - meta: refresh_inventory
+
+        - name: 'assert that hosts {{ default_hostname }} and {{ child_default_hostname }} are defined'
+          assert:
+            that:
+              - default_hostname in hostvars
+              - child_default_hostname in hostvars
+
+        - name: 'Assert that hosts {{ default_hostname }}, {{ child_default_hostname }} have variable {{ item }}'
+          assert:
+            that:
+              - item in hostvars[default_hostname]
+              - item in hostvars[child_default_hostname]
           with_items: "{{ host_variables }}"
 
         # Inventory with backend_config_files
