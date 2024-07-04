@@ -1,0 +1,15 @@
+---
+- name: Create child module directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ terraform_src_dir }}/{{ child_module_path }}"
+
+- name: Generate Terraform configuration
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src: main.tf.j2
+      dest: "{{ terraform_src_dir }}/main.tf"
+    - src: main.child.tf.j2
+      dest: "{{ terraform_src_dir }}/{{ child_module_path }}/main.tf"
