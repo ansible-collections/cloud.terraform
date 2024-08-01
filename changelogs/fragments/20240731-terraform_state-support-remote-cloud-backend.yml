@@ -1,0 +1,3 @@
+---
+bugfixes:
+  - inventory/terraform_state - Add support for remote/cloud backends (https://github.com/ansible-collections/cloud.terraform/issues/150).
