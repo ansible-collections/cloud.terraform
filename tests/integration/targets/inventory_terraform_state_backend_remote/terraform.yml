@@ -1,0 +1,41 @@
+- name: Create/Delete Terraform resources
+  hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - name: Create/Delete Terraform resources
+      block:
+        - name: Create temporary directory to store main.tf configuration
+          ansible.builtin.tempfile:
+            state: directory
+            suffix: .terraform
+          register: temp_dir
+
+        - name: Generate Terraform configuration
+          template:
+            src: "main.tf.j2"
+            dest: "{{ temp_dir.path }}/main.tf"
+
+        # Run terraform exe directly as the "remote" backend does not support saving the generated execution plan
+        - name: Create/Delete terraform resource
+          ansible.builtin.shell:
+            cmd: |
+              terraform init
+              terraform {{ tf_operation | default('apply') }} -auto-approve
+            chdir: "{{ temp_dir.path }}"
+
+        - name: Delete temporary directory
+          ansible.builtin.file:
+            state: absent
+            path: "{{ temp_dir.path }}"
+          when: temp_dir is defined
+
+      always:
+        - name: Delete temporary directory
+          ansible.builtin.file:
+            state: absent
+            path: "{{ temp_dir.path }}"
+          ignore_errors: true

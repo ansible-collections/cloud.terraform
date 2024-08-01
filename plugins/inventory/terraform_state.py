@@ -29,6 +29,7 @@ options:
   backend_type:
     description:
       - The Terraform backend type from which the state file will be retrieved.
+      - Use V(cloud) for backend configured using cloud block, see U(https://developer.hashicorp.com/terraform/cli/cloud/settings#the-cloud-block).
     type: str
     required: true
   backend_config:
@@ -40,6 +41,7 @@ options:
     description:
       - The absolute path to a configuration file to provide at init state to the -backend-config parameter.
         This can accept a list of paths to multiple configuration files.
+      - Ignored if O(backend_type=cloud).
     type: list
     elements: path
   search_child_modules:
@@ -443,11 +445,52 @@ EXAMPLES = r"""
   #  |  |  |--{vcpus = 1}
   #  |  |  |--{volume_ids = []}
   #  |  |  |--{vpc_uuid = 9bdd6e60-dc84-11e8-80bc-3cfdfea9fba1}
+
+# Using the remote backend (see below the corresponding Terraform configuration)
+# terraform {
+#   backend "remote" {
+#     hostname = "app.terraform.io"
+#     organization = "redhat"
+#
+#     workspaces {
+#        prefix = "ansible-"
+#     }
+#   }
+# }
+- name: Using the Remote backend
+  plugin: cloud.terraform.terraform_state
+  backend_type: remote
+  backend_config:
+    hostname: app.terraform.io
+    organization: redhat
+    workspaces:
+      prefix: ansible-
+
+# Using the cloud block (see below the corresponding Terraform configuration)
+# terraform {
+#   cloud {
+#     hostname = "app.terraform.io"
+#     organization = "redhat"
+#
+#     workspaces {
+#        name = "ansible"
+#     }
+#   }
+# }
+- name: Using the cloud block
+  plugin: cloud.terraform.terraform_state
+  backend_type: cloud
+  backend_config:
+    hostname: app.terraform.io
+    organization: redhat
+    workspaces:
+      name: ansible
 """
 
 
 import os
 import re
+from copy import deepcopy
 from dataclasses import dataclass
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
@@ -461,7 +504,7 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformStateResourceInstance,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
-from ansible_collections.cloud.terraform.plugins.module_utils.utils import validate_bin_path
+from ansible_collections.cloud.terraform.plugins.module_utils.utils import ansible_dict_to_hcl, validate_bin_path
 from ansible_collections.cloud.terraform.plugins.plugin_utils.base import TerraformInventoryPluginBase
 from ansible_collections.cloud.terraform.plugins.plugin_utils.common import module_run_command
 
@@ -564,12 +607,46 @@ def get_preferred_hostname(
     return hostname
 
 
-def write_terraform_config(backend_type: str, path: str) -> None:
+def write_terraform_config(backend_type: str, backend_config: Optional[Dict[str, Any]], path: str) -> None:
     tf_config = "terraform {\n"
-    tf_config += 'backend "%s" {}' % backend_type
+    if backend_type.lower() == "cloud":
+        tf_config += ansible_dict_to_hcl(backend_config, "cloud")
+    else:
+        tf_config += 'backend "%s" {}' % backend_type.lower()
     tf_config += "\n}"
     with open(path, "w") as temp_file:
         temp_file.write(tf_config)
+
+
+def purge_backend_config(backend_config: Dict[str, Any], path: str) -> bool:
+    """The backend_config attribute excepts only string value attributes.
+    However for some backend the configuration may include object attributes
+    e.g:
+      backend "s3" {
+        assume_role = {
+          role_arn = "arn:aws:iam::0123456789:role/Terraform"
+        }
+      }
+      backend "remote" {
+        workspace = {
+          name = "test"
+        }
+      }
+    This method removes the corresponding attributes from the backend_config and generates
+    files with the corresponding content.
+    """
+    m_keys = {}
+    copy_config = deepcopy(backend_config)
+    for k, v in copy_config.items():
+        if isinstance(v, (dict, list)):
+            m_keys[k] = v
+            del backend_config[k]
+
+    if m_keys:
+        result = "\n".join([ansible_dict_to_hcl(v, k) for k, v in m_keys.items()])
+        with open(path, "w") as temp_file:
+            temp_file.write(result)
+    return bool(m_keys)
 
 
 class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ignore  # mypy ignore
@@ -590,15 +667,23 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         self,
         terraform_binary: str,
         backend_type: str,
-        backend_config: Optional[Dict[str, str]],
+        backend_config: Optional[Dict[str, Any]],
         backend_config_files: Optional[List[str]],
         search_child_modules: bool,
         custom_providers: List[TerraformProviderInstance],
     ) -> List[TerraformStateResource]:
         with TemporaryDirectory() as temp_dir:
-            write_terraform_config(backend_type, os.path.join(temp_dir, "main.tf"))
+            write_terraform_config(backend_type, backend_config, os.path.join(temp_dir, "main.tf"))
             terraform = TerraformCommands(module_run_command, temp_dir, terraform_binary, False)
             try:
+                if backend_type.lower() == "cloud":
+                    backend_config_files = []
+                    backend_config = {}
+                # Remove dict/list elements from backend_config
+                if backend_config:
+                    path = os.path.join(temp_dir, "config.tfbackend")
+                    if purge_backend_config(backend_config, path):
+                        backend_config_files = backend_config_files or [] + [path]
                 terraform.init(backend_config=backend_config, backend_config_files=backend_config_files)
                 state_file = terraform.state_pull()
                 if state_file.version != TERRAFORM_STATE_FILE_SUPPORT_VERSION:
