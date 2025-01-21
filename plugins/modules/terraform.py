@@ -134,6 +134,15 @@ options:
         that accepts locks (such as S3+DynamoDB).
     type: int
     version_added: 1.0.0
+  refresh:
+    description:
+      - Boolean argument for the C(-refresh=) option, to freshen terraform
+        resource/data state during Plan generation.  State refresh normally
+        happens by default, but can be countermanded by giving a C(false)
+        value here.
+    type: bool
+    default: true
+    version_added: 4.0.1
   force_init:
     description:
       - To avoid duplicating infra, if a state file can't be found this will
@@ -465,6 +474,7 @@ def main() -> None:
             lock=dict(type="bool", default=True),
             lock_timeout=dict(type="int"),
             force_init=dict(type="bool", default=False),
+            refresh=dict(type="bool", default=True),
             backend_config=dict(type="dict"),
             backend_config_files=dict(type="list", elements="path"),
             init_reconfigure=dict(type="bool", default=False),
@@ -591,6 +601,7 @@ def main() -> None:
             plan_result_changed, plan_result_any_destroyed, plan_stdout, plan_stderr = terraform.plan(
                 target_plan_file_path=plan_file_to_apply,
                 targets=module.params.get("targets"),
+                refresh=module.params.get("refresh", True),
                 destroy=state == "absent",
                 state_args=get_state_args(state_file),
                 variables_args=variables_args,

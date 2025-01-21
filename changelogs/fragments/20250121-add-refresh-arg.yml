@@ -1,0 +1,5 @@
+---
+minor_changes:
+  - Use "refresh" arg on plan command line (i.e. "terraform plan
+    -refresh=<arg>", defaults true), and allow user override in module args
+    (https://github.com/ansible-collections/cloud.terraform/pull/168)
