@@ -436,7 +436,7 @@ def main() -> None:
             workspace=dict(type="str", default="default"),
             purge_workspace=dict(type="bool", default=False),
             state=dict(default="present", choices=["present", "absent", "planned"]),
-            variables=dict(type="dict"),
+            variables=dict(type="dict", no_log=True),
             complex_vars=dict(type="bool", default=False),
             variables_files=dict(aliases=["variables_file"], type="list", elements="path"),
             plan_file=dict(type="path"),
