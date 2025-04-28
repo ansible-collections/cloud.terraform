@@ -1,26 +1,14 @@
 # Terraform Collection for Ansible Automation Platform
 
-The `cloud.terraform` automates the management and provisioning of infrastructure as code using Terraform CLI tool within Ansible playbooks and Execution Environment runtimes.
+The `cloud.terraform` collection houses modules that help in the management and provisioning of infrastructure as code using Terraform CLI tool within Ansible playbooks and Execution Environment runtimes.
 
-It is intended to support similar automation capabilities consistent with other cloud provisioning tool integrations for Ansible such as AWS Cloudformation, Azure Resource Manager and Helm with the added challenge of effectively managing a state file.
+## Description
 
-This collection is intended to support the following use cases:
+cloud.terraform is intended to support similar automation capabilities consistent with other cloud provisioning tool integrations for Ansible such as AWS Cloudformation, Azure Resource Manager and Helm with the added challenge of effectively managing a state file.
 
-* Automated create, update and teardown of infrastructure using an existing Terraform plan
-* Transparent fetch and store Terraform state file to a remote source
-* Read information from an existing Terraform state file
-* Fetch Terraform project (plan and var) files from an external source such git with a Role
-* Utilizing state files as dynamic inventory source with a Terraform Provider
+## Requirements
 
-This collection is not intended to manage the installation, configuration and operation of local developer instances of Terraform. Some of these operations may be possible through the overlap with the scope of this work, but not mean to be explicitly and comprehensively through modules, plugins and documentation support of this collection. This includes:
-
-* Direct manipulation of Terraform state files (mv, rm, import)
-* Direct manipulation or generation of Terraform plan files and variable files (fmt)
-* Managing Terraform Workspaces
-* Console subcommand
-* Graph subcommand
-
-## Ansible version compatibility
+### Ansible version compatibility
 
 This collection requires Ansible Core 2.14 or later and thus Python 3.9 or later.
 
@@ -46,7 +34,7 @@ Name | Description
 
 <!--end collection content-->
 
-## Installing this collection
+## Installation
 
 You can install the cloud.terraform collection with the Ansible Galaxy CLI:
 
@@ -69,7 +57,23 @@ collections:
     version: 1.1.0
 ```
 
-## Using this collection
+## Use Cases
+
+This collection is intended to support the following use cases:
+
+* Automated create, update and teardown of infrastructure using an existing Terraform plan
+* Transparent fetch and store Terraform state file to a remote source
+* Read information from an existing Terraform state file
+* Fetch Terraform project (plan and var) files from an external source such git with a Role
+* Utilizing state files as dynamic inventory source with a Terraform Provider
+
+This collection is not intended to manage the installation, configuration and operation of local developer instances of Terraform. Some of these operations may be possible through the overlap with the scope of this work, but not mean to be explicitly and comprehensively through modules, plugins and documentation support of this collection. This includes:
+
+* Direct manipulation of Terraform state files (mv, rm, import)
+* Direct manipulation or generation of Terraform plan files and variable files (fmt)
+* Managing Terraform Workspaces
+* Console subcommand
+* Graph subcommand
 
 You can either call modules by their Fully Qualified Collection Name (FQCN), such as `cloud.terraform.terraform`, or you can call modules by their short name if you list the `cloud.terraform` collection in the playbook's `collections` keyword:
 
@@ -79,9 +83,35 @@ You can either call modules by their Fully Qualified Collection Name (FQCN), suc
     cloud.terraform.terraform:
       project_path: '{{ project_dir }}'
       state: present
+ 
+  # Inventory built from state file containing AWS, AzureRM and GCP instances
+  - name: Create inventory from state file containing AWS, AzureRM and GCP instances
+    plugin: cloud.terraform.terraform_state
+    backend_type: azurerm
+    backend_config:
+      resource_group_name: my-resource-group
+      storage_account_name: mystorageaccount
+      container_name: terraformstate
+      key: inventory.tfstate
+
+  # Encode terraform plan file into variable 'stashed_plan'
+  - name: Encode a terraform plan file into terraform_plan variable
+    cloud.terraform.plan_stash:
+      path: /path/to/terraform_plan_file
+      var_name: stashed_plan
+      state: stash
+    no_log: true
+
+  # Load terraform plan file from variable 'stashed_plan'
+  - name: Load a terraform plan file data from variable 'stashed_plan' into file 'tfplan'
+    cloud.terraform.plan_stash:
+      path: tfplan
+      var_name: stashed_plan
+      state: load
+    no_log: true
 ```
 
-## Developing and testing
+## Testing
 
 The project uses `mypy` and `black`.
 Black works without special configuration, while `mypy` requires a valid package structure.
@@ -108,16 +138,16 @@ To run integration tests, install `terraform` and ensure it is in your `PATH`.
 If you want to run cloud integration tests, ensure you log in to the clouds:
 
 ```shell
-# using the "default" profile on AWS
+### using the "default" profile on AWS
 aws configure set aws_access_key_id     my-access-key
 aws configure set aws_secret_access_key my-secret-key
 aws configure set region                eu-north-1
 
-# Azure login
+### Azure login
 az login
 az account set --subscription <id>
 
-# GCP login
+### GCP login
 gcloud auth application-default login
 gcloud auth application-default set-quota-project <id>
 
@@ -125,9 +155,31 @@ black --check --diff .
 MYPYPATH="$(realpath "$PWD/../../../")" mypy -p ansible_collections.cloud.terraform.plugins
 ansible-test integration [target] [--exclude aws|azure|gcp]
 
-# Generate docs
+### Generate docs
 ansible-doc --list | grep cloud.terraform | cut -d " " -f 1 | xargs -I {} antsibull-docs plugin --dest-dir docs/ {}
 ```
+
+## Contributing to this collection
+
+We welcome community contributions to this collection. If you find problems, please open an issue or create a PR against this collection repository.
+See [CONTRIBUTING.md](https://github.com/ansible-collections/cloud.terraform/blob/main/CONTRIBUTING.md) for more details.
+
+## Support
+
+For the latest supported versions, refer to the release notes below.
+
+If you encounter issues or have questions, you can submit a support request through the following channels:
+ - GitHub Issues: Report bugs, request features, or ask questions by opening an issue in the [GitHub repository](https://github.com/ansible-collections/cloud.terraform).
+
+## Release Notes
+
+See the [raw generated changelog](https://github.com/ansible-collections/cloud.terraform/blob/main/CHANGELOG.rst).
+
+
+## Related Information
+
+ - [Ansible User guide](https://docs.ansible.com/ansible/latest/user_guide/index.html).
+ - [Ansible Community code of conduct](https://docs.ansible.com/ansible/latest/community/code_of_conduct.html)
 
 ## Licensing
 
