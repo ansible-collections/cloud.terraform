@@ -9,11 +9,11 @@ from ansible_collections.cloud.terraform.tests.unit.plugins.modules.utils import
 
 
 def test_terraform_without_argument(capfd):
-    set_module_args({})
-    with pytest.raises(SystemExit):
-        terraform.main()
+    with set_module_args({}):
+        with pytest.raises(SystemExit):
+            terraform.main()
 
-    out, err = capfd.readouterr()
-    assert not err
-    assert json.loads(out)["failed"]
-    assert "project_path" in json.loads(out)["msg"]
+        out, err = capfd.readouterr()
+        assert not err
+        assert json.loads(out)["failed"]
+        assert "project_path" in json.loads(out)["msg"]
