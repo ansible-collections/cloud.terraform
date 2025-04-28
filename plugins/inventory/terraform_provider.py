@@ -182,7 +182,7 @@ class InventoryModule(TerraformInventoryPluginBase):
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path)
 
-        cfg = self.read_config_data(path)  # type: ignore  # mypy ignore
+        cfg = self._read_config_data(path)
 
         project_path = cfg.get("project_path", os.getcwd())
         state_file = cfg.get("state_file", "")
