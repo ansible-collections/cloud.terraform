@@ -2,5 +2,6 @@
 profile: production
 
 exclude_paths:
+  - .ansible/
   - changelogs/changelog.yaml
   - tests/integration
