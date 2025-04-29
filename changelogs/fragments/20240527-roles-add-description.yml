@@ -1,3 +1,0 @@
----
-trivial:
-  - add role description for collection roles (https://github.com/ansible-collections/cloud.terraform/pull/141).
