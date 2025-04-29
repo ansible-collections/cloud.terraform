@@ -23,8 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       source: "./source"
-      ansible_version: "milestone"
       python_version: "3.12"
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible-version:
+          - milestone
+          - devel
+    name: "integration-tests-${{ matrix.ansible-version }}"
     steps:
       - name: Checkout collection
         uses: actions/checkout@v4
@@ -37,10 +43,10 @@ jobs:
         with:
           python-version: ${{ env.python_version }}
 
-      - name: Install ansible-core (${{ env.ansible_version }})
+      - name: Install ansible-core (${{ matrix.ansible-version }})
         run: >-
           python3 -m pip install
-          https://github.com/ansible/ansible/archive/${{ env.ansible_version }}.tar.gz
+          https://github.com/ansible/ansible/archive/${{ matrix.ansible-version }}.tar.gz
         shell: bash
 
       - name: Pre install collections dependencies first so the collection install does not
@@ -87,5 +93,5 @@ jobs:
         uses: ansible-network/github_actions/.github/actions/ansible_test_integration@main
         with:
           collection_path: ${{ steps.install-collection.outputs.collection_path }}
-          python_version: "3.12"
-          ansible_version: milestone
+          python_version: "${{ env.python_version }}"
+          ansible_version: "${{ matrix.ansible-version }}"

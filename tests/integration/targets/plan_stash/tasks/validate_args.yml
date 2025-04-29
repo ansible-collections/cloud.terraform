@@ -8,7 +8,7 @@
   assert:
     that:
       - missing_path is failed
-      - missing_path.msg == "missing required arguments: path"
+      - 'missing_path.msg == "missing required arguments: path"'
 
 # Ensure the module failed when 'var_name' is not a valid variable name
 - name: Run module with invalid variable name
@@ -22,7 +22,9 @@
   assert:
     that:
       - invalid_var_name is failed
-      - invalid_var_name.msg == "The variable name '.testing_plan' is not valid. Variables must start with a letter or underscore character, and contain only letters, numbers and underscores."
+      - 'invalid_var_name.msg == error_message'
+  vars:
+    error_message: "The variable name '.testing_plan' is not valid. Variables must start with a letter or underscore character, and contain only letters, numbers and underscores."
 
 # Validate that module failed with both 'binary_data' and 'var_name' are specified with state=load
 - name: Try to run module with both 'binary_data' and 'var_name' and state==load
@@ -38,7 +40,9 @@
   assert:
     that:
       - validate_load is failed
-      - validate_load.msg == "You cannot specify both 'var_name' and 'binary_data' to load the terraform plan file."
+      - 'validate_load.msg == error_message'
+  vars:
+    error_message: "You cannot specify both 'var_name' and 'binary_data' to load the terraform plan file."
 
 # Try to load terraform plan using undefined variable
 - name: Load terraform plan from undefined variable
@@ -53,4 +57,4 @@
   assert:
     that:
       - undef_variable is failed
-      - undef_variable.msg == "No variable found with this name: this_ansible_variable_is_undefined"
+      - 'undef_variable.msg == "No variable found with this name: this_ansible_variable_is_undefined"'
