@@ -650,7 +650,7 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path, cache=cache)
 
-        cfg = self.read_config_data(path)  # type: ignore  # mypy ignore
+        cfg = self._read_config_data(path)
 
         backend_config = cfg.get("backend_config")
         backend_config_files = cfg.get("backend_config_files")

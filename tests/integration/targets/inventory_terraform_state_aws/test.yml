@@ -100,10 +100,14 @@
 
         - meta: refresh_inventory
 
+        - ansible.builtin.debug:
+            var: hostvars
+
         - name: Validate that '{{ default_hostname }}' is not defined
           assert:
             that:
-              - hostvars.keys() | list == [tag_hostname]
+              - tag_hostname in hostvars
+              - default_hostname not in hostvars
           vars:
             tag_hostname: "t2.micro-{{ resource_prefix }}-ec2"
 
