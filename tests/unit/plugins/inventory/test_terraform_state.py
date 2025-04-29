@@ -439,7 +439,7 @@ class TestInventoryModuleParse:
         }
 
         read_config_data_patch = mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule._read_config_data"
         )
         read_config_data_patch.side_effect = lambda _: config
 
@@ -461,7 +461,7 @@ class TestInventoryModuleParse:
         }
 
         read_config_data_patch = mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule._read_config_data"
         )
         read_config_data_patch.side_effect = lambda _: config
 
@@ -506,7 +506,7 @@ class TestInventoryModuleParse:
         }
 
         read_config_data_patch = mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule._read_config_data"
         )
         read_config_data_patch.side_effect = lambda _: config
 
@@ -541,7 +541,7 @@ class TestInventoryModuleParse:
         }
 
         read_config_data_patch = mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule._read_config_data"
         )
         read_config_data_patch.side_effect = lambda _: config
 
@@ -577,7 +577,7 @@ class TestInventoryModuleParse:
         }
 
         read_config_data_patch = mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.read_config_data"
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule._read_config_data"
         )
         read_config_data_patch.side_effect = lambda _: config
 
