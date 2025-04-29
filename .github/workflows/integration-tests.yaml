@@ -17,14 +17,59 @@ jobs:
     if: ${{ github.event.label.name == 'safe to test' }} || ${{ github.event.action != 'labeled' }}
     uses: ansible-network/github_actions/.github/workflows/safe-to-test.yml@main
 
-  integration-tests:
+  splitter:
     needs:
       - safe-to-test
+    env:
+      source_dir: "./source"
+    runs-on: ubuntu-latest
+    outputs:
+      ids: ${{ steps.split.outputs.ids }}
+      targets: ${{ steps.split.outputs.targets }}
+    steps:
+      - name: Checkout the collection repository
+        uses: actions/checkout@v3
+        with:
+          path: ${{ env.source_dir }}
+
+      - name: List tests targets
+        id: split
+        shell: python
+        run: |
+          from pathlib import PosixPath
+          import os
+          import json
+          from collections import defaultdict
+
+          all_targets = defaultdict(list)
+          index = 0
+          total_jobs = int(os.environ["TOTAL_JOBS"])
+          for target in PosixPath(os.path.join(os.environ['COLLECTION_PATH'], "tests/integration/targets")).glob("*"):
+              aliases = (target / PosixPath("aliases"))
+              if aliases.exists() and any([line.startswith(("unsupported", "disabled")) for line in aliases.read_text().splitlines()]):
+                  continue
+              all_targets[index % total_jobs].append(target.stem)
+              index += 1
+          with open(os.environ.get("GITHUB_OUTPUT"), "a", encoding="utf-8") as fw:
+              fw.write(f"ids={list(all_targets.keys())}\n")
+              fw.write(f"targets={json.dumps(dict(all_targets))}\n")
+        env:
+          COLLECTION_PATH: ${{ env.source_dir }}
+          TOTAL_JOBS: 5
+
+  integration-tests:
+    needs:
+      - splitter
     runs-on: ubuntu-latest
     env:
       source: "./source"
-      ansible_version: "milestone"
+      ansible_version: "devel"
       python_version: "3.12"
+    strategy:
+      fail-fast: false
+      matrix:
+        run-id: ${{ fromJson(needs.splitter.outputs.ids) }}
+    name: "integration-tests-${{ matrix.run-id }}"
     steps:
       - name: Checkout collection
         uses: actions/checkout@v4
@@ -83,9 +128,21 @@ jobs:
           git config --global user.name "Github Actions"
         shell: bash
 
+      - name: Read test targets
+        id: read-targets
+        run: |
+          import json, os
+          with open(os.environ.get('GITHUB_OUTPUT'), "a", encoding="utf-8") as fh:
+              fh.write(f'ansible_test_targets={json.loads(os.environ.get("ALL_TEST_TARGETS")).get(os.environ.get("RUN_ID"))}\n')
+        shell: python
+        env:
+          ALL_TEST_TARGETS: ${{ needs.splitter.outputs.targets }}
+          WORKFLOW_ID: ${{ matrix.run-id }}
+
       - name: Run integration tests
         uses: ansible-network/github_actions/.github/actions/ansible_test_integration@main
         with:
           collection_path: ${{ steps.install-collection.outputs.collection_path }}
-          python_version: "3.12"
-          ansible_version: milestone
+          python_version: "${{ env.python_version }}"
+          ansible_version: ${{ env.ansible_version }}
+          ansible_test_targets: ${{ steps.read-targets.outputs.ansible_test_targets }}
