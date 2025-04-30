@@ -25,27 +25,6 @@ Bugfixes
 
 - inventory/terraform_state - use ``terraform pull`` instead of ``terraform show`` to parse raw state file to avoid provider versioning constraints (https://github.com/ansible-collections/cloud.terraform/issues/151).
 
-v2.2.0
-======
-
-Release Summary
----------------
-
-This release includes bug fixes and new feature for the ``terraform_state`` inventory plugin.
-
-Minor Changes
--------------
-
-- Bump version of ansible-lint to minimum 25.1.2 (https://github.com/ansible-collections/cloud.terraform/pull/176).
-- inventory/terraform_provider - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
-- inventory/terraform_state - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
-- inventory/terraform_state - Support for custom Terraform providers (https://github.com/ansible-collections/cloud.terraform/pull/146).
-
-Bugfixes
---------
-
-- inventory/terraform_state - use ``terraform pull`` instead of ``terraform show`` to parse raw state file to avoid provider versioning constraints (https://github.com/ansible-collections/cloud.terraform/issues/151).
-
 v3.0.0
 ======
 
