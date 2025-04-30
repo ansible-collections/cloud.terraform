@@ -1,4 +1,0 @@
----
-minor_changes:
-  - inventory/terraform_state - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
-  - inventory/terraform_provider - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
