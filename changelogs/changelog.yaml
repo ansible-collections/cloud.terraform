@@ -144,3 +144,24 @@ releases:
     - ansible-core-version-increase.yml
     - release_summary.yml
     release_date: '2024-05-23'
+  3.1.0:
+    changes:
+      bugfixes:
+      - inventory/terraform_state - use ``terraform pull`` instead of ``terraform
+        show`` to parse raw state file to avoid provider versioning constraints (https://github.com/ansible-collections/cloud.terraform/issues/151).
+      minor_changes:
+      - Bump version of ansible-lint to minimum 25.1.2 (https://github.com/ansible-collections/cloud.terraform/pull/176).
+      - inventory/terraform_provider - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
+      - inventory/terraform_state - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
+      - inventory/terraform_state - Support for custom Terraform providers (https://github.com/ansible-collections/cloud.terraform/pull/146).
+      release_summary: This release includes bug fixes and new feature for the ``terraform_state``
+        inventory plugin.
+    fragments:
+    - 161-bump-ansible-lint-version.yml
+    - 20240527-roles-add-description.yml
+    - 20240620-inventory-terraform_state-fix-issue-with-terraform-show.yaml
+    - 20240628-inventory-terraform_state-custom-providers.yaml
+    - 20250428-inventory-plugins-fixes.yml
+    - 3_1_0.yml
+    - readme_template_update.yml
+    release_date: '2025-04-30'
