@@ -1,0 +1,8 @@
+---
+plugin: cloud.terraform.terraform_state
+backend_type: remote
+backend_config:
+  organization: {{ hcp_organization }}
+  token: {{ hcp_token }}
+  workspaces:
+    name: {{ hcp_workspace }}

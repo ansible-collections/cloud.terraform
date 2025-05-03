@@ -22,6 +22,7 @@ from ansible_collections.cloud.terraform.plugins.inventory.terraform_state impor
     get_preferred_hostname,
     get_tag_hostname,
     parse_provider_from_state_file_resource,
+    purge_backend_config,
     write_terraform_config,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
@@ -38,6 +39,7 @@ def inventory_plugin():
     plugin = InventoryModule()
     plugin.inventory = InventoryData()
     plugin.templar = Templar(loader=None)
+    plugin.warn = MagicMock()
     return plugin
 
 
@@ -361,28 +363,83 @@ class TestWriteTerraformConfig:
     )
     def test_write_terraform_config(self, backend_type, tmp_path):
         main_tf = tmp_path / "main.tf"
-        write_terraform_config(backend_type, str(main_tf))
+        backend_config = MagicMock()
+        write_terraform_config(backend_type, backend_config, str(main_tf))
 
         assert main_tf.read_text() == "terraform {\n" + 'backend "%s" {}' % backend_type + "\n}"
 
+    def test_write_terraform_config_with_cloud_nested_block(self, mocker, tmp_path):
+        main_tf = tmp_path / "main.tf"
+        backend_config = MagicMock()
+        ansible_dict_to_hcl_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.ansible_dict_to_hcl"
+        )
+        backend = "cloud"
+        ansible_dict_to_hcl_patch.return_value = "".join(random.choices(string.ascii_letters + string.digits, k=12))
+        write_terraform_config("cloud", backend_config, str(main_tf))
+        ansible_dict_to_hcl_patch.assert_called_once_with(backend_config, backend)
+
+        assert main_tf.read_text() == "terraform {\n" + ansible_dict_to_hcl_patch.return_value + "\n}"
+
+
+class TestPurgeBackendConfig:
+    @pytest.mark.parametrize(
+        "backend_config, e_config, remaining_config",
+        [
+            (
+                {
+                    "assume_role": {
+                        "role_arn": "arn:aws:iam::0123456789:role/Terraform",
+                    }
+                },
+                'assume_role {\nrole_arn = "arn:aws:iam::0123456789:role/Terraform"\n}',
+                {},
+            ),
+            (
+                {
+                    "workspace": {
+                        "name": "ansible",
+                        "prefix": "ansible-",
+                        "tags": ["tag1", "tag2", "tag3"],
+                    },
+                    "organization": "redhat",
+                    "token": "9zkxXORw8Uw9cQ.atlasv1",
+                },
+                'workspace {\nname = "ansible"\nprefix = "ansible-"\ntags = ["tag1", "tag2", "tag3"]\n}',
+                {"organization": "redhat", "token": "9zkxXORw8Uw9cQ.atlasv1"},
+            ),
+        ],
+    )
+    def test_purge_backend_config_match(self, backend_config, e_config, remaining_config, tmp_path):
+        config_tf = tmp_path / "config.tfbackend"
+        result = purge_backend_config(backend_config, str(config_tf))
+
+        assert result is True
+        assert backend_config == remaining_config
+        assert config_tf.exists()
+        assert config_tf.read_text() == e_config
+
 
 class TestInventoryModuleQuery:
-    @pytest.mark.parametrize(
-        "state_file_version", [TERRAFORM_STATE_FILE_SUPPORT_VERSION, TERRAFORM_STATE_FILE_SUPPORT_VERSION + 1]
-    )
-    def test__query(self, inventory_plugin, mocker, state_file_version):
-        write_terraform_config_patch = mocker.patch(
+    def setup_mockers(self, mocker, state_file_version=TERRAFORM_STATE_FILE_SUPPORT_VERSION):
+        self.write_terraform_config_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.write_terraform_config"
         )
-        write_terraform_config_patch.return_value = True
-        instances = MagicMock()
-        filter_instances_patch = mocker.patch(
+        self.instances = MagicMock()
+        self.filter_instances_patch = mocker.patch(
             "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.filter_instances"
         )
-        filter_instances_patch.return_value = instances
+        self.filter_instances_patch.return_value = self.instances
+        self.purge_backend_config_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.purge_backend_config"
+        )
 
-        terraform_commands = MagicMock()
-        terraform_state = TerraformState(
+        self.terraform_commands = MagicMock()
+        self.terraform_command_patch = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformCommands"
+        )
+        self.terraform_command_patch.return_value = self.terraform_commands
+        self.terraform_state = TerraformState(
             version=state_file_version,
             terraform_version="1.6.3",
             lineage="970415ab-6c6b-82c4-112b-0415b3655014",
@@ -390,37 +447,103 @@ class TestInventoryModuleQuery:
             outputs={},
             resources=[],
         )
-        terraform_commands.state_pull.return_value = terraform_state
-        terraform_command_patch = mocker.patch(
-            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformCommands"
-        )
-        terraform_command_patch.return_value = terraform_commands
+        self.terraform_commands.state_pull.return_value = self.terraform_state
+        self.terraform_binary = MagicMock()
+        self.search_child_modules = MagicMock()
 
-        terraform_binary = MagicMock()
-        tf_backend_type = MagicMock()
-        tf_backend_config = MagicMock()
+    @pytest.mark.parametrize(
+        "state_file_version", [TERRAFORM_STATE_FILE_SUPPORT_VERSION, TERRAFORM_STATE_FILE_SUPPORT_VERSION + 1]
+    )
+    @pytest.mark.parametrize(
+        "backend_type",
+        ["s3", "remote", "azurerm", "local", "consul", "cos", "gcs", "http"],
+    )
+    def test__query_no_backend_config(self, inventory_plugin, mocker, state_file_version, backend_type):
+        self.setup_mockers(mocker, state_file_version)
+
         tf_backend_config_files = MagicMock()
-        search_child_modules = MagicMock()
 
-        inventory_plugin.warn = MagicMock()
-
-        result = inventory_plugin._query(
-            terraform_binary,
-            tf_backend_type,
-            tf_backend_config,
+        assert self.instances == inventory_plugin._query(
+            self.terraform_binary,
+            backend_type,
+            None,
             tf_backend_config_files,
-            search_child_modules,
+            self.search_child_modules,
             [],
         )
-        assert instances == result
-        write_terraform_config_patch.assert_called_once_with(tf_backend_type, ANY)
-        terraform_commands.init.assert_called_once_with(
-            backend_config=tf_backend_config, backend_config_files=tf_backend_config_files
+        self.write_terraform_config_patch.assert_called_once_with(backend_type, None, ANY)
+        self.terraform_commands.init.assert_called_once_with(
+            backend_config=None, backend_config_files=tf_backend_config_files
         )
-        terraform_commands.state_pull.assert_called_once()
-        filter_instances_patch.assert_called_once_with(terraform_state.resources, search_child_modules, [])
+        self.terraform_commands.state_pull.assert_called_once()
+        self.filter_instances_patch.assert_called_once_with(
+            self.terraform_state.resources, self.search_child_modules, []
+        )
+        self.purge_backend_config_patch.assert_not_called()
         if state_file_version != TERRAFORM_STATE_FILE_SUPPORT_VERSION:
             inventory_plugin.warn.assert_called_once()
+
+    @pytest.mark.parametrize("purgeable_backend_config", [True, False])
+    @pytest.mark.parametrize("backend_config_files", [None, [], [MagicMock()]])
+    @pytest.mark.parametrize(
+        "backend_type",
+        ["s3", "remote", "azurerm", "local", "consul", "cos", "gcs", "http"],
+    )
+    def test__query_with_backend_config(
+        self, inventory_plugin, mocker, purgeable_backend_config, backend_config_files, backend_type
+    ):
+        self.setup_mockers(mocker)
+        self.purge_backend_config_patch.return_value = purgeable_backend_config
+
+        backend_config = MagicMock()
+        assert self.instances == inventory_plugin._query(
+            self.terraform_binary,
+            backend_type,
+            backend_config,
+            backend_config_files,
+            self.search_child_modules,
+            [],
+        )
+        self.write_terraform_config_patch.assert_called_once_with(backend_type, backend_config, ANY)
+        backend_config_files_args = (
+            backend_config_files if not purgeable_backend_config else backend_config_files or [] + [ANY]
+        )
+        self.terraform_commands.init.assert_called_once_with(
+            backend_config=backend_config, backend_config_files=backend_config_files_args
+        )
+        self.terraform_commands.state_pull.assert_called_once()
+        self.filter_instances_patch.assert_called_once_with(
+            self.terraform_state.resources, self.search_child_modules, []
+        )
+        self.purge_backend_config_patch.assert_called_once_with(backend_config, ANY)
+
+    @pytest.mark.parametrize(
+        "backend_config",
+        [None, {}, Any],
+    )
+    @pytest.mark.parametrize(
+        "backend_config_files",
+        [None, [], [MagicMock()], MagicMock()],
+    )
+    def test__query_cloud_nested_block(self, inventory_plugin, mocker, backend_config, backend_config_files):
+        self.setup_mockers(mocker)
+
+        backend_type = "cloud"
+        assert self.instances == inventory_plugin._query(
+            self.terraform_binary,
+            backend_type,
+            backend_config,
+            backend_config_files,
+            self.search_child_modules,
+            [],
+        )
+        self.write_terraform_config_patch.assert_called_once_with(backend_type, backend_config, ANY)
+        self.terraform_commands.init.assert_called_once_with(backend_config={}, backend_config_files=[])
+        self.terraform_commands.state_pull.assert_called_once()
+        self.filter_instances_patch.assert_called_once_with(
+            self.terraform_state.resources, self.search_child_modules, []
+        )
+        self.purge_backend_config_patch.assert_not_called()
 
 
 class TestInventoryModuleParse:
