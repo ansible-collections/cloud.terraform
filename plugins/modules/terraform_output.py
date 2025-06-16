@@ -44,7 +44,7 @@ options:
       - If I(state_file) and I(project_path) are not specified, the C(terraform.tfstate) file in the
         current working directory will be used.
       - The C(TF_DATA_DIR) environment variable is respected.
-      - This option is not compatible for remote states
+      - This option is not compatible for remote states.
     type: path
     version_added: 1.0.0
   workspace:
