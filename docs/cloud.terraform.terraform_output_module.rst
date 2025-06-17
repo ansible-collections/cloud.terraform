@@ -107,7 +107,6 @@ Parameters
                         <div>The path to the root of the Terraform directory with the terraform.tfstate file.</div>
                         <div>If <em>state_file</em> and <em>project_path</em> are not specified, the <code>terraform.tfstate</code> file in the current working directory will be used.</div>
                         <div>The <code>TF_DATA_DIR</code> environment variable is respected.</div>
-                        <div> This option is not compatible for remote states.</div>
                 </td>
             </tr>
             <tr>
@@ -126,6 +125,7 @@ Parameters
                         <div>The path to an existing Terraform state file whose outputs will be listed.</div>
                         <div>If <em>state_file</em> and <em>project_path</em> are not specified, the <code>terraform.tfstate</code> file in the current working directory will be used.</div>
                         <div>The <code>TF_DATA_DIR</code> environment variable is respected.</div>
+                        <div> This option is not compatible for remote states.</div>
                 </td>
             </tr>
             <tr>
