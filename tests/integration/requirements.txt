@@ -12,6 +12,7 @@ azure-mgmt-apimanagement==4.0.1
 azure-mgmt-batch==17.3.0
 azure-mgmt-cdn==13.1.1
 azure-mgmt-compute==33.0.0
+azure-mgmt-cdn==13.1.1
 azure-mgmt-containerinstance==10.1.0
 azure-mgmt-core==1.4.0
 azure-mgmt-containerregistry==10.3.0
@@ -30,6 +31,8 @@ azure-mgmt-privatedns==1.1.0
 azure-mgmt-redis==14.4.0
 azure-mgmt-resource==23.2.0
 azure-mgmt-rdbms==10.2.0b17
+azure-mgmt-mysqlflexibleservers==1.0.0b3
+azure-mgmt-postgresqlflexibleservers==1.1.0
 azure-mgmt-search==9.2.0b2
 azure-mgmt-servicebus==8.2.1
 azure-mgmt-sql==4.0.0b19
@@ -52,5 +55,6 @@ azure-mgmt-recoveryservices==3.0.0
 azure-mgmt-recoveryservicesbackup==9.1.0
 azure-mgmt-notificationhubs==8.1.0b1
 azure-mgmt-eventhub==11.1.0
-msrest==0.7.1
-msrestazure==0.6.4
+azure-mgmt-resourcehealth==1.0.0b6
+oras
+netaddr
