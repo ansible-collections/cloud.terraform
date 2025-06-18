@@ -50,6 +50,7 @@ options:
   workspace:
     description:
       - The terraform workspace to work with.
+      - If not provided, the module will attempt to extract the workspace from the Terraform cloud configuration.
     type: str
     default: default
     version_added: 1.0.0
@@ -240,6 +241,12 @@ EXAMPLES = """
           unit_number: 3
     force_init: true
 
+- name: Auto-detect workspace from Terraform cloud configuration
+  cloud.terraform.terraform:
+    project_path: '{{ project_dir }}'
+    state: present
+    # workspace parameter omitted - will be auto-detected from .tf files
+
 ### Example directory structure for plugin_paths example
 # $ tree /path/to/plugins_dir_1
 # /path/to/plugins_dir_1/
@@ -289,7 +296,8 @@ command:
 import dataclasses
 import os
 import tempfile
-from typing import List
+from typing import List, Optional, Tuple
+import re
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import integer_types
@@ -310,6 +318,81 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
     get_state_args,
     preflight_validation,
 )
+
+def clean_tf_file(tf_content: str) -> str:
+    """
+    Cleans up the Terraform file content by removing comments and empty lines.
+    
+    Args:
+        tf_content: The content of the Terraform file as a string.
+        
+    Returns:
+        Cleaned Terraform file content as a string.
+    """
+    # Remove multiline comments (/* */)
+    content_no_multiline = re.sub(r'/\*.*?\*/', '', tf_content, flags=re.DOTALL)
+
+    # Remove single-line comments (# or //)
+    content_no_singleline = re.sub(r'(?m)^\s*(#|//).*$', '', content_no_multiline)
+
+    # Remove extra blank lines
+    cleaned_lines = [line for line in content_no_singleline.splitlines() if line.strip()]
+    return '\n'.join(cleaned_lines)
+    
+def extract_workspace_from_terraform_config(project_path: str) -> Tuple[Optional[str], str]:
+    """
+    Extract workspace configuration from Terraform files.
+    
+    Returns:
+        Tuple of (workspace_name, terraform_offering)
+        - workspace_name: The workspace name found in cloud configuration, or None
+        - terraform_offering: "cloud" if cloud block found, "cli" otherwise
+    """
+    cloud_block_pattern = re.compile(r'cloud\s*{([^}]+)}', re.DOTALL | re.IGNORECASE)
+    workspaces_block_pattern = re.compile(r'workspaces\s*{([^}]+)}', re.DOTALL | re.IGNORECASE)
+    name_attr_pattern = re.compile(r'name\s*=\s*"([^"]+)"', re.IGNORECASE)
+    
+    exclude_files = {"vars.tf", "var.tf", "provider.tf", "variables.tf", "outputs.tf"}
+    
+    try:
+        if not os.path.exists(project_path):
+            return None, "cli"
+        
+        for filename in os.listdir(project_path):
+            if filename.endswith(".tf") and filename not in exclude_files:
+                filepath = os.path.join(project_path, filename)
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    content = clean_tf_file(content)    
+                    # Find the cloud {} block
+                    cloud_match = re.search(cloud_block_pattern,content)
+                    if cloud_match:
+                        cloud_content = cloud_match.group()
+                        
+                        # Find the workspaces {} block within the cloud block
+                        workspaces_match = re.search(workspaces_block_pattern,cloud_content)
+                        if workspaces_match:
+                            workspaces_content = workspaces_match.group()
+                            
+                            # Find the name attribute within the workspaces block
+                            name_match = re.search(name_attr_pattern,workspaces_content)
+                            if name_match:
+                                workspace_name = name_match.group(1)
+                                return workspace_name, "cloud"
+                        
+                        # If cloud block exists but no workspace name found, it's still cloud
+                        return None, "cloud"
+                    return None, "cli"  # No cloud block found, assume CLI mode
+                        
+                except (IOError, UnicodeDecodeError) as e:
+                    # Skip files that can't be read, continue with others
+                    continue
+                    
+    except OSError:
+        pass
+    
+    return None, "cli"
 
 
 def is_attribute_sensitive_in_providers_schema(
@@ -493,6 +576,42 @@ def main() -> None:
     else:
         terraform_binary = module.get_bin_path("terraform", required=True)
 
+    cloud_workspace, terraform_offering = extract_workspace_from_terraform_config(project_path)
+
+    if terraform_offering is "cli" and workspace is not "default":
+        module.fail_json(
+            msg=(f"Workspace configuration conflict: The playbook specifies workspace "
+                 f"'{workspace}', but the Terraform CLI configuration does not support "
+                 f"explicit workspaces. Please remove the workspace parameter from the playbook "
+                 f"to use the CLI configuration.")
+        )
+
+    if terraform_offering == "cloud":
+        if cloud_workspace:
+            if workspace is not "default" and workspace != cloud_workspace:
+                module.fail_json(
+                    msg=(f"Workspace configuration conflict: The playbook specifies workspace "
+                         f"'{workspace}', but the Terraform cloud configuration "
+                         f"specifies '{cloud_workspace}'. Please ensure they match or remove "
+                         f"the workspace parameter from the playbook to use the cloud configuration.")
+                )
+            final_workspace = cloud_workspace
+            module.log(f"Using workspace '{final_workspace}' from Terraform cloud configuration")
+        elif workspace is not "default":
+            final_workspace = workspace
+            module.log(f"Using explicitly provided workspace '{final_workspace}' for Terraform cloud")
+        else:
+            final_workspace = "default"
+            module.log("Using default workspace for Terraform cloud configuration")
+    else:
+        final_workspace = workspace
+        if workspace == "default":
+            module.log("Using default workspace for Terraform CLI")
+        else:
+            module.log(f"Using explicitly provided workspace '{final_workspace}' for Terraform CLI")
+    
+    workspace = final_workspace
+
     terraform = TerraformCommands(module.run_command, project_path, terraform_binary, computed_check_mode)
 
     checked_version = terraform.version()
@@ -525,11 +644,14 @@ def main() -> None:
             module.warn(e.message)
             workspace_ctx = TerraformWorkspaceContext(current="default", all=[])
 
-        if workspace_ctx.current != workspace:
-            if workspace not in workspace_ctx.all:
-                terraform.workspace(WorkspaceCommand.NEW, workspace)
-            else:
-                terraform.workspace(WorkspaceCommand.SELECT, workspace)
+        if terraform_offering == "cloud":
+            module.log("Terraform Cloud detected - workspace management handled by cloud configuration")
+        else:
+            if workspace_ctx.current != workspace:
+                if workspace not in workspace_ctx.all:
+                    terraform.workspace(WorkspaceCommand.NEW, workspace)
+                else:
+                    terraform.workspace(WorkspaceCommand.SELECT, workspace)
 
         variables_args = []
         if complex_vars:
@@ -607,7 +729,7 @@ def main() -> None:
                 needs_application=plan_file_needs_application,
             )
         except TerraformError as e:
-            if not computed_check_mode:
+            if not computed_check_mode and terraform_offering != "cloud":
                 if workspace_ctx.current != workspace:
                     terraform.workspace(WorkspaceCommand.SELECT, workspace_ctx.current)
             raise e
@@ -631,11 +753,11 @@ def main() -> None:
             workspace=workspace,
         )
 
-        # Restore the Terraform workspace found when running the module
-        if workspace_ctx.current != workspace:
-            terraform.workspace(WorkspaceCommand.SELECT, workspace_ctx.current)
-        if computed_state == "absent" and workspace != "default" and purge_workspace is True:
-            terraform.workspace(WorkspaceCommand.DELETE, workspace)
+        if terraform_offering != "cloud":
+            if workspace_ctx.current != workspace:
+                terraform.workspace(WorkspaceCommand.SELECT, workspace_ctx.current)
+            if computed_state == "absent" and workspace != "default" and purge_workspace is True:
+                terraform.workspace(WorkspaceCommand.DELETE, workspace)
 
         diff = dict(
             before=dataclasses.asdict(initial_state) if initial_state is not None else {},
