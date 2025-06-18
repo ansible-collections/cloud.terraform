@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       source: "./source"
+      amazon_aws: "./amazon_aws"
+      azcollection_azure: "./azure"
+      google_cloud: "./google_cloud"
+      community_aws: "./community_aws"
       python_version: "3.12"
     strategy:
       fail-fast: false
@@ -49,12 +53,62 @@ jobs:
           https://github.com/ansible/ansible/archive/${{ matrix.ansible-version }}.tar.gz
         shell: bash
 
-      - name: Pre install collections dependencies first so the collection install does not
-        run: >-
-          ansible-galaxy collection install
-          --pre "-r${{ env.source }}/tests/integration/requirements.yml"
-          -p /home/runner/collections/
-        shell: bash
+      # Install dependencies (collection and python librairies)
+      # ansible-collections/amazon.aws
+      - name: checkout ansible-collections/amazon.aws
+        uses: ansible-network/github_actions/.github/actions/checkout_dependency@main
+        with:
+          repository: ansible-collections/amazon.aws
+          path: ${{ env.amazon_aws }}
+          ref: main
+
+      - name: install amazon.aws collection
+        uses: ansible-network/github_actions/.github/actions/build_install_collection@main
+        with:
+          install_python_dependencies: false
+          source_path: ${{ env.amazon_aws }}
+
+      # ansible-collections/azure
+      - name: checkout ansible-collections/azure
+        uses: ansible-network/github_actions/.github/actions/checkout_dependency@main
+        with:
+          repository: ansible-collections/azure
+          path: ${{ env.azcollection_azure }}
+          ref: dev
+
+      - name: install azcollection.azure collection
+        uses: ansible-network/github_actions/.github/actions/build_install_collection@main
+        with:
+          install_python_dependencies: false
+          source_path: ${{ env.azcollection_azure }}
+
+      # ansible-collections/google.cloud
+      - name: checkout ansible-collections/google.cloud
+        uses: ansible-network/github_actions/.github/actions/checkout_dependency@main
+        with:
+          repository: ansible-collections/google.cloud
+          path: ${{ env.google_cloud }}
+          ref: master
+
+      - name: install google.cloud collection
+        uses: ansible-network/github_actions/.github/actions/build_install_collection@main
+        with:
+          install_python_dependencies: false
+          source_path: ${{ env.google_cloud }}
+
+      # ansible-collections/community.aws
+      - name: checkout ansible-collections/community.aws
+        uses: ansible-network/github_actions/.github/actions/checkout_dependency@main
+        with:
+          repository: ansible-collections/community.aws
+          path: ${{ env.community_aws }}
+          ref: main
+
+      - name: install community.aws collection
+        uses: ansible-network/github_actions/.github/actions/build_install_collection@main
+        with:
+          install_python_dependencies: false
+          source_path: ${{ env.community_aws }}
 
       - name: Build and install collection
         id: install-collection
