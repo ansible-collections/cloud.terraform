@@ -1,0 +1,58 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - name: Remove existing inventory file
+      file:
+        state: absent
+        path: "{{ lookup('env', 'ANSIBLE_INVENTORY') }}"
+      ignore_errors: true
+
+    - name: Test inventories
+      vars:
+        inventory_path: "{{ lookup('env', 'ANSIBLE_INVENTORY') }}"
+      block:
+        - name: Create temporary file to store backend configuration
+          tempfile:
+            suffix: ".hcl"
+          register: tmpfile
+
+        - name: Generate backend configuration file
+          template:
+            src: backend.hcl.j2
+            dest: "{{ tmpfile.path }}"
+
+        - name: Generate inventory file
+          template:
+            src: "{{ inventory_template_file }}.yml.j2"
+            dest: "{{ inventory_path }}"
+          vars:
+            backend_config_files: "{{ tmpfile.path }}"
+
+        - meta: refresh_inventory
+
+        - name: 'assert that host {{ default_hostname }} is defined'
+          assert:
+            that:
+              - default_hostname in hostvars
+
+        - name: Assert that '{{ default_hostname }}' host has required variables
+          assert:
+            that:
+              - item in hostvars[default_hostname]
+          with_items: "{{ host_variables }}"
+
+      always:
+        - name: Delete temporary file
+          file:
+            state: absent
+            path: "{{ tmpfile.path }}"
+
+        - name: Delete inventory file
+          file:
+            state: absent
+            path: "{{ inventory_path }}"
