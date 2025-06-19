@@ -578,7 +578,7 @@ def main() -> None:
 
     cloud_workspace, terraform_offering = extract_workspace_from_terraform_config(project_path)
 
-    if terraform_offering is "cli" and workspace is not "default":
+    if terraform_offering == "cli" and workspace != "default":
         module.fail_json(
             msg=(f"Workspace configuration conflict: The playbook specifies workspace "
                  f"'{workspace}', but the Terraform CLI configuration does not support "
@@ -588,7 +588,7 @@ def main() -> None:
 
     if terraform_offering == "cloud":
         if cloud_workspace:
-            if workspace is not "default" and workspace != cloud_workspace:
+            if workspace != "default" and workspace != cloud_workspace:
                 module.fail_json(
                     msg=(f"Workspace configuration conflict: The playbook specifies workspace "
                          f"'{workspace}', but the Terraform cloud configuration "
@@ -597,7 +597,7 @@ def main() -> None:
                 )
             final_workspace = cloud_workspace
             module.log(f"Using workspace '{final_workspace}' from Terraform cloud configuration")
-        elif workspace is not "default":
+        elif workspace != "default":
             final_workspace = workspace
             module.log(f"Using explicitly provided workspace '{final_workspace}' for Terraform cloud")
         else:
