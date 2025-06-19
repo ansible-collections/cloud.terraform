@@ -22,7 +22,11 @@ jobs:
       - safe-to-test
     runs-on: ubuntu-latest
     env:
-      source: "./source"
+      source: "./"
+      amazon_aws: "./amazon_aws"
+      azure: "./azure"
+      google_cloud: "./google_cloud"
+      community_aws: "./community_aws"
       python_version: "3.12"
     strategy:
       fail-fast: false
@@ -49,13 +53,38 @@ jobs:
           https://github.com/ansible/ansible/archive/${{ matrix.ansible-version }}.tar.gz
         shell: bash
 
-      - name: Pre install collections dependencies first so the collection install does not
-        run: >-
-          ansible-galaxy collection install
-          --pre "-r${{ env.source }}/tests/integration/requirements.yml"
-          -p /home/runner/collections/
-        shell: bash
+      # Install dependencies (collection and python librairies)
+      # ansible-collections/amazon.aws
+      - name: Install amazon.aws collection
+        uses: ./.github/actions/install_collection
+        with:
+          path: ${{ env.amazon_aws }}
+          repository: ansible-collections/amazon.aws
 
+      # ansible-collections/community.aws
+      - name: Install community.aws collection
+        uses: ./.github/actions/install_collection
+        with:
+          path: ${{ env.community_aws }}
+          repository: ansible-collections/community.aws
+
+      # ansible-collections/azure
+      - name: Install azure collection
+        uses: ./.github/actions/install_collection
+        with:
+          path: ${{ env.azure }}
+          repository: ansible-collections/azure
+          ref: dev
+
+      # ansible-collections/google.cloud
+      - name: Install google.cloud collection
+        uses: ./.github/actions/install_collection
+        with:
+          path: ${{ env.google_cloud }}
+          repository: ansible-collections/google.cloud
+          ref: master
+
+      # Install the source collection
       - name: Build and install collection
         id: install-collection
         uses: ansible-network/github_actions/.github/actions/build_install_collection@main

@@ -1,0 +1,40 @@
+name: "install collection with python dependencies"
+description: |
+  checkout the collection repository and install it with python librairies from requirements.txt
+inputs:
+  repository:
+    description: "Repository name with owner. For example, ansible-collections/cloud.common"
+    required: true
+  ref:
+    description: "The repository reference (branch, tag, etc) to checkout"
+    default: "main"
+  path:
+    description: "The path where to checkout the collection."
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Set up Python '3.12'
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    - name: checkout repository
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ inputs.repository }}
+        path: ${{ inputs.path }}
+        ref: ${{ inputs.ref }}
+
+    - name: Install collection using ansible-galaxy
+      run: ansible-galaxy collection install git+https://github.com/${COLLECTION_REPOSITORY}.git,${COLLECTION_REF} --pre -p /home/runner/collections
+      shell: bash
+      env:
+        COLLECTION_REPOSITORY: ${{ inputs.repository }}
+        COLLECTION_REF: ${{ inputs.ref }}
+
+    - name: Install python librairies
+      run: pip install -r ${COLLECTION_PATH}/requirements.txt
+      shell: bash
+      env:
+        COLLECTION_PATH: ${{ inputs.path }}
