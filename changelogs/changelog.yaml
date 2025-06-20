@@ -154,8 +154,9 @@ releases:
       - inventory/terraform_provider - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
       - inventory/terraform_state - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
       - inventory/terraform_state - Support for custom Terraform providers (https://github.com/ansible-collections/cloud.terraform/pull/146).
-      release_summary: This release includes bug fixes and new feature for the ``terraform_state``
-        inventory plugin.
+      - modules/terraform - Updated Workspace Logic for TFC and CLI (https://github.com/ansible-collections/cloud.terraform/pull/194).
+      release_summary: This release includes bug fixes and new feature for the ``terraform_state`` inventory plugin and ``terraform`` module plugin.
+
     fragments:
     - 161-bump-ansible-lint-version.yml
     - 20240527-roles-add-description.yml

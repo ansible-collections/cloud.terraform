@@ -10,7 +10,7 @@ v3.1.0
 Release Summary
 ---------------
 
-This release includes bug fixes and new feature for the ``terraform_state`` inventory plugin.
+This release includes bug fixes and new feature for the ``terraform_state`` inventory plugin and ``terraform`` module plugin.
 
 Minor Changes
 -------------
@@ -19,6 +19,7 @@ Minor Changes
 - inventory/terraform_provider - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
 - inventory/terraform_state - Remove custom `read_config_data()` method (https://github.com/ansible-collections/cloud.terraform/pull/181).
 - inventory/terraform_state - Support for custom Terraform providers (https://github.com/ansible-collections/cloud.terraform/pull/146).
+- modules/terraform - Updated Workspace Logic for TFC and CLI (https://github.com/ansible-collections/cloud.terraform/pull/194).
 
 Bugfixes
 --------
