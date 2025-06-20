@@ -244,11 +244,11 @@ EXAMPLES = """
           unit_number: 3
     force_init: true
 
-- name:  Using workspace from playbook for Terraform Cloud/Enterprise
+- name: Using workspace from playbook for Terraform Cloud/Enterprise
   cloud.terraform.terraform:
     project_path: '{{ project_dir }}'
     state: present
-    workspace: 'my_workspace' #workspace must match and exist in Terraform cloud configuration 
+    workspace: 'my_workspace' # workspace must match and exist in Terraform cloud configuration.
 
 - name: Auto-detect workspace from Terraform cloud configuration for Terraform Cloud/Enterprise
   cloud.terraform.terraform:
