@@ -11,7 +11,7 @@ module: terraform
 short_description: Manages a Terraform deployment (and plans)
 description:
      - Provides support for deploying resources with Terraform and pulling
-       resource information back into Ansible.
+       resources information back into Ansible.
 options:
   state:
     choices: ['present', 'absent', 'planned']
