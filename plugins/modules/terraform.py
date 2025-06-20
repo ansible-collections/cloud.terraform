@@ -589,16 +589,6 @@ def main() -> None:
 
     cloud_workspace, terraform_offering = extract_workspace_from_terraform_config(project_path)
 
-    if terraform_offering == "cli" and workspace != "default":
-        module.fail_json(
-            msg=(
-                f"Workspace configuration conflict: The playbook specifies workspace "
-                f"'{workspace}', but the Terraform CLI configuration does not support "
-                f"explicit workspaces. Please remove the workspace parameter from the playbook "
-                f"to use the CLI configuration."
-            )
-        )
-
     if terraform_offering == "cloud":
         if cloud_workspace:
             if workspace != "default" and workspace != cloud_workspace:
