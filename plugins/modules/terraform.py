@@ -49,8 +49,11 @@ options:
     version_added: 1.0.0
   workspace:
     description:
-      - The terraform workspace to work with.
-      - If not provided, the module will attempt to extract the workspace from the Terraform cloud configuration.
+    - If specified, this workspace will be used for all operations, provided it matches the workspace defined in the Terraform Cloud configuration.
+    - If the specified workspace does not match the one in the Terraform Cloud configuration, an error will be raised.
+    - If not specified, the module will attempt to determine the workspace from the Terraform Cloud configuration.
+    - If a workspace is set in the playbook but not defined in the Terraform Cloud configuration, an error will be raised.
+    - If no workspace is specified in both the playbook and the Terraform Cloud configuration, the module will default to using the Terraform CLI mode.
     type: str
     default: default
     version_added: 1.0.0
@@ -241,7 +244,13 @@ EXAMPLES = """
           unit_number: 3
     force_init: true
 
-- name: Auto-detect workspace from Terraform cloud configuration
+- name:  Using workspace from playbook for Terraform Cloud/Enterprise
+  cloud.terraform.terraform:
+    project_path: '{{ project_dir }}'
+    state: present
+    workspace: 'my_workspace' #workspace must match and exist in Terraform cloud configuration 
+
+- name: Auto-detect workspace from Terraform cloud configuration for Terraform Cloud/Enterprise
   cloud.terraform.terraform:
     project_path: '{{ project_dir }}'
     state: present
