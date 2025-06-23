@@ -72,6 +72,7 @@ Parameters
                     </td>
                 <td>
                         <div>The absolute path to a configuration file to provide at init state to the -backend-config parameter. This can accept a list of paths to multiple configuration files.</div>
+                        <div>Ignored if backend_type=cloud.</div>
                 </td>
             </tr>
             <tr>
