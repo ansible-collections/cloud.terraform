@@ -780,6 +780,45 @@ Examples
       # |  |  |--{terraform_labels = {}}
       # |  |  |--{timeouts = None}
       # |  |  |--{zone = us-east1-c}
+    # Using the remote backend (see below the corresponding Terraform configuration)
+    # terraform {
+    #   backend "remote" {
+    #     hostname = "app.terraform.io"
+    #     organization = "redhat"
+    #
+    #     workspaces {
+    #        prefix = "ansible-"
+    #     }
+    #   }
+    # }
+    - name: Using the Remote backend
+    plugin: cloud.terraform.terraform_state
+    backend_type: remote
+    backend_config:
+        hostname: app.terraform.io
+        organization: redhat
+        workspaces:
+        prefix: ansible-
+
+    # Using the cloud block (see below the corresponding Terraform configuration)
+    # terraform {
+    #   cloud {
+    #     hostname = "app.terraform.io"
+    #     organization = "redhat"
+    #
+    #     workspaces {
+    #        name = "ansible"
+    #     }
+    #   }
+    # }
+    - name: Using the cloud block
+    plugin: cloud.terraform.terraform_state
+    backend_type: cloud
+    backend_config:
+        hostname: app.terraform.io
+        organization: redhat
+        workspaces:
+        name: ansible
 
 
 
