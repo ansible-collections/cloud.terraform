@@ -27,6 +27,7 @@ options:
       - If I(state_file) and I(project_path) are not specified, the C(terraform.tfstate) file in the
         current working directory will be used.
       - The C(TF_DATA_DIR) environment variable is respected.
+      - This option is not comptabile for remote states.
     type: path
   binary_path:
     description:
