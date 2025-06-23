@@ -90,6 +90,7 @@ Parameters
                     </td>
                 <td>
                         <div>The Terraform backend type from which the state file will be retrieved.</div>
+                        <div>Use V(cloud) for backend configured using cloud block, see U(https://developer.hashicorp.com/terraform/cli/cloud/settings#the-cloud-block).</div>
                 </td>
             </tr>
             <tr>
