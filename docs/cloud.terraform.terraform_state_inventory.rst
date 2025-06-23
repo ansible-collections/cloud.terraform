@@ -793,9 +793,9 @@ Examples
     #   }
     # }
     - name: Using the Remote backend
-    plugin: cloud.terraform.terraform_state
-    backend_type: remote
-    backend_config:
+      plugin: cloud.terraform.terraform_state
+      backend_type: remote
+      backend_config:
         hostname: app.terraform.io
         organization: redhat
         workspaces:
@@ -813,13 +813,13 @@ Examples
     #   }
     # }
     - name: Using the cloud block
-    plugin: cloud.terraform.terraform_state
-    backend_type: cloud
-    backend_config:
+      plugin: cloud.terraform.terraform_state
+      backend_type: cloud
+      backend_config:
         hostname: app.terraform.io
         organization: redhat
         workspaces:
-        name: ansible
+          name: ansible
 
 
 
