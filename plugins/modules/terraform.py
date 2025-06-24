@@ -642,6 +642,13 @@ def main() -> None:
     cloud_workspace, terraform_offering = extract_workspace_from_terraform_config(project_path)
 
     if terraform_offering == "cloud":
+        if cloud_workspace is None and workspace == "default":
+            module.fail_json(
+                msg=(
+                    "Terraform cloud configuration found, but no workspace defined. "
+                    "Please ensure the workspace is defined in your Terraform cloud configuration."
+                )
+            )
         if cloud_workspace:
             if workspace != "default" and workspace != cloud_workspace:
                 module.fail_json(
