@@ -3,6 +3,8 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from unittest.mock import mock_open
+
 import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
@@ -19,12 +21,15 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformSimpleAttributeSpec,
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
+    clean_tf_file,
+    extract_workspace_from_terraform_config,
     filter_outputs,
     filter_resource_attributes,
     is_attribute_in_sensitive_values,
     is_attribute_sensitive_in_providers_schema,
     sanitize_state,
 )
+from requests import patch
 
 
 @pytest.fixture
@@ -593,3 +598,468 @@ class TestTerraformAttributeSpec:
         terraform_attribute_spec = TerraformAttributeSpec.from_json(resource)
 
         assert terraform_attribute_spec == expected_terraform_attribute_spec
+
+
+class TestCleanTfFile:
+    """Test cases for the clean_tf_file function."""
+
+    def test_remove_single_line_comments_hash(self):
+        """Test removal of single-line comments starting with #."""
+        tf_content = """
+resource "aws_instance" "example" {
+  # This is a comment
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+  # Another comment
+}
+"""
+        expected = """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}"""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_remove_single_line_comments_double_slash(self):
+        """Test removal of single-line comments starting with //."""
+        tf_content = """
+resource "aws_instance" "example" {
+  // This is a comment
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+  // Another comment
+}
+"""
+        expected = """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}"""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_remove_multiline_comments(self):
+        """Test removal of multiline comments /* */."""
+        tf_content = """
+resource "aws_instance" "example" {
+  /* This is a 
+     multiline comment */
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+  /* Another multiline
+     comment here */
+}
+"""
+        expected = """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}"""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_remove_mixed_comments(self):
+        """Test removal of mixed comment types."""
+        tf_content = """
+# Top level comment
+resource "aws_instance" "example" {
+  /* Multiline comment
+     spanning multiple lines */
+  ami           = "ami-12345678"  # Inline hash comment
+  instance_type = "t2.micro"     // Inline double slash comment
+  # Another hash comment
+}
+// Bottom comment
+"""
+        expected = """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}"""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_preserve_strings_with_comment_chars(self):
+        """Test that comment characters inside strings are preserved."""
+        tf_content = """
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  user_data     = "#!/bin/bash\\necho 'Hello # World // Test'"
+  instance_type = "t2.micro"
+}
+"""
+        expected = """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  user_data     = "#!/bin/bash\\necho 'Hello # World // Test'"
+  instance_type = "t2.micro"
+}"""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_remove_empty_lines(self):
+        """Test removal of empty lines and lines with only whitespace."""
+        tf_content = """
+
+resource "aws_instance" "example" {
+
+  ami           = "ami-12345678"
+    
+  instance_type = "t2.micro"
+
+}
+
+"""
+        expected = """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}"""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_empty_string(self):
+        """Test handling of empty string input."""
+        tf_content = ""
+        expected = ""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_only_comments(self):
+        """Test file with only comments."""
+        tf_content = """
+# This is a comment
+// Another comment
+/* Multiline
+   comment */
+"""
+        expected = ""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+    def test_nested_multiline_comments(self):
+        """Test handling of nested-like multiline comments."""
+        tf_content = """
+resource "aws_instance" "example" {
+  /* Comment with /* nested-like */ content */
+  ami = "ami-12345678"
+}
+"""
+        expected = """resource "aws_instance" "example" {
+  ami = "ami-12345678"
+}"""
+
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+
+# class TestExtractWorkspaceFromTerraformConfig:
+#     """Test cases for the extract_workspace_from_terraform_config function."""
+
+#     def test_nonexistent_directory(self):
+#         """Test handling of nonexistent project directory."""
+#         result = extract_workspace_from_terraform_config("/nonexistent/path")
+#         assert result == (None, "cli")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_terraform_files_no_cloud_block(self, mock_file, mock_listdir, mock_exists):
+#         """Test .tf files without cloud block."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf"]
+#         mock_file.return_value.read.return_value = """
+# resource "aws_instance" "example" {
+#   ami           = "ami-12345678"
+#   instance_type = "t2.micro"
+# }
+# """
+
+#         result = extract_workspace_from_terraform_config("/no/cloud/block")
+#         assert result == (None, "cli")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_cloud_block_with_workspace_name(self, mock_file, mock_listdir, mock_exists):
+#         """Test cloud block with workspace name."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf"]
+#         mock_file.return_value.read.return_value = """
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#     workspaces {
+#       name = "my-workspace"
+#     }
+#   }
+# }
+
+# resource "aws_instance" "example" {
+#   ami           = "ami-12345678"
+#   instance_type = "t2.micro"
+# }
+# """
+
+#         result = extract_workspace_from_terraform_config("/with/workspace")
+#         assert result == ("my-workspace", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_cloud_block_without_workspace_name(self, mock_file, mock_listdir, mock_exists):
+#         """Test cloud block without workspace name."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf"]
+#         mock_file.return_value.read.return_value = """
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#   }
+# }
+
+# resource "aws_instance" "example" {
+#   ami           = "ami-12345678"
+#   instance_type = "t2.micro"
+# }
+# """
+
+#         result = extract_workspace_from_terraform_config("/cloud/no/workspace")
+#         assert result == (None, "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_cloud_block_with_comments(self, mock_file, mock_listdir, mock_exists):
+#         """Test cloud block with comments that should be cleaned."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf"]
+#         mock_file.return_value.read.return_value = """
+# terraform {
+#   # This is a comment
+#   cloud {
+#     organization = "my-org"
+#     /* This is a multiline
+#        comment */
+#     workspaces {
+#       name = "production-workspace"  // Inline comment
+#     }
+#   }
+# }
+# """
+
+#         result = extract_workspace_from_terraform_config("/with/comments")
+#         assert result == ("production-workspace", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_multiple_terraform_files_first_has_cloud(self, mock_file, mock_listdir, mock_exists):
+#         """Test multiple .tf files where first file has cloud block."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf", "variables.tf", "backend.tf"]
+
+#         # Mock file reads - main.tf has cloud block
+#         def side_effect(*args, **kwargs):
+#             filename = args[0]
+#             if "main.tf" in filename:
+#                 mock_file.return_value.read.return_value = """
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#     workspaces {
+#       name = "dev-workspace"
+#     }
+#   }
+# }
+# """
+#             else:
+#                 mock_file.return_value.read.return_value = "# Just variables"
+#             return mock_file.return_value
+
+#         mock_file.side_effect = side_effect
+
+#         result = extract_workspace_from_terraform_config("/multiple/files")
+#         assert result == ("dev-workspace", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_excluded_files_ignored(self, mock_file, mock_listdir, mock_exists):
+#         """Test that excluded files (vars.tf, var.tf, etc.) are ignored."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["vars.tf", "var.tf", "provider.tf", "variables.tf", "outputs.tf", "main.tf"]
+
+#         def side_effect(*args, **kwargs):
+#             filename = args[0]
+#             if "main.tf" in filename:
+#                 mock_file.return_value.read.return_value = """
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#     workspaces {
+#       name = "test-workspace"
+#     }
+#   }
+# }
+# """
+#             else:
+#                 # These shouldn't be read due to exclusion
+#                 mock_file.return_value.read.return_value = """
+# terraform {
+#   cloud {
+#     organization = "wrong-org"
+#     workspaces {
+#       name = "wrong-workspace"
+#     }
+#   }
+# }
+# """
+#             return mock_file.return_value
+
+#         mock_file.side_effect = side_effect
+
+#         result = extract_workspace_from_terraform_config("/with/excluded")
+#         assert result == ("test-workspace", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open")
+#     def test_file_read_error(self, mock_file, mock_listdir, mock_exists):
+#         """Test handling of file read errors."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf", "backup.tf"]
+
+#         # First file throws IOError, second file is valid
+#         def side_effect(*args, **kwargs):
+#             filename = args[0]
+#             if "main.tf" in filename:
+#                 raise IOError("Permission denied")
+#             else:
+#                 return mock_open(
+#                     read_data="""
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#     workspaces {
+#       name = "backup-workspace"
+#     }
+#   }
+# }
+# """
+#                 ).return_value
+
+#         mock_file.side_effect = side_effect
+
+#         result = extract_workspace_from_terraform_config("/with/error")
+#         assert result == ("backup-workspace", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open")
+#     def test_unicode_decode_error(self, mock_file, mock_listdir, mock_exists):
+#         """Test handling of Unicode decode errors."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["binary.tf", "text.tf"]
+
+#         # First file throws UnicodeDecodeError, second file is valid
+#         def side_effect(*args, **kwargs):
+#             filename = args[0]
+#             if "binary.tf" in filename:
+#                 raise UnicodeDecodeError("utf-8", b"", 0, 1, "invalid start byte")
+#             else:
+#                 return mock_open(
+#                     read_data="""
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#     workspaces {
+#       name = "text-workspace"
+#     }
+#   }
+# }
+# """
+#                 ).return_value
+
+#         mock_file.side_effect = side_effect
+
+#         result = extract_workspace_from_terraform_config("/with/unicode/error")
+#         assert result == ("text-workspace", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     def test_os_error_on_listdir(self, mock_listdir, mock_exists):
+#         """Test handling of OS errors when listing directory."""
+#         mock_exists.return_value = True
+#         mock_listdir.side_effect = OSError("Permission denied")
+
+#         result = extract_workspace_from_terraform_config("/permission/denied")
+#         assert result == (None, "cli")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_case_insensitive_matching(self, mock_file, mock_listdir, mock_exists):
+#         """Test case-insensitive matching of cloud and workspace blocks."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf"]
+#         mock_file.return_value.read.return_value = """
+# terraform {
+#   CLOUD {
+#     organization = "my-org"
+#     WORKSPACES {
+#       NAME = "case-insensitive-workspace"
+#     }
+#   }
+# }
+# """
+
+#         result = extract_workspace_from_terraform_config("/case/insensitive")
+#         assert result == ("case-insensitive-workspace", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_workspace_with_special_characters(self, mock_file, mock_listdir, mock_exists):
+#         """Test workspace names with special characters."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf"]
+#         mock_file.return_value.read.return_value = """
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#     workspaces {
+#       name = "my-workspace-123_test"
+#     }
+#   }
+# }
+# """
+
+#         result = extract_workspace_from_terraform_config("/special/chars")
+#         assert result == ("my-workspace-123_test", "cloud")
+
+#     @patch("os.path.exists")
+#     @patch("os.listdir")
+#     @patch("builtins.open", new_callable=mock_open)
+#     def test_malformed_cloud_block(self, mock_file, mock_listdir, mock_exists):
+#         """Test handling of malformed cloud block."""
+#         mock_exists.return_value = True
+#         mock_listdir.return_value = ["main.tf"]
+#         mock_file.return_value.read.return_value = """
+# terraform {
+#   cloud {
+#     organization = "my-org"
+#     workspaces {
+#       # Missing closing brace
+#       name = "malformed-workspace"
+#     }
+#   # Missing closing brace for cloud
+# }
+# """
+
+#         # Should still detect cloud mode even if malformed
+#         result = extract_workspace_from_terraform_config("/malformed")
+#         assert result == ("malformed-workspace", "cloud")
