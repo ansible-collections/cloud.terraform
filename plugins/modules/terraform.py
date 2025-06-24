@@ -329,23 +329,21 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
 )
 
 
-import re
-
 def clean_tf_file(tf_content: str) -> str:
     """
     Cleans up the Terraform file content by removing comments (inline and block) and empty lines.
     """
 
     def remove_multiline_comments(s):
-        pattern = re.compile(r'/\*.*?\*/', re.DOTALL)
+        pattern = re.compile(r"/\*.*?\*/", re.DOTALL)
         while re.search(pattern, s):
-            s = re.sub(pattern, '', s)
+            s = re.sub(pattern, "", s)
         return s
 
     def remove_inline_comments(line):
         # Remove inline # or // comments, unless inside quotes
         quote_open = False
-        result = ''
+        result = ""
         i = 0
         while i < len(line):
             if line[i] in ('"', "'"):
@@ -354,9 +352,9 @@ def clean_tf_file(tf_content: str) -> str:
                 elif quote_open == line[i]:
                     quote_open = False
                 result += line[i]
-            elif not quote_open and line[i:i+2] == '//':
+            elif not quote_open and line[i : i + 2] == "//":
                 break
-            elif not quote_open and line[i] == '#':
+            elif not quote_open and line[i] == "#":
                 break
             else:
                 result += line[i]
@@ -373,7 +371,8 @@ def clean_tf_file(tf_content: str) -> str:
         if stripped.strip():  # Non-empty line after stripping
             cleaned_lines.append(stripped)
 
-    return '\n'.join(cleaned_lines)
+    return "\n".join(cleaned_lines)
+
 
 def extract_workspace_from_terraform_config(project_path: str) -> Tuple[Optional[str], str]:
     """
