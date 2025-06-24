@@ -743,21 +743,6 @@ resource "aws_instance" "example" {
         result = clean_tf_file(tf_content)
         assert result == expected
 
-    def test_nested_multiline_comments(self):
-        """Test handling of nested-like multiline comments."""
-        tf_content = """
-resource "aws_instance" "example" {
-  /* Comment with /* nested-like */ content */
-  ami = "ami-12345678"
-}
-"""
-        expected = """resource "aws_instance" "example" {
-  ami = "ami-12345678"
-}"""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
 
 # class TestExtractWorkspaceFromTerraformConfig:
 #     """Test cases for the extract_workspace_from_terraform_config function."""

@@ -334,23 +334,12 @@ def clean_tf_file(tf_content: str) -> str:
     Cleans up the Terraform file content by removing comments (inline and block) and empty lines.
     """
 
-    def remove_multiline_comments(s):
-        result = ""
-        i = 0
-        length = len(s)
-        while i < length:
-            if i + 1 < length and s[i] == "/" and s[i + 1] == "*":
-                i += 2
-                # Skip until closing '*/'
-                while i + 1 < length and not (s[i] == "*" and s[i + 1] == "/"):
-                    i += 1
-                i += 2  # Skip '*/'
-            else:
-                result += s[i]
-                i += 1
-        return result
+    def remove_multiline_comments(s: str) -> str:
+        # greedy match to remove the largest possible /* ... */ block
+        pattern = re.compile(r"/\*.*\*/", re.DOTALL)
+        return re.sub(pattern, "", s)
 
-    def remove_inline_comments(line):
+    def remove_inline_comments(line: str) -> str:
         quote_open = False
         result = ""
         i = 0
