@@ -20,7 +20,6 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     clean_tf_file,
-    extract_workspace_from_terraform_config,
     filter_outputs,
     filter_resource_attributes,
     is_attribute_in_sensitive_values,
