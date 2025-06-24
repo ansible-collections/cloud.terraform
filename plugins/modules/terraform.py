@@ -341,7 +341,7 @@ def clean_tf_file(tf_content: str) -> str:
         return re.sub(pattern, "", s)
 
     def remove_inline_comments(line: str) -> str:
-        quote_open: Optional[str] = None # None when no quote is open
+        quote_open: Optional[str] = None  # None when no quote is open
         result = ""
         i = 0
         length = len(line)
