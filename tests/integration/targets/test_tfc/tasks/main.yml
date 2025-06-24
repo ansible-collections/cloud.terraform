@@ -139,4 +139,3 @@
           - "'Workspace configuration conflict' in terraform_negative_test.msg"
         success_msg: "Terraform failed as expected for invalid workspace"
         fail_msg: "Terraform unexpectedly succeeded for invalid workspace"
-
