@@ -446,7 +446,6 @@ def extract_workspace_from_terraform_config(project_path: str) -> Tuple[Optional
 
                         # If cloud block exists but no workspace name found, it's still cloud
                         return None, "cloud"
-                    return None, "cli"  # No cloud block found, assume CLI mode
 
                 except (IOError, UnicodeDecodeError):
                     # Skip files that can't be read, continue with others

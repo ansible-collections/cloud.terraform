@@ -806,3 +806,20 @@ class TestExtractWorkspaceFromTerraformConfig:
 
             result = extract_workspace_from_terraform_config(tmpdir)
             assert result == ("my-workspace-123_test", "cloud")
+    
+    def test_cloud_block_without_workspace(self):
+        """Test workspace names with special characters."""
+        tf_content = """
+        terraform {
+          cloud {
+            organization = "my-org"
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == (None, "cloud")
