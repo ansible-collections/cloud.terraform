@@ -728,77 +728,98 @@ resource "aws_instance" "example" {
 class TestExtractWorkspaceFromTerraformConfig:
     """Test cases for the extract_workspace_from_terraform_config function using real files."""
 
-    @pytest.mark.parametrize(
-        "tf_content, expected",
-        [
-            (
-                """
-                resource "aws_instance" "example" {
-                  ami           = "ami-12345678"
-                  instance_type = "t2.micro"
-                }
-                """,
-                (None, "cli"),
-            ),
-            (
-                """
-                terraform {
-                  cloud {
-                    organization = "my-org"
-                    workspaces {
-                      name = "my-workspace"
-                    }
-                  }
-                }
-                """,
-                ("my-workspace", "cloud"),
-            ),
-            (
-                """
-                terraform {
-                  # This is a comment
-                  cloud {
-                    organization = "my-org"
-                    /* This is a multiline
-                       comment */
-                    workspaces {
-                      name = "production-workspace"  // Inline comment
-                    }
-                  }
-                }
-                """,
-                ("production-workspace", "cloud"),
-            ),
-            (
-                """
-                terraform {
-                  cloud {
-                    organization = "my-org"
-                    workspaces {
-                      name = "my-workspace-123_test"
-                    }
-                  }
-                }
-                """,
-                ("my-workspace-123_test", "cloud"),
-            ),
-            (
-                """
-                terraform {
-                  cloud {
-                    organization = "my-org"
-                  }
-                }
-                """,
-                (None, "cloud"),
-            ),
-        ],
-    )
-    def test_extract_workspace_from_terraform_config(self, tf_content, expected):
-        """Parameterized test for extract_workspace_from_terraform_config."""
+    def test_terraform_files_no_cloud_block(self):
+        """Test .tf files without cloud block."""
+        tf_content = """
+        resource "aws_instance" "example" {
+          ami           = "ami-12345678"
+          instance_type = "t2.micro"
+        }
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = os.path.join(tmpdir, "main.tf")
             with open(file_path, "w") as f:
                 f.write(tf_content)
+
             result = extract_workspace_from_terraform_config(tmpdir)
-            assert result == expected
+            assert result == (None, "cli")
+
+    def test_cloud_block_with_workspace_name(self):
+        """Test cloud block with workspace name."""
+        tf_content = """
+        terraform {
+          cloud {
+            organization = "my-org"
+            workspaces {
+              name = "my-workspace"
+            }
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == ("my-workspace", "cloud")
+
+    def test_cloud_block_with_comments(self):
+        """Test cloud block with comments that should be cleaned."""
+        tf_content = """
+        terraform {
+          # This is a comment
+          cloud {
+            organization = "my-org"
+            /* This is a multiline
+               comment */
+            workspaces {
+              name = "production-workspace"  // Inline comment
+            }
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == ("production-workspace", "cloud")
+
+    def test_workspace_with_special_characters(self):
+        """Test workspace names with special characters."""
+        tf_content = """
+        terraform {
+          cloud {
+            organization = "my-org"
+            workspaces {
+              name = "my-workspace-123_test"
+            }
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == ("my-workspace-123_test", "cloud")
+
+    def test_cloud_block_without_workspace(self):
+        """Test workspace names with special characters."""
+        tf_content = """
+        terraform {
+          cloud {
+            organization = "my-org"
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == (None, "cloud")
