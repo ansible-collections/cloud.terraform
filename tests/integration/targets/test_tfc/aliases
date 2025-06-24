@@ -1,2 +1,2 @@
-# reason: missing policy and credentials
-unsupported
+disabled # Require a HCP configuration account
+cloud/aws
