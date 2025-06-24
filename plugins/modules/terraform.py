@@ -335,40 +335,52 @@ def clean_tf_file(tf_content: str) -> str:
     """
 
     def remove_multiline_comments(s):
-        pattern = re.compile(r"/\*.*?\*/", re.DOTALL)
-        while re.search(pattern, s):
-            s = re.sub(pattern, "", s)
-        return s
+        result = ""
+        i = 0
+        length = len(s)
+        while i < length:
+            if i + 1 < length and s[i] == "/" and s[i + 1] == "*":
+                i += 2
+                # Skip until closing '*/'
+                while i + 1 < length and not (s[i] == "*" and s[i + 1] == "/"):
+                    i += 1
+                i += 2  # Skip '*/'
+            else:
+                result += s[i]
+                i += 1
+        return result
 
     def remove_inline_comments(line):
-        # Remove inline # or // comments, unless inside quotes
         quote_open = False
         result = ""
         i = 0
-        while i < len(line):
-            if line[i] in ('"', "'"):
+        length = len(line)
+        while i < length:
+            char = line[i]
+            if char in ('"', "'"):
                 if not quote_open:
-                    quote_open = line[i]
-                elif quote_open == line[i]:
+                    quote_open = char
+                elif quote_open == char:
                     quote_open = False
-                result += line[i]
-            elif not quote_open and line[i : i + 2] == "//":
-                break
-            elif not quote_open and line[i] == "#":
-                break
+                result += char
+            elif not quote_open:
+                if i + 1 < length and line[i] == "/" and line[i + 1] == "/":
+                    break  # Start of '//' comment
+                elif line[i] == "#":
+                    break  # Start of '#' comment
+                else:
+                    result += char
             else:
-                result += line[i]
+                result += char
             i += 1
         return result.rstrip()
 
-    # Remove multi-line comments first
     no_multiline = remove_multiline_comments(tf_content)
 
-    # Remove single-line comments and inline comments
     cleaned_lines = []
     for line in no_multiline.splitlines():
         stripped = remove_inline_comments(line)
-        if stripped.strip():  # Non-empty line after stripping
+        if stripped.strip():
             cleaned_lines.append(stripped)
 
     return "\n".join(cleaned_lines)
