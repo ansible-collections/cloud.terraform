@@ -806,7 +806,7 @@ class TestExtractWorkspaceFromTerraformConfig:
 
             result = extract_workspace_from_terraform_config(tmpdir)
             assert result == ("my-workspace-123_test", "cloud")
-    
+
     def test_cloud_block_without_workspace(self):
         """Test workspace names with special characters."""
         tf_content = """
