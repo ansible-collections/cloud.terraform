@@ -329,26 +329,51 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
 )
 
 
+import re
+
 def clean_tf_file(tf_content: str) -> str:
     """
-    Cleans up the Terraform file content by removing comments and empty lines.
-
-    Args:
-        tf_content: The content of the Terraform file as a string.
-
-    Returns:
-        Cleaned Terraform file content as a string.
+    Cleans up the Terraform file content by removing comments (inline and block) and empty lines.
     """
-    # Remove multiline comments (/* */)
-    content_no_multiline = re.sub(r"/\*.*?\*/", "", tf_content, flags=re.DOTALL)
 
-    # Remove single-line comments (# or //)
-    content_no_singleline = re.sub(r"(?m)^\s*(#|//).*$", "", content_no_multiline)
+    def remove_multiline_comments(s):
+        pattern = re.compile(r'/\*.*?\*/', re.DOTALL)
+        while re.search(pattern, s):
+            s = re.sub(pattern, '', s)
+        return s
 
-    # Remove extra blank lines
-    cleaned_lines = [line for line in content_no_singleline.splitlines() if line.strip()]
-    return "\n".join(cleaned_lines)
+    def remove_inline_comments(line):
+        # Remove inline # or // comments, unless inside quotes
+        quote_open = False
+        result = ''
+        i = 0
+        while i < len(line):
+            if line[i] in ('"', "'"):
+                if not quote_open:
+                    quote_open = line[i]
+                elif quote_open == line[i]:
+                    quote_open = False
+                result += line[i]
+            elif not quote_open and line[i:i+2] == '//':
+                break
+            elif not quote_open and line[i] == '#':
+                break
+            else:
+                result += line[i]
+            i += 1
+        return result.rstrip()
 
+    # Remove multi-line comments first
+    no_multiline = remove_multiline_comments(tf_content)
+
+    # Remove single-line comments and inline comments
+    cleaned_lines = []
+    for line in no_multiline.splitlines():
+        stripped = remove_inline_comments(line)
+        if stripped.strip():  # Non-empty line after stripping
+            cleaned_lines.append(stripped)
+
+    return '\n'.join(cleaned_lines)
 
 def extract_workspace_from_terraform_config(project_path: str) -> Tuple[Optional[str], str]:
     """

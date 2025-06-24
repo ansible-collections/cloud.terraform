@@ -3,8 +3,6 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from unittest.mock import mock_open
-
 import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
@@ -29,7 +27,6 @@ from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     is_attribute_sensitive_in_providers_schema,
     sanitize_state,
 )
-from requests import patch
 
 
 @pytest.fixture
@@ -276,7 +273,8 @@ def state_contents(root_module_resource, sensitive_root_module_resource):
                 "my_sensitive_output": TerraformOutput(sensitive=True, value="my_sensitive_value", type="string"),
             },
             root_module=TerraformRootModule(
-                resources=[root_module_resource, sensitive_root_module_resource], child_modules=[]
+                resources=[root_module_resource, sensitive_root_module_resource],
+                child_modules=[],
             ),
         ),
     )
@@ -303,7 +301,13 @@ class TestIsAttributeSensitiveInProvidersSchema:
             ("resource_block", True),
         ],
     )
-    def test_sensitive_attributes(self, provider_schemas, sensitive_root_module_resource, attribute, expected_result):
+    def test_sensitive_attributes(
+        self,
+        provider_schemas,
+        sensitive_root_module_resource,
+        attribute,
+        expected_result,
+    ):
         result = is_attribute_sensitive_in_providers_schema(
             provider_schemas, sensitive_root_module_resource, attribute=attribute
         )
@@ -643,7 +647,7 @@ resource "aws_instance" "example" {
         """Test removal of multiline comments /* */."""
         tf_content = """
 resource "aws_instance" "example" {
-  /* This is a 
+  /* This is a
      multiline comment */
   ami           = "ami-12345678"
   instance_type = "t2.micro"
@@ -705,7 +709,7 @@ resource "aws_instance" "example" {
 resource "aws_instance" "example" {
 
   ami           = "ami-12345678"
-    
+
   instance_type = "t2.micro"
 
 }
