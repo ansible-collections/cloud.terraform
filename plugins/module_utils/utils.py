@@ -3,12 +3,14 @@ import os
 import shutil
 from typing import List, Optional, Union, cast
 
+from ansible.module_utils.common.text.converters import to_text
 from ansible.module_utils.compat.version import LooseVersion
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import TerraformCommands
 from ansible_collections.cloud.terraform.plugins.module_utils.types import (
     AnsibleRunCommandType,
     TJsonBareValue,
+    TJsonList,
     TJsonObject,
 )
 
@@ -89,3 +91,41 @@ def preflight_validation(
     validate_project_path(project_path)
     validate_bin_path(bin_path)
     terraform.validate(version, variables_args)
+
+
+def _convert_value_to_hcl(value: TJsonBareValue) -> str:
+    """Convert variable into HCL
+    1 -> 1, "some" -> "some", True -> true
+    """
+    if isinstance(value, bool):
+        return str(to_text(value).lower())
+    if isinstance(value, str):
+        return f"<<EOF\n{value}\nEOF" if "\n" in value else f'"{value}"'
+    return str(to_text(value))
+
+
+def ansible_dict_to_hcl(data: Union[TJsonObject, TJsonBareValue, TJsonList], object_key: Optional[str] = None) -> str:
+    """Convert python dict to HCL (HashiCorp configuration language.)
+    https://github.com/hashicorp/hcl
+
+    :param data: ansible dict
+    :param object_key: The object key
+    :return: HCL formatted string
+    """
+    result = []
+    if isinstance(data, dict):
+        result.append(object_key + " {" if object_key else "{")
+        result += [ansible_dict_to_hcl(val, key) for key, val in data.items()]
+        result.append("}")
+    elif isinstance(data, list):
+        value = object_key + " = [" if object_key else "["
+        value += ", ".join([ansible_dict_to_hcl(v) for v in data]) + "]"
+        result.append(value)
+    else:
+        value = ""
+        if object_key:
+            value += f"{object_key} = "
+        value += _convert_value_to_hcl(data)
+        result.append(value)
+
+    return "\n".join(result)

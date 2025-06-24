@@ -72,6 +72,7 @@ Parameters
                     </td>
                 <td>
                         <div>The absolute path to a configuration file to provide at init state to the -backend-config parameter. This can accept a list of paths to multiple configuration files.</div>
+                        <div>Ignored if backend_type=cloud.</div>
                 </td>
             </tr>
             <tr>
@@ -90,6 +91,7 @@ Parameters
                     </td>
                 <td>
                         <div>The Terraform backend type from which the state file will be retrieved.</div>
+                        <div>Use <em>cloud</em> for backend configured using cloud block, see https://developer.hashicorp.com/terraform/cli/cloud/settings#the-cloud-block.</div>
                 </td>
             </tr>
             <tr>
@@ -779,6 +781,45 @@ Examples
       # |  |  |--{terraform_labels = {}}
       # |  |  |--{timeouts = None}
       # |  |  |--{zone = us-east1-c}
+    # Using the remote backend (see below the corresponding Terraform configuration)
+    # terraform {
+    #   backend "remote" {
+    #     hostname = "app.terraform.io"
+    #     organization = "redhat"
+    #
+    #     workspaces {
+    #        prefix = "ansible-"
+    #     }
+    #   }
+    # }
+    - name: Using the Remote backend
+      plugin: cloud.terraform.terraform_state
+      backend_type: remote
+      backend_config:
+        hostname: app.terraform.io
+        organization: redhat
+        workspaces:
+        prefix: ansible-
+
+    # Using the cloud block (see below the corresponding Terraform configuration)
+    # terraform {
+    #   cloud {
+    #     hostname = "app.terraform.io"
+    #     organization = "redhat"
+    #
+    #     workspaces {
+    #        name = "ansible"
+    #     }
+    #   }
+    # }
+    - name: Using the cloud block
+      plugin: cloud.terraform.terraform_state
+      backend_type: cloud
+      backend_config:
+        hostname: app.terraform.io
+        organization: redhat
+        workspaces:
+          name: ansible
 
 
 

@@ -1,0 +1,101 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+  backend "remote" {
+    organization = "{{ hcp_organization }}"
+    token = "{{ hcp_token }}"
+    workspaces { 
+      name = "{{ hcp_workspace }}"
+    }
+  }
+}
+
+provider "aws" {
+  access_key = "{{ aws_access_key }}"
+  secret_key = "{{ aws_secret_key }}"
+  region = "{{ aws_region }}"
+{% if security_token | default(false) %}
+  token = "{{ security_token }}"
+{% endif %}
+}
+
+data "aws_ami" "fedora" {
+    most_recent = true
+    filter {
+        name   = "name"
+        values = ["Fedora-Cloud-Base-37*"]
+    }
+    filter {
+        name   = "root-device-type"
+        values = ["ebs"]
+    }
+    filter {
+        name   = "virtualization-type"
+        values = ["hvm"]
+    }
+    filter {
+        name   = "architecture"
+        values = ["x86_64"]
+    }
+}
+
+resource "aws_vpc" "main" {
+  cidr_block       = "168.10.0.0/16"
+
+  tags = {
+    Name = "vpc-{{ resource_prefix }}"
+  }
+}
+
+resource "aws_subnet" "main" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "168.10.1.0/24"
+
+  tags = {
+    Name = "subnet-{{ resource_prefix }}"
+  }
+}
+
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh"
+  description = "Allow SSH inbound traffic"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description      = "SSH connect"
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "allow_ssh_{{ resource_prefix }}"
+  }
+}
+
+resource "aws_instance" "test" {
+  ami           = data.aws_ami.fedora.id
+  instance_type = "t2.micro"
+  subnet_id = aws_subnet.main.id
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
+
+  tags = {
+    Name = "{{ resource_prefix }}-ec2"
+    Inventory = "terraform_state"
+    Phase = "integration"
+  }
+}
