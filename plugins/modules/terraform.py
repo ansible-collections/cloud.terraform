@@ -307,6 +307,7 @@ import os
 import re
 import tempfile
 from typing import List, Optional, Tuple
+from typing import Optional
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import integer_types
@@ -340,7 +341,7 @@ def clean_tf_file(tf_content: str) -> str:
         return re.sub(pattern, "", s)
 
     def remove_inline_comments(line: str) -> str:
-        quote_open: str | None = None  # None when no quote is open
+        quote_open: Optional[str] = None # None when no quote is open
         result = ""
         i = 0
         length = len(line)
