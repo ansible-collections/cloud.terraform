@@ -335,8 +335,8 @@ def clean_tf_file(tf_content: str) -> str:
     """
 
     def remove_multiline_comments(s: str) -> str:
-        # greedy match to remove the largest possible /* ... */ block
-        pattern = re.compile(r"/\*.*\*/", re.DOTALL)
+        # Use non-greedy match to remove individual /* ... */ blocks
+        pattern = re.compile(r"/\*.*?\*/", re.DOTALL)
         return re.sub(pattern, "", s)
 
     def remove_inline_comments(line: str) -> str:
