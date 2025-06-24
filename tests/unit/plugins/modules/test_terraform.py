@@ -610,45 +610,39 @@ class TestTerraformAttributeSpec:
 class TestCleanTfFile:
     """Test cases for the clean_tf_file function."""
 
-    def test_remove_single_line_comments_hash(self):
-        """Test removal of single-line comments starting with #."""
-        tf_content = """
+    @pytest.mark.parametrize(
+        "tf_content,expected",
+        [
+            (
+                """
 resource "aws_instance" "example" {
   # This is a comment
   ami           = "ami-12345678"
   instance_type = "t2.micro"
   # Another comment
 }
-"""
-        expected = """resource "aws_instance" "example" {
+""",
+                """resource "aws_instance" "example" {
   ami           = "ami-12345678"
   instance_type = "t2.micro"
-}"""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
-    def test_remove_single_line_comments_double_slash(self):
-        """Test removal of single-line comments starting with //."""
-        tf_content = """
+}""",
+            ),
+            (
+                """
 resource "aws_instance" "example" {
   // This is a comment
   ami           = "ami-12345678"
   instance_type = "t2.micro"
   // Another comment
 }
-"""
-        expected = """resource "aws_instance" "example" {
+""",
+                """resource "aws_instance" "example" {
   ami           = "ami-12345678"
   instance_type = "t2.micro"
-}"""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
-    def test_remove_multiline_comments(self):
-        """Test removal of multiline comments /* */."""
-        tf_content = """
+}""",
+            ),
+            (
+                """
 resource "aws_instance" "example" {
   /* This is a
      multiline comment */
@@ -657,18 +651,14 @@ resource "aws_instance" "example" {
   /* Another multiline
      comment here */
 }
-"""
-        expected = """resource "aws_instance" "example" {
+""",
+                """resource "aws_instance" "example" {
   ami           = "ami-12345678"
   instance_type = "t2.micro"
-}"""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
-    def test_remove_mixed_comments(self):
-        """Test removal of mixed comment types."""
-        tf_content = """
+}""",
+            ),
+            (
+                """
 # Top level comment
 resource "aws_instance" "example" {
   /* Multiline comment
@@ -678,36 +668,28 @@ resource "aws_instance" "example" {
   # Another hash comment
 }
 // Bottom comment
-"""
-        expected = """resource "aws_instance" "example" {
+""",
+                """resource "aws_instance" "example" {
   ami           = "ami-12345678"
   instance_type = "t2.micro"
-}"""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
-    def test_preserve_strings_with_comment_chars(self):
-        """Test that comment characters inside strings are preserved."""
-        tf_content = """
+}""",
+            ),
+            (
+                """
 resource "aws_instance" "example" {
   ami           = "ami-12345678"
   user_data     = "#!/bin/bash\\necho 'Hello # World // Test'"
   instance_type = "t2.micro"
 }
-"""
-        expected = """resource "aws_instance" "example" {
+""",
+                """resource "aws_instance" "example" {
   ami           = "ami-12345678"
   user_data     = "#!/bin/bash\\necho 'Hello # World // Test'"
   instance_type = "t2.micro"
-}"""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
-    def test_remove_empty_lines(self):
-        """Test removal of empty lines and lines with only whitespace."""
-        tf_content = """
+}""",
+            ),
+            (
+                """
 
 resource "aws_instance" "example" {
 
@@ -717,33 +699,28 @@ resource "aws_instance" "example" {
 
 }
 
-"""
-        expected = """resource "aws_instance" "example" {
+""",
+                """resource "aws_instance" "example" {
   ami           = "ami-12345678"
   instance_type = "t2.micro"
-}"""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
-    def test_empty_string(self):
-        """Test handling of empty string input."""
-        tf_content = ""
-        expected = ""
-
-        result = clean_tf_file(tf_content)
-        assert result == expected
-
-    def test_only_comments(self):
-        """Test file with only comments."""
-        tf_content = """
+}""",
+            ),
+            (
+                "",
+                "",
+            ),
+            (
+                """
 # This is a comment
 // Another comment
 /* Multiline
    comment */
-"""
-        expected = ""
-
+""",
+                "",
+            ),
+        ],
+    )
+    def test_clean_tf_file(self, tf_content, expected):
         result = clean_tf_file(tf_content)
         assert result == expected
 
@@ -751,81 +728,66 @@ resource "aws_instance" "example" {
 class TestExtractWorkspaceFromTerraformConfig:
     """Test cases for the extract_workspace_from_terraform_config function using real files."""
 
-    def test_terraform_files_no_cloud_block(self):
-        """Test .tf files without cloud block."""
-        tf_content = """
-        resource "aws_instance" "example" {
-          ami           = "ami-12345678"
-          instance_type = "t2.micro"
-        }
-        """
+    @pytest.mark.parametrize(
+        "tf_content,expected",
+        [
+            (
+                """
+                resource "aws_instance" "example" {
+                  ami           = "ami-12345678"
+                  instance_type = "t2.micro"
+                }
+                """,
+                (None, "cli"),
+            ),
+            (
+                """
+                terraform {
+                  cloud {
+                    organization = "my-org"
+                    workspaces {
+                      name = "my-workspace"
+                    }
+                  }
+                }
+                """,
+                ("my-workspace", "cloud"),
+            ),
+            (
+                """
+                terraform {
+                  # This is a comment
+                  cloud {
+                    organization = "my-org"
+                    /* This is a multiline
+                       comment */
+                    workspaces {
+                      name = "production-workspace"  // Inline comment
+                    }
+                  }
+                }
+                """,
+                ("production-workspace", "cloud"),
+            ),
+            (
+                """
+                terraform {
+                  cloud {
+                    organization = "my-org"
+                    workspaces {
+                      name = "my-workspace-123_test"
+                    }
+                  }
+                }
+                """,
+                ("my-workspace-123_test", "cloud"),
+            ),
+        ],
+    )
+    def test_extract_workspace_from_terraform_config(self, tf_content, expected):
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = os.path.join(tmpdir, "main.tf")
             with open(file_path, "w") as f:
                 f.write(tf_content)
-
             result = extract_workspace_from_terraform_config(tmpdir)
-            assert result == (None, "cli")
-
-    def test_cloud_block_with_workspace_name(self):
-        """Test cloud block with workspace name."""
-        tf_content = """
-        terraform {
-          cloud {
-            organization = "my-org"
-            workspaces {
-              name = "my-workspace"
-            }
-          }
-        }
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            file_path = os.path.join(tmpdir, "main.tf")
-            with open(file_path, "w") as f:
-                f.write(tf_content)
-
-            result = extract_workspace_from_terraform_config(tmpdir)
-            assert result == ("my-workspace", "cloud")
-
-    def test_cloud_block_with_comments(self):
-        """Test cloud block with comments that should be cleaned."""
-        tf_content = """
-        terraform {
-          # This is a comment
-          cloud {
-            organization = "my-org"
-            /* This is a multiline
-               comment */
-            workspaces {
-              name = "production-workspace"  // Inline comment
-            }
-          }
-        }
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            file_path = os.path.join(tmpdir, "main.tf")
-            with open(file_path, "w") as f:
-                f.write(tf_content)
-
-            result = extract_workspace_from_terraform_config(tmpdir)
-            assert result == ("production-workspace", "cloud")
-
-    def test_workspace_with_special_characters(self):
-        """Test workspace names with special characters."""
-        tf_content = """
-        terraform {
-          cloud {
-            organization = "my-org"
-            workspaces {
-              name = "my-workspace-123_test"
-            }
-          }
-        }
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            file_path = os.path.join(tmpdir, "main.tf")
-            with open(file_path, "w") as f:
-                f.write(tf_content)
-
-            result = extract_workspace_from_terraform_config(tmpdir)
-            assert result == ("my-workspace-123_test", "cloud")
+            assert result == expected
