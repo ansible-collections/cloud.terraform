@@ -340,19 +340,19 @@ def clean_tf_file(tf_content: str) -> str:
         return re.sub(pattern, "", s)
 
     def remove_inline_comments(line: str) -> str:
-        quote_open = False
+        quote_open: str | None = None  # None when no quote is open
         result = ""
         i = 0
         length = len(line)
         while i < length:
             char = line[i]
             if char in ('"', "'"):
-                if not quote_open:
-                    quote_open = char
+                if quote_open is None:
+                    quote_open = char  # opening quote
                 elif quote_open == char:
-                    quote_open = False
+                    quote_open = None  # closing quote
                 result += char
-            elif not quote_open:
+            elif quote_open is None:
                 if i + 1 < length and line[i] == "/" and line[i + 1] == "/":
                     break  # Start of '//' comment
                 elif line[i] == "#":
