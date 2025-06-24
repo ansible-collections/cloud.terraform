@@ -307,7 +307,6 @@ import os
 import re
 import tempfile
 from typing import List, Optional, Tuple
-from typing import Optional
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import integer_types
