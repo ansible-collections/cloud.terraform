@@ -352,7 +352,7 @@ def clean_tf_file(tf_content: str) -> str:
                 elif quote_open == line[i]:
                     quote_open = False
                 result += line[i]
-            elif not quote_open and line[i:i + 2] == "//":
+            elif not quote_open and line[i : i + 2] == "//":
                 break
             elif not quote_open and line[i] == "#":
                 break
