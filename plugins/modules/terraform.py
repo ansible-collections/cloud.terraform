@@ -331,15 +331,42 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
 
 def clean_tf_file(tf_content: str) -> str:
     """
-    Cleans up the Terraform file content by removing comments (inline and block) and empty lines.
+    Removes all comments (inline '//' and '#', and block '/* ... */') and empty lines from Terraform file content.
+
+    Args:
+      tf_content (str): The raw content of a Terraform file.
+
+    Returns:
+      str: The cleaned Terraform file content with comments and empty lines removed.
     """
 
     def remove_multiline_comments(s: str) -> str:
-        # Use non-greedy match to remove individual /* ... */ blocks
+        """
+        Removes all multiline comments (/* ... */) from the given string.
+
+        Args:
+          s (str): The input string potentially containing multiline comments.
+
+        Returns:
+          str: The input string with all multiline comments removed.
+        """
         pattern = re.compile(r"/\*.*?\*/", re.DOTALL)
         return re.sub(pattern, "", s)
 
     def remove_inline_comments(line: str) -> str:
+        """
+        Removes inline comments from a given line of text, preserving quoted strings.
+
+        This function scans the input line and removes any content following a '#' or '//' comment marker,
+        unless the marker appears within a quoted string (single or double quotes). Quoted strings are
+        preserved as-is, including any comment markers inside them.
+
+        Args:
+          line (str): The input line from which to remove inline comments.
+
+        Returns:
+          str: The line with inline comments removed, preserving quoted strings.
+        """
         quote_open: Optional[str] = None  # None when no quote is open
         result = ""
         i = 0
