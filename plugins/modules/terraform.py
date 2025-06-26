@@ -530,7 +530,7 @@ def main() -> None:
                 terraform.workspace(WorkspaceCommand.NEW, workspace)
             else:
                 if workspace_ctx.current != "default":
-                  workspace = workspace_ctx.current
+                    workspace = workspace_ctx.current
                 terraform.workspace(WorkspaceCommand.SELECT, workspace)
 
         variables_args = []
