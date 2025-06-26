@@ -521,6 +521,7 @@ def main() -> None:
 
         try:
             workspace_ctx = terraform.workspace_list()
+            workspace_ctx.all.append("default")
         except TerraformWarning as e:
             module.warn(e.message)
             workspace_ctx = TerraformWorkspaceContext(current="default", all=[])

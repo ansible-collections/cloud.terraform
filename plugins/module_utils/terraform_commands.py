@@ -255,7 +255,7 @@ class TerraformCommands:
     def workspace_list(self) -> TerraformWorkspaceContext:
         rc, out, err = self._run("workspace", "list", "-no-color", check_rc=False)
         current_workspace = "default"
-        all_workspaces: List[str] = ["default"]
+        all_workspaces: List[str] = []
         if rc != 0:
             raise TerraformWarning("Failed to list Terraform workspaces:\n{0}".format(err))
         for item in out.split("\n"):
