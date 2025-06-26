@@ -529,6 +529,8 @@ def main() -> None:
             if workspace not in workspace_ctx.all:
                 terraform.workspace(WorkspaceCommand.NEW, workspace)
             else:
+                if workspace_ctx.current != "default":
+                  workspace = workspace_ctx.current
                 terraform.workspace(WorkspaceCommand.SELECT, workspace)
 
         variables_args = []
