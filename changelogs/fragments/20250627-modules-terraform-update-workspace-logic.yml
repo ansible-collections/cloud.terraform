@@ -1,0 +1,4 @@
+---
+bugfixes:
+  - modules/terraform - Updated Workspace Logic for TFC/TFE and CLI 
+    (https://github.com/ansible-collections/cloud.terraform/pull/197)
