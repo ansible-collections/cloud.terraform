@@ -4,4 +4,4 @@ bugfixes:
     parse raw state file to avoid provider versioning constraints
     (https://github.com/ansible-collections/cloud.terraform/issues/151).
 minor_changes:
-  - modules/terraform - Updated Workspace Logic for TFC/TFE and CLI (https://github.com/ansible-collections/cloud.terraform/pull/194)
+  - modules/terraform - Updated Workspace Logic for TFC/TFE and CLI (https://github.com/ansible-collections/cloud.terraform/pull/197)
