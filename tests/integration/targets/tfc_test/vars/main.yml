@@ -1,0 +1,8 @@
+---
+tfc_organization: "Ansible-BU-TFC"
+tfc_workspace: "my_tf_project_default"
+aws_region: "us-west-2"
+aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+ami_id: "ami-830c94e3"
+hcp_token: "{{ lookup('env', 'HCP_TOKEN') }}"

@@ -1,0 +1,137 @@
+- name: Render and test Terraform with AWS
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+    - block:
+        - name: Set test path
+          set_fact:
+            test_basedir: "{{ test_basedir | default(output_dir) }}"
+            resource_id: "vpc"
+
+        - name: Render Terraform template
+          ansible.builtin.template:
+            src: ../files/main.tf.j2
+            dest: "{{ test_basedir }}/main.tf"
+
+        - name: Terraform in check mode
+          cloud.terraform.terraform:
+            project_path: "{{ test_basedir }}"
+            state: present
+            workspace: "{{ tfc_workspace }}"
+            force_init: true
+          check_mode: true
+          register: terraform_result
+
+        - name: Check instance doesn't exist
+          amazon.aws.ec2_instance_info:
+            region: "{{ aws_region }}"
+            filters:
+              "tag:Name": Instance_Cloud_TF
+              "instance-state-name": running
+          register: instance_info
+
+        - assert:
+            that:
+              - instance_info.instances | length == 0
+            fail_msg: "Instance_Cloud_TF should not exist in check mode"
+
+        - name: Deploy Terraform
+          cloud.terraform.terraform:
+            project_path: "{{ test_basedir }}"
+            state: present
+            force_init: true
+            workspace: "{{ tfc_workspace }}"
+          register: terraform_result1
+
+        - name: Check instance exists after deploy
+          amazon.aws.ec2_instance_info:
+            region: "{{ aws_region }}"
+            filters:
+              "tag:Name": Instance_Cloud_TF
+              "instance-state-name": running
+          register: instance_info2
+
+        - assert:
+            that:
+              - instance_info2.instances | length == 1
+            fail_msg: "Instance_Cloud_TF should exist after deployment"
+
+        - name: Destroy Terraform
+          cloud.terraform.terraform:
+            project_path: "{{ test_basedir }}"
+            state: absent
+            force_init: true
+            workspace: "{{ tfc_workspace }}"
+          register: terraform_result3
+
+        - name: Verify destruction
+          amazon.aws.ec2_instance_info:
+            region: "{{ aws_region }}"
+            filters:
+              "tag:Name": Instance_Cloud_TF
+              "instance-state-name": running
+          register: instance_info3
+
+        - assert:
+            that:
+              - instance_info3.instances | length == 0
+            fail_msg: "Instance_Cloud_TF should be destroyed"
+
+        - name: Deploy using default workspace from .tf
+          cloud.terraform.terraform:
+            project_path: "{{ test_basedir }}"
+            state: present
+            force_init: true
+          register: terraform_result4
+
+        - name: Check instance exists after deploy
+          amazon.aws.ec2_instance_info:
+            region: "{{ aws_region }}"
+            filters:
+              "tag:Name": Instance_Cloud_TF
+              "instance-state-name": running
+          register: instance_info4
+
+        - assert:
+            that:
+              - instance_info4.instances | length == 1
+            fail_msg: "Instance_Cloud_TF should exist after deployment"
+
+        - name: Destroy again
+          cloud.terraform.terraform:
+            project_path: "{{ test_basedir }}"
+            state: absent
+            force_init: true
+          register: terraform_result4_destroy
+
+        - name: Confirm instance is destroyed
+          amazon.aws.ec2_instance_info:
+            region: "{{ aws_region }}"
+            filters:
+              "tag:Name": Instance_Cloud_TF
+              "instance-state-name": running
+          register: instance_info4_post_destroy
+
+        - assert:
+            that:
+              - instance_info4_post_destroy.instances | length == 0
+            fail_msg: "Instance_Cloud_TF should be destroyed"
+
+        - name: Deploy with mismatched workspace
+          cloud.terraform.terraform:
+            project_path: "{{ test_basedir }}"
+            state: present
+            workspace: "nonexistent_workspace"
+            force_init: true
+          register: terraform_negative_test
+          failed_when: false
+
+        - name: Expect failure due to invalid workspace
+          assert:
+            that:
+              - "workspaces not supported"
+            success_msg: "Terraform failed as expected for invalid workspace"
+            fail_msg: "Terraform unexpectedly succeeded for invalid workspace"

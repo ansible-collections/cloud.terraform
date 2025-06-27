@@ -1,0 +1,2 @@
+disabled # Require a HCP configuration account
+cloud/aws
