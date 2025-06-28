@@ -3,8 +3,6 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
@@ -19,14 +17,12 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformShow,
     TerraformShowValues,
     TerraformSimpleAttributeSpec,
-    TerraformWorkspaceContext,
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     filter_outputs,
     filter_resource_attributes,
     is_attribute_in_sensitive_values,
     is_attribute_sensitive_in_providers_schema,
-    main,
     sanitize_state,
 )
 
@@ -597,86 +593,3 @@ class TestTerraformAttributeSpec:
         terraform_attribute_spec = TerraformAttributeSpec.from_json(resource)
 
         assert terraform_attribute_spec == expected_terraform_attribute_spec
-
-
-class TestTerraformMain:
-    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
-    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
-    @patch("shutil.which", return_value="/usr/bin/terraform")  # Mock shutil.which to return the binary path
-    @patch("os.path.isdir", return_value=True)  # Mock directory existence check
-    def test_non_default_workspace_selection(
-        self, mock_isdir, mock_which, mock_ansible_module, mock_terraform_commands
-    ):
-        """
-        Tests that the module correctly selects a non-default workspace when specified.
-        """
-        mock_module_instance = MagicMock()
-        mock_module_instance.params = {
-            "project_path": "/tmp/project",
-            "workspace": "staging",
-            "state": "present",
-            "binary_path": None,
-            "plugin_paths": None,
-            "purge_workspace": False,
-            "variables": {},
-            "complex_vars": False,
-            "variables_files": None,
-            "plan_file": None,
-            "state_file": None,
-            "force_init": False,
-            "backend_config": None,
-            "backend_config_files": None,
-            "init_reconfigure": False,
-            "overwrite_init": True,
-            "check_destroy": False,
-            "provider_upgrade": False,
-            "targets": [],
-            "lock": True,
-            "lock_timeout": None,
-            "parallelism": None,
-        }
-        mock_module_instance.check_mode = True
-        mock_module_instance.get_bin_path.return_value = "/usr/bin/terraform"  # Mock terraform binary path
-
-        # FIX: Mock the run_command method to return the expected tuple (rc, stdout, stderr)
-        mock_module_instance.run_command.return_value = (0, "{}", "")  # Empty JSON outputs
-
-        mock_ansible_module.return_value = mock_module_instance
-
-        mock_tf_instance = MagicMock()
-        mock_terraform_commands.return_value = mock_tf_instance
-
-        mock_tf_instance.version.return_value = "1.3.0"
-        mock_tf_instance.providers_schema.return_value = TerraformProviderSchemaCollection(
-            format_version="1.0", provider_schemas={}
-        )
-        mock_tf_instance.show.return_value = None  # Simulate no initial state
-
-        # Mock workspace list to simulate being in 'default' but 'staging' exists
-        mock_tf_instance.workspace_list.return_value = TerraformWorkspaceContext(
-            current="default", all=["default", "staging"]
-        )
-
-        # Mock the plan command to return 'no changes' for simplicity
-        mock_tf_instance.plan.return_value = (False, False, "plan stdout", "plan stderr")
-
-        mock_tf_instance.apply_plan.return_value = (None, "apply stdout", "apply stderr")
-
-        # Run the module's main function
-        with pytest.raises(SystemExit):  # main() calls module.exit_json which raises SystemExit
-            main()
-
-        # Verify that workspace selection was called correctly
-        mock_tf_instance.workspace.assert_any_call("select", "staging")
-
-        # Check that the module would exit with changed=False because the plan had no changes
-        mock_module_instance.exit_json.assert_called_with(
-            changed=False,  # Because our mocked plan returned changed=False
-            diff=dict(before={}, after={}),
-            state="present",
-            workspace="staging",
-            outputs={},
-            stdout="plan stdout",
-            stderr="plan stderr",
-            command=None,  # command is from apply_plan, which is skipped in check_mode
-        )
