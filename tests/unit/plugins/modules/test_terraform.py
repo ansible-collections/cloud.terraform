@@ -3,6 +3,7 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import shutil
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -602,8 +603,11 @@ class TestTerraformAttributeSpec:
 class TestTerraformMain:
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
+    @patch("shutil.which", return_value="/usr/bin/terraform")  # Mock shutil.which to return the binary path
     @patch("os.path.isdir", return_value=True)  # Mock directory existence check
-    def test_non_default_workspace_selection(self, mock_isdir, mock_ansible_module, mock_terraform_commands):
+    def test_non_default_workspace_selection(
+        self, mock_isdir, mock_which, mock_ansible_module, mock_terraform_commands
+    ):
         """
         Tests that the module correctly selects a non-default workspace when specified.
         """
