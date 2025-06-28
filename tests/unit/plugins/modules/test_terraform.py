@@ -602,10 +602,14 @@ class TestTerraformAttributeSpec:
 class TestTerraformMain:
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
-    def test_non_default_workspace_selection(self, mock_ansible_module, mock_terraform_commands):
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.validate_project_path")  # Mock the validation
+    def test_non_default_workspace_selection(self, mock_validate_project_path, mock_ansible_module, mock_terraform_commands):
         """
         Tests that the module correctly selects a non-default workspace when specified.
         """
+        # Mock the project path validation to prevent directory existence check
+        mock_validate_project_path.return_value = None
+        
         mock_module_instance = MagicMock()
         mock_module_instance.params = {
             "project_path": "/tmp/project",
@@ -632,6 +636,7 @@ class TestTerraformMain:
             "parallelism": None,
         }
         mock_module_instance.check_mode = True
+        mock_module_instance.get_bin_path.return_value = "/usr/bin/terraform"  # Mock terraform binary path
         mock_ansible_module.return_value = mock_module_instance
 
         mock_tf_instance = MagicMock()
@@ -651,10 +656,11 @@ class TestTerraformMain:
         # Mock the plan command to return 'no changes' for simplicity
         mock_tf_instance.plan.return_value = (False, False, "plan stdout", "plan stderr")
 
-        # 3. Run the module's main function
+        # Run the module's main function
         with pytest.raises(SystemExit):  # main() calls module.exit_json which raises SystemExit
             main()
 
+        # Verify that workspace selection was called correctly
         mock_tf_instance.workspace.assert_any_call("select", "staging")
 
         # Check that the module would exit with changed=False because the plan had no changes
