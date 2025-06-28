@@ -657,6 +657,8 @@ class TestTerraformMain:
         # Mock the plan command to return 'no changes' for simplicity
         mock_tf_instance.plan.return_value = (False, False, "plan stdout", "plan stderr")
 
+        mock_tf_instance.apply_plan.return_value = (None, "apply stdout", "apply stderr")
+
         # Run the module's main function
         with pytest.raises(SystemExit):  # main() calls module.exit_json which raises SystemExit
             main()
