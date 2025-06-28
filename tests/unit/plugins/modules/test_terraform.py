@@ -26,6 +26,7 @@ from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     filter_resource_attributes,
     is_attribute_in_sensitive_values,
     is_attribute_sensitive_in_providers_schema,
+    main,
     sanitize_state,
 )
 
