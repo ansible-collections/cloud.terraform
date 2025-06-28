@@ -603,13 +603,15 @@ class TestTerraformMain:
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.validate_project_path")  # Mock the validation
-    def test_non_default_workspace_selection(self, mock_validate_project_path, mock_ansible_module, mock_terraform_commands):
+    def test_non_default_workspace_selection(
+        self, mock_validate_project_path, mock_ansible_module, mock_terraform_commands
+    ):
         """
         Tests that the module correctly selects a non-default workspace when specified.
         """
         # Mock the project path validation to prevent directory existence check
         mock_validate_project_path.return_value = None
-        
+
         mock_module_instance = MagicMock()
         mock_module_instance.params = {
             "project_path": "/tmp/project",
