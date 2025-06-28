@@ -3,9 +3,9 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
     TerraformBlockSensitive,
@@ -597,6 +597,7 @@ class TestTerraformAttributeSpec:
 
         assert terraform_attribute_spec == expected_terraform_attribute_spec
 
+
 class TestTerraformMain:
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
@@ -606,28 +607,28 @@ class TestTerraformMain:
         """
         mock_module_instance = MagicMock()
         mock_module_instance.params = {
-            'project_path': '/tmp/project',
-            'workspace': 'staging', 
-            'state': 'present',
-            'binary_path': None,
-            'plugin_paths': None,
-            'purge_workspace': False,
-            'variables': {},
-            'complex_vars': False,
-            'variables_files': None,
-            'plan_file': None,
-            'state_file': None,
-            'force_init': False,
-            'backend_config': None,
-            'backend_config_files': None,
-            'init_reconfigure': False,
-            'overwrite_init': True,
-            'check_destroy': False,
-            'provider_upgrade': False,
-            'targets': [],
-            'lock': True,
-            'lock_timeout': None,
-            'parallelism': None,
+            "project_path": "/tmp/project",
+            "workspace": "staging",
+            "state": "present",
+            "binary_path": None,
+            "plugin_paths": None,
+            "purge_workspace": False,
+            "variables": {},
+            "complex_vars": False,
+            "variables_files": None,
+            "plan_file": None,
+            "state_file": None,
+            "force_init": False,
+            "backend_config": None,
+            "backend_config_files": None,
+            "init_reconfigure": False,
+            "overwrite_init": True,
+            "check_destroy": False,
+            "provider_upgrade": False,
+            "targets": [],
+            "lock": True,
+            "lock_timeout": None,
+            "parallelism": None,
         }
         mock_module_instance.check_mode = True
         mock_ansible_module.return_value = mock_module_instance
@@ -636,32 +637,33 @@ class TestTerraformMain:
         mock_terraform_commands.return_value = mock_tf_instance
 
         mock_tf_instance.version.return_value = "1.3.0"
-        mock_tf_instance.providers_schema.return_value = TerraformProviderSchemaCollection(format_version="1.0", provider_schemas={})
-        mock_tf_instance.show.return_value = None # Simulate no initial state
+        mock_tf_instance.providers_schema.return_value = TerraformProviderSchemaCollection(
+            format_version="1.0", provider_schemas={}
+        )
+        mock_tf_instance.show.return_value = None  # Simulate no initial state
 
         # Mock workspace list to simulate being in 'default' but 'staging' exists
         mock_tf_instance.workspace_list.return_value = TerraformWorkspaceContext(
-            current='default',
-            all=['default', 'staging']
+            current="default", all=["default", "staging"]
         )
-        
+
         # Mock the plan command to return 'no changes' for simplicity
         mock_tf_instance.plan.return_value = (False, False, "plan stdout", "plan stderr")
-        
+
         # 3. Run the module's main function
-        with pytest.raises(SystemExit): # main() calls module.exit_json which raises SystemExit
+        with pytest.raises(SystemExit):  # main() calls module.exit_json which raises SystemExit
             main()
 
         mock_tf_instance.workspace.assert_any_call("select", "staging")
 
         # Check that the module would exit with changed=False because the plan had no changes
         mock_module_instance.exit_json.assert_called_with(
-            changed=False, # Because our mocked plan returned changed=False
+            changed=False,  # Because our mocked plan returned changed=False
             diff=dict(before={}, after={}),
-            state='present',
-            workspace='staging',
+            state="present",
+            workspace="staging",
             outputs={},
             stdout="plan stdout",
             stderr="plan stderr",
-            command=None # command is from apply_plan, which is skipped in check_mode
+            command=None,  # command is from apply_plan, which is skipped in check_mode
         )
