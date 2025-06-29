@@ -1,0 +1,40 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.16"
+    }
+  }
+  required_version = ">= 1.10.0"
+  cloud {
+    organization = "{{ tfc_organization }}"
+    hostname     = "app.terraform.io"
+    token = "{{ hcp_token }}"
+    workspaces {
+      name = "{{ tfc_workspace }}"
+    }
+  }
+}
+
+provider "aws" {
+  region     = "{{ aws_region }}"
+  {% if aws_access_key and aws_secret_key %}
+  access_key = "{{ aws_access_key }}"
+  secret_key = "{{ aws_secret_key }}"
+  {% else %}
+  # Uses environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+  {% endif %}
+}
+
+resource "aws_instance" "app_server_tf" {
+  ami           = "{{ ami_id }}"
+  instance_type = "t2.micro"
+
+  tags = {
+    Name = "Instance_Cloud_TF"
+  }
+}
+
+output "my_output" {
+  value = aws_instance.app_server_tf
+}

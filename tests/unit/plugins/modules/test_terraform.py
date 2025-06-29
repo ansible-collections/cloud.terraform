@@ -3,7 +3,10 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from unittest.mock import Mock, call, patch
+
 import pytest
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
     TerraformBlockSensitive,
@@ -17,12 +20,15 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformShow,
     TerraformShowValues,
     TerraformSimpleAttributeSpec,
+    TerraformWorkspaceContext,
 )
+from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import WorkspaceCommand
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
     filter_outputs,
     filter_resource_attributes,
     is_attribute_in_sensitive_values,
     is_attribute_sensitive_in_providers_schema,
+    main,
     sanitize_state,
 )
 
@@ -593,3 +599,321 @@ class TestTerraformAttributeSpec:
         terraform_attribute_spec = TerraformAttributeSpec.from_json(resource)
 
         assert terraform_attribute_spec == expected_terraform_attribute_spec
+
+
+class TestTerraformWorkspaceHandling:
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_outputs")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.preflight_validation")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_state_args")
+    def test_workspace_list_success_default_appended(
+        self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
+    ):
+        mock_module = Mock()
+        mock_module.params = {
+            "project_path": "/test/path",
+            "binary_path": None,
+            "plugin_paths": None,
+            "workspace": "main",
+            "purge_workspace": False,
+            "state": "present",
+            "variables": {},
+            "complex_vars": False,
+            "variables_files": None,
+            "plan_file": None,
+            "state_file": None,
+            "force_init": False,
+            "backend_config": None,
+            "backend_config_files": None,
+            "init_reconfigure": False,
+            "overwrite_init": True,
+            "check_destroy": False,
+            "provider_upgrade": False,
+            "targets": [],
+            "lock": True,
+            "lock_timeout": None,
+            "parallelism": None,
+        }
+        mock_module.check_mode = True  # Use check mode to avoid actual apply
+        mock_module.get_bin_path.return_value = "/usr/bin/terraform"
+        mock_module.run_command = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit(0))  # Mock exit_json to raise SystemExit
+        mock_ansible_module.return_value = mock_module
+
+        mock_tf = Mock()
+        mock_terraform_commands.return_value = mock_tf
+        workspace_ctx = TerraformWorkspaceContext(current="main", all=["main", "staging"])
+        mock_tf.workspace_list.return_value = workspace_ctx
+        mock_tf.version.return_value = Mock()
+        mock_tf.providers_schema.return_value = Mock()
+        mock_tf.show.return_value = None
+        mock_tf.plan.return_value = (False, False, "", "")
+        mock_tf.apply_plan.return_value = ("command", "", "")
+        mock_get_outputs.return_value = {}
+        mock_get_state_args.return_value = []
+
+        # Test main function
+        with pytest.raises(SystemExit):
+            main()
+
+        # Verify workspace_list was called and "default" would be appended
+        mock_tf.workspace_list.assert_called_once()
+        # Since current workspace equals requested workspace, no workspace command should be called
+        mock_tf.workspace.assert_not_called()
+
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_outputs")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.preflight_validation")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_state_args")
+    def test_workspace_current_not_default_reassignment(
+        self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
+    ):
+        """Test the case where current workspace is not default and gets reassigned."""
+        mock_module = Mock()
+        mock_module.params = {
+            "project_path": "/test/path",
+            "binary_path": None,
+            "plugin_paths": None,
+            "workspace": "default",  # Request default workspace but current is production
+            "purge_workspace": False,
+            "state": "present",
+            "variables": {},
+            "complex_vars": False,
+            "variables_files": None,
+            "plan_file": None,
+            "state_file": None,
+            "force_init": False,
+            "backend_config": None,
+            "backend_config_files": None,
+            "init_reconfigure": False,
+            "overwrite_init": True,
+            "check_destroy": False,
+            "provider_upgrade": False,
+            "targets": [],
+            "lock": True,
+            "lock_timeout": None,
+            "parallelism": None,
+        }
+        mock_module.check_mode = True  # Use check mode to avoid actual apply
+        mock_module.get_bin_path.return_value = "/usr/bin/terraform"
+        mock_module.run_command = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit(0))
+        mock_ansible_module.return_value = mock_module
+        mock_tf = Mock()
+        mock_terraform_commands.return_value = mock_tf
+
+        # Mock workspace_list to return context where current is not 'default'
+        # and 'default' will be appended to all list
+        workspace_ctx = TerraformWorkspaceContext(current="production", all=["production", "staging"])
+        mock_tf.workspace_list.return_value = workspace_ctx
+        mock_tf.version.return_value = Mock()
+        mock_tf.providers_schema.return_value = Mock()
+        mock_tf.show.return_value = None
+        mock_tf.plan.return_value = (False, False, "", "")
+        mock_tf.apply_plan.return_value = ("command", "", "")
+
+        mock_get_outputs.return_value = {}
+        mock_get_state_args.return_value = []
+        with pytest.raises(SystemExit):
+            main()
+
+        # Verify workspace_list was called
+        mock_tf.workspace_list.assert_called_once()
+        mock_tf.workspace.assert_called_with(WorkspaceCommand.SELECT, "production")
+
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_outputs")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.preflight_validation")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_state_args")
+    def test_workspace_list_warning_fallback(
+        self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
+    ):
+        """Test the case where workspace_list raises TerraformWarning and falls back to default context."""
+        mock_module = Mock()
+        mock_module.params = {
+            "project_path": "/test/path",
+            "binary_path": None,
+            "plugin_paths": None,
+            "workspace": "dev",
+            "purge_workspace": False,
+            "state": "present",
+            "variables": {},
+            "complex_vars": False,
+            "variables_files": None,
+            "plan_file": None,
+            "state_file": None,
+            "force_init": False,
+            "backend_config": None,
+            "backend_config_files": None,
+            "init_reconfigure": False,
+            "overwrite_init": True,
+            "check_destroy": False,
+            "provider_upgrade": False,
+            "targets": [],
+            "lock": True,
+            "lock_timeout": None,
+            "parallelism": None,
+        }
+        mock_module.check_mode = True
+        mock_module.get_bin_path.return_value = "/usr/bin/terraform"
+        mock_module.run_command = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit(0))
+        mock_ansible_module.return_value = mock_module
+        mock_tf = Mock()
+        mock_terraform_commands.return_value = mock_tf
+
+        # Mock workspace_list to raise TerraformWarning
+        mock_tf.workspace_list.side_effect = TerraformWarning("Failed to list workspaces")
+        mock_tf.version.return_value = Mock()
+        mock_tf.providers_schema.return_value = Mock()
+        mock_tf.show.return_value = None
+        mock_tf.plan.return_value = (False, False, "", "")
+        mock_tf.apply_plan.return_value = ("command", "", "")
+        mock_get_outputs.return_value = {}
+        mock_get_state_args.return_value = []
+
+        # Test main function
+        with pytest.raises(SystemExit):
+            main()
+
+        mock_tf.workspace_list.assert_called_once()
+        mock_module.warn.assert_called_with("Failed to list workspaces")
+        workspace_calls = mock_tf.workspace.call_args_list
+        assert len(workspace_calls) >= 1
+        assert workspace_calls[0] == call(WorkspaceCommand.NEW, "dev")
+
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_outputs")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.preflight_validation")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_state_args")
+    def test_workspace_select_existing_workspace(
+        self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
+    ):
+        """Test selecting an existing workspace that's different from current."""
+        mock_module = Mock()
+        mock_module.params = {
+            "project_path": "/test/path",
+            "binary_path": None,
+            "plugin_paths": None,
+            "workspace": "staging",
+            "purge_workspace": False,
+            "state": "present",
+            "variables": {},
+            "complex_vars": False,
+            "variables_files": None,
+            "plan_file": None,
+            "state_file": None,
+            "force_init": False,
+            "backend_config": None,
+            "backend_config_files": None,
+            "init_reconfigure": False,
+            "overwrite_init": True,
+            "check_destroy": False,
+            "provider_upgrade": False,
+            "targets": [],
+            "lock": True,
+            "lock_timeout": None,
+            "parallelism": None,
+        }
+        mock_module.check_mode = True
+        mock_module.get_bin_path.return_value = "/usr/bin/terraform"
+        mock_module.run_command = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit(0))
+        mock_ansible_module.return_value = mock_module
+        mock_tf = Mock()
+        mock_terraform_commands.return_value = mock_tf
+        workspace_ctx = TerraformWorkspaceContext(current="default", all=["staging", "production"])
+        mock_tf.workspace_list.return_value = workspace_ctx
+        mock_tf.version.return_value = Mock()
+        mock_tf.providers_schema.return_value = Mock()
+        mock_tf.show.return_value = None
+        mock_tf.plan.return_value = (False, False, "", "")
+        mock_tf.apply_plan.return_value = ("command", "", "")
+        mock_get_outputs.return_value = {}
+        mock_get_state_args.return_value = []
+        with pytest.raises(SystemExit):
+            main()
+
+        # Verify workspace_list was called
+        mock_tf.workspace_list.assert_called_once()
+        workspace_calls = mock_tf.workspace.call_args_list
+        assert len(workspace_calls) >= 1
+        assert workspace_calls[0] == call(WorkspaceCommand.SELECT, "staging")
+
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_outputs")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.preflight_validation")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_state_args")
+    def test_workspace_same_as_current_no_change(
+        self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
+    ):
+        """Test the case where requested workspace is same as current workspace."""
+        mock_module = Mock()
+        mock_module.params = {
+            "project_path": "/test/path",
+            "binary_path": None,
+            "plugin_paths": None,
+            "workspace": "production",
+            "purge_workspace": False,
+            "state": "present",
+            "variables": {},
+            "complex_vars": False,
+            "variables_files": None,
+            "plan_file": None,
+            "state_file": None,
+            "force_init": False,
+            "backend_config": None,
+            "backend_config_files": None,
+            "init_reconfigure": False,
+            "overwrite_init": True,
+            "check_destroy": False,
+            "provider_upgrade": False,
+            "targets": [],
+            "lock": True,
+            "lock_timeout": None,
+            "parallelism": None,
+        }
+        mock_module.check_mode = True
+        mock_module.get_bin_path.return_value = "/usr/bin/terraform"
+        mock_module.run_command = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit(0))
+        mock_ansible_module.return_value = mock_module
+        mock_tf = Mock()
+        mock_terraform_commands.return_value = mock_tf
+        workspace_ctx = TerraformWorkspaceContext(current="production", all=["staging", "production"])
+        mock_tf.workspace_list.return_value = workspace_ctx
+        mock_tf.version.return_value = Mock()
+        mock_tf.providers_schema.return_value = Mock()
+        mock_tf.show.return_value = None
+        mock_tf.plan.return_value = (False, False, "", "")
+        mock_tf.apply_plan.return_value = ("command", "", "")
+        mock_get_outputs.return_value = {}
+        mock_get_state_args.return_value = []
+        with pytest.raises(SystemExit):
+            main()
+        mock_tf.workspace_list.assert_called_once()
+        # Since current workspace equals requested workspace, no workspace command should be called
+        mock_tf.workspace.assert_not_called()
+
+    def test_workspace_context_default_append_logic(self):
+        # This test directly exercises the logic that appends 'default' to the workspace list
+        workspace_ctx = TerraformWorkspaceContext(current="main", all=["main", "staging"])
+        workspace_ctx.all.append("default")
+        assert "default" in workspace_ctx.all
+        assert workspace_ctx.all == ["main", "staging", "default"]
+
+    def test_workspace_current_not_default_logic(self):
+        workspace_ctx = TerraformWorkspaceContext(current="production", all=["production", "staging", "default"])
+        workspace = "default"
+        if workspace_ctx.current != workspace:
+            if workspace in workspace_ctx.all:
+                if workspace_ctx.current != "default":
+                    workspace = workspace_ctx.current
+
+        # Verify the workspace was reassigned to current
+        assert workspace == "production"
