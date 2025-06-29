@@ -610,7 +610,6 @@ class TestTerraformWorkspaceHandling:
     def test_workspace_list_success_default_appended(
         self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
     ):
-
         mock_module = Mock()
         mock_module.params = {
             "project_path": "/test/path",
@@ -902,7 +901,6 @@ class TestTerraformWorkspaceHandling:
         mock_tf.workspace.assert_not_called()
 
     def test_workspace_context_default_append_logic(self):
-
         # This test directly exercises the logic that appends 'default' to the workspace list
         workspace_ctx = TerraformWorkspaceContext(current="main", all=["main", "staging"])
         workspace_ctx.all.append("default")
@@ -914,7 +912,6 @@ class TestTerraformWorkspaceHandling:
         workspace = "default"
         if workspace_ctx.current != workspace:
             if workspace in workspace_ctx.all:
-
                 if workspace_ctx.current != "default":
                     workspace = workspace_ctx.current
 
