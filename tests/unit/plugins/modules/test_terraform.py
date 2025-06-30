@@ -667,6 +667,67 @@ class TestTerraformWorkspaceHandling:
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_outputs")
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.preflight_validation")
     @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_state_args")
+    def test_workspace_current_not_default_reassignment(
+        self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
+    ):
+        """Test the case where current workspace is not default and gets reassigned."""
+        mock_module = Mock()
+        mock_module.params = {
+            "project_path": "/test/path",
+            "binary_path": None,
+            "plugin_paths": None,
+            "workspace": "default",  # Request default workspace but current is production
+            "purge_workspace": False,
+            "state": "present",
+            "variables": {},
+            "complex_vars": False,
+            "variables_files": None,
+            "plan_file": None,
+            "state_file": None,
+            "force_init": False,
+            "backend_config": None,
+            "backend_config_files": None,
+            "init_reconfigure": False,
+            "overwrite_init": True,
+            "check_destroy": False,
+            "provider_upgrade": False,
+            "targets": [],
+            "lock": True,
+            "lock_timeout": None,
+            "parallelism": None,
+        }
+        mock_module.check_mode = True  # Use check mode to avoid actual apply
+        mock_module.get_bin_path.return_value = "/usr/bin/terraform"
+        mock_module.run_command = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit(0))
+        mock_ansible_module.return_value = mock_module
+        mock_tf = Mock()
+        mock_terraform_commands.return_value = mock_tf
+
+        # Mock workspace_list to return context where current is not 'default'
+        # and 'default' will be appended to all list
+        workspace_ctx = TerraformWorkspaceContext(current="production", all=["production", "staging"])
+        mock_tf.workspace_list.return_value = workspace_ctx
+        mock_tf.version.return_value = Mock()
+        mock_tf.providers_schema.return_value = Mock()
+        mock_tf.show.return_value = None
+        mock_tf.plan.return_value = (False, False, "", "")
+        mock_tf.apply_plan.return_value = ("command", "", "")
+
+        mock_get_outputs.return_value = {}
+        mock_get_state_args.return_value = []
+        with pytest.raises(SystemExit):
+            main()
+
+        # Verify workspace_list was called
+        mock_tf.workspace_list.assert_called_once()
+        mock_tf.workspace.assert_called_with(WorkspaceCommand.SELECT, "production")
+
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.TerraformCommands")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.AnsibleModule")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_outputs")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.preflight_validation")
+    @patch("ansible_collections.cloud.terraform.plugins.modules.terraform.get_state_args")
     def test_workspace_list_warning_fallback(
         self, mock_get_state_args, mock_preflight, mock_get_outputs, mock_ansible_module, mock_terraform_commands
     ):
