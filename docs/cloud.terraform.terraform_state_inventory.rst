@@ -799,7 +799,7 @@ Examples
         hostname: app.terraform.io
         organization: redhat
         workspaces:
-        prefix: ansible-
+          prefix: ansible-
 
     # Using the cloud block (see below the corresponding Terraform configuration)
     # terraform {
