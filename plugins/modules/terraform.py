@@ -49,7 +49,10 @@ options:
     version_added: 1.0.0
   workspace:
     description:
-      - The terraform workspace to work with.
+      - If specified, this workspace will be used for all operations, provided it matches the workspace  defined in the Terraform Cloud configuration.
+      - If the specified workspace does not match the one in the Terraform Cloud configuration, an error will be raised.
+      - If not specified, the module will attempt to determine the workspace from the Terraform Cloud configuration.
+      - If no workspace is specified in both the playbook and the Terraform Cloud configuration, the module will default to using the Terraform CLI mode.
     type: str
     default: default
     version_added: 1.0.0
@@ -239,6 +242,18 @@ EXAMPLES = """
           thin_provisioned: true
           unit_number: 3
     force_init: true
+
+- name: Using workspace from playbook for Terraform Cloud/Enterprise
+  cloud.terraform.terraform:
+    project_path: '{{ project_dir }}'
+    state: present
+    workspace: 'my_workspace' # workspace must match and exist in Terraform cloud configuration.
+
+- name: Auto-detect workspace from Terraform cloud configuration for Terraform Cloud/Enterprise
+  cloud.terraform.terraform:
+    project_path: '{{ project_dir }}'
+    state: present
+    # workspace parameter omitted - will be auto-detected from .tf files
 
 ### Example directory structure for plugin_paths example
 # $ tree /path/to/plugins_dir_1
@@ -521,6 +536,7 @@ def main() -> None:
 
         try:
             workspace_ctx = terraform.workspace_list()
+            workspace_ctx.all.append("default")
         except TerraformWarning as e:
             module.warn(e.message)
             workspace_ctx = TerraformWorkspaceContext(current="default", all=[])
@@ -529,6 +545,8 @@ def main() -> None:
             if workspace not in workspace_ctx.all:
                 terraform.workspace(WorkspaceCommand.NEW, workspace)
             else:
+                if workspace_ctx.current != "default":
+                    workspace = workspace_ctx.current
                 terraform.workspace(WorkspaceCommand.SELECT, workspace)
 
         variables_args = []

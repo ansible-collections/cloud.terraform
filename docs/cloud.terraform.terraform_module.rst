@@ -523,7 +523,18 @@ Examples
               thin_provisioned: true
               unit_number: 3
         force_init: true
+    - name: Using workspace from playbook for Terraform Cloud/Enterprise
+      cloud.terraform.terraform:
+        project_path: '{{ project_dir }}'
+        state: present
+        workspace: 'my_workspace' # workspace must match and exist in Terraform cloud configuration.
 
+    - name: Auto-detect workspace from Terraform cloud configuration for Terraform Cloud/Enterprise
+      cloud.terraform.terraform:
+        project_path: '{{ project_dir }}'
+        state: present
+        # workspace parameter omitted - will be auto-detected from .tf files
+    
     ### Example directory structure for plugin_paths example
     # $ tree /path/to/plugins_dir_1
     # /path/to/plugins_dir_1/
