@@ -3,6 +3,9 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import os
+import tempfile
+
 import pytest
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformAttributeSpec,
@@ -19,6 +22,8 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformSimpleAttributeSpec,
 )
 from ansible_collections.cloud.terraform.plugins.modules.terraform import (
+    clean_tf_file,
+    extract_workspace_from_terraform_config,
     filter_outputs,
     filter_resource_attributes,
     is_attribute_in_sensitive_values,
@@ -271,7 +276,8 @@ def state_contents(root_module_resource, sensitive_root_module_resource):
                 "my_sensitive_output": TerraformOutput(sensitive=True, value="my_sensitive_value", type="string"),
             },
             root_module=TerraformRootModule(
-                resources=[root_module_resource, sensitive_root_module_resource], child_modules=[]
+                resources=[root_module_resource, sensitive_root_module_resource],
+                child_modules=[],
             ),
         ),
     )
@@ -298,7 +304,13 @@ class TestIsAttributeSensitiveInProvidersSchema:
             ("resource_block", True),
         ],
     )
-    def test_sensitive_attributes(self, provider_schemas, sensitive_root_module_resource, attribute, expected_result):
+    def test_sensitive_attributes(
+        self,
+        provider_schemas,
+        sensitive_root_module_resource,
+        attribute,
+        expected_result,
+    ):
         result = is_attribute_sensitive_in_providers_schema(
             provider_schemas, sensitive_root_module_resource, attribute=attribute
         )
@@ -593,3 +605,221 @@ class TestTerraformAttributeSpec:
         terraform_attribute_spec = TerraformAttributeSpec.from_json(resource)
 
         assert terraform_attribute_spec == expected_terraform_attribute_spec
+
+
+class TestCleanTfFile:
+    """Test cases for the clean_tf_file function."""
+
+    @pytest.mark.parametrize(
+        "tf_content,expected",
+        [
+            (
+                """
+resource "aws_instance" "example" {
+  # This is a comment
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+  # Another comment
+}
+""",
+                """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}""",
+            ),
+            (
+                """
+resource "aws_instance" "example" {
+  // This is a comment
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+  // Another comment
+}
+""",
+                """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}""",
+            ),
+            (
+                """
+resource "aws_instance" "example" {
+  /* This is a
+     multiline comment */
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+  /* Another multiline
+     comment here */
+}
+""",
+                """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}""",
+            ),
+            (
+                """
+# Top level comment
+resource "aws_instance" "example" {
+  /* Multiline comment
+     spanning multiple lines */
+  ami           = "ami-12345678"  # Inline hash comment
+  instance_type = "t2.micro"     // Inline double slash comment
+  # Another hash comment
+}
+// Bottom comment
+""",
+                """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}""",
+            ),
+            (
+                """
+resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  user_data     = "#!/bin/bash\\necho 'Hello # World // Test'"
+  instance_type = "t2.micro"
+}
+""",
+                """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  user_data     = "#!/bin/bash\\necho 'Hello # World // Test'"
+  instance_type = "t2.micro"
+}""",
+            ),
+            (
+                """
+
+resource "aws_instance" "example" {
+
+  ami           = "ami-12345678"
+
+  instance_type = "t2.micro"
+
+}
+
+""",
+                """resource "aws_instance" "example" {
+  ami           = "ami-12345678"
+  instance_type = "t2.micro"
+}""",
+            ),
+            (
+                "",
+                "",
+            ),
+            (
+                """
+# This is a comment
+// Another comment
+/* Multiline
+   comment */
+""",
+                "",
+            ),
+        ],
+    )
+    def test_clean_tf_file(self, tf_content, expected):
+        result = clean_tf_file(tf_content)
+        assert result == expected
+
+
+class TestExtractWorkspaceFromTerraformConfig:
+    """Test cases for the extract_workspace_from_terraform_config function using real files."""
+
+    def test_terraform_files_no_cloud_block(self):
+        """Test .tf files without cloud block."""
+        tf_content = """
+        resource "aws_instance" "example" {
+          ami           = "ami-12345678"
+          instance_type = "t2.micro"
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == (None, "cli")
+
+    def test_cloud_block_with_workspace_name(self):
+        """Test cloud block with workspace name."""
+        tf_content = """
+        terraform {
+          cloud {
+            organization = "my-org"
+            workspaces {
+              name = "my-workspace"
+            }
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == ("my-workspace", "cloud")
+
+    def test_cloud_block_with_comments(self):
+        """Test cloud block with comments that should be cleaned."""
+        tf_content = """
+        terraform {
+          # This is a comment
+          cloud {
+            organization = "my-org"
+            /* This is a multiline
+               comment */
+            workspaces {
+              name = "production-workspace"  // Inline comment
+            }
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == ("production-workspace", "cloud")
+
+    def test_workspace_with_special_characters(self):
+        """Test workspace names with special characters."""
+        tf_content = """
+        terraform {
+          cloud {
+            organization = "my-org"
+            workspaces {
+              name = "my-workspace-123_test"
+            }
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == ("my-workspace-123_test", "cloud")
+
+    def test_cloud_block_without_workspace(self):
+        """Test workspace names with special characters."""
+        tf_content = """
+        terraform {
+          cloud {
+            organization = "my-org"
+          }
+        }
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "main.tf")
+            with open(file_path, "w") as f:
+                f.write(tf_content)
+
+            result = extract_workspace_from_terraform_config(tmpdir)
+            assert result == (None, "cloud")
