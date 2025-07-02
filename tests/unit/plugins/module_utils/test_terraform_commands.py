@@ -23,6 +23,21 @@ class TestTerraformCommands:
         # therefore the test will pass if self.run_command_fp(...) was called
         self.mock.assert_called_with(["/binary/path"] + args, cwd="/project/path", check_rc=False)
 
+    def test_run_with_workspace(self):
+        args = ["apply", "-no-color", "-input=false"]
+        self.tf.tfworkspace = "foo"
+        self.tf._run(*args, check_rc=False)
+
+        # Testing if self.run_command_fp(...) was called.
+        # self.run_command_fp(...) should be called in this method,
+        # therefore the test will pass if self.run_command_fp(...) was called
+        self.mock.assert_called_with(
+            ["/binary/path"] + args,
+            cwd="/project/path",
+            check_rc=False,
+            environ_update={"TF_WORKSPACE": self.tf.tfworkspace},
+        )
+
     def test_apply_plan(self):
         self.mock.return_value = (self.rc, self.stdout, self.stderr)
         self.tf._run = self.mock
@@ -55,6 +70,7 @@ class TestTerraformCommands:
     # Test init method; NOT __init__
     def test_init(self):
         self.tf._run = self.mock
+        self.mock.return_value = (self.rc, self.stdout, self.stderr)
         self.tf.init(
             backend_config={"test_val": "test"},
             backend_config_files=["config_file"],
@@ -77,7 +93,7 @@ class TestTerraformCommands:
             "/plugin/path",
         ]
 
-        self.mock.assert_called_with(*expected_cmd, check_rc=True)
+        self.mock.assert_called_with(*expected_cmd, check_rc=False)
 
     def test_plan(self):
         self.mock.return_value = (self.rc, self.stdout, self.stderr)
