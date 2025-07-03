@@ -1,0 +1,21 @@
+terraform {
+  cloud {
+    organization = "{{ terraform_organization_name }}"
+    token = "{{ terraform_organization_token }}"
+    workspaces {
+{% if terraform_workspace_project | default(false) %}
+      project = "{{ terraform_workspace_project }}"
+{% endif %}
+{% if terraform_workspace_name | default(false) %}
+      name = "{{ terraform_workspace_name }}"
+{% endif %}
+{% if terraform_workspace_tags | default(false) %}
+      tags = {
+      {% for key, value in terraform_workspace_tags.items() %}
+        {{ key }} = "{{ value }}"
+      {% endfor %}
+      }
+{% endif %}
+    }
+  }
+}

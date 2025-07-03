@@ -1,0 +1,29 @@
+all:
+  hosts:
+    default:
+      terraform_workspace_name: "ansible_default"
+      result_workspace: "ansible_default"
+      run_terraform_init: true
+    default_with_tags:
+      terraform_workspace_tags:
+        project: "ansible"
+        default: "true"
+      result_workspace: "ansible_default_with_tags"
+      force_init: true
+    workspace_match_cloud_config:
+      terraform_workspace_name: "ansible_cloud_config"
+      module_workspace: "ansible_cloud_config"
+      run_terraform_init: true
+    workspace_missmatch_cloud_config:
+      terraform_workspace_name: "ansible_default_with_tags"
+      module_workspace: "ansible_default"
+      force_init: true
+      error_message: "Invalid workspaces configuration"
+    multiple_match:
+      terraform_workspace_tags:
+        project: "ansible"
+      force_init: true
+      error_message: 'Currently selected workspace "default" does not exist'
+  vars:
+    terraform_organization_name: 
+    terraform_organization_token: 

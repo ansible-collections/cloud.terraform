@@ -1,0 +1,72 @@
+- hosts: all
+  gather_facts: false
+  strategy: linear
+
+  vars:
+    ansible_connection: local
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  tasks:
+    - name: Ensure terraform organization name has been defined
+      ansible.builtin.fail:
+        msg: "Terraform organization name should be defined using 'terraform_organization_name'"
+      when: terraform_organization_name is undefined
+
+    - name: Ensure terraform organization token has been defined
+      ansible.builtin.fail:
+        msg: "Terraform organization token should be defined using 'terraform_organization_token'"
+      when: terraform_organization_token is undefined  
+
+    - name: Create temporary directory for the terraform configuration
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: .tf
+      register: tfdir
+
+    - name: Run tests
+      block:
+        - name: Copy terraform configuration into temporary directory
+          ansible.builtin.copy:
+            src: "main.tf"
+            dest: "{{ tfdir.path }}/main.tf"
+
+        - name: Create provider configuration
+          ansible.builtin.template:
+            src: "provider.tf.j2"
+            dest: "{{ tfdir.path }}/provider.tf"
+
+        - name: Run terraform init into the project directory
+          ansible.builtin.command:
+            cmd: terraform init -input=false
+            chdir: "{{ tfdir.path }}"
+          when: run_terraform_init | default(false) | bool
+
+        - name: Deploy terraform resources
+          cloud.terraform.terraform:
+            project_path: "{{ tfdir.path }}"
+            state: present
+            force_init: "{{ force_init | default(omit) }}"
+            workspace: "{{ module_workspace | default(omit) }}"
+          register: tf_run
+          ignore_errors: true
+
+        - name: Ensure module has failed with the appropriate message
+          ansible.builtin.assert:
+            that:
+              - tf_run is failed
+              - error_message in tf_run.msg
+          when: error_message is defined
+
+        - name: Validate that module run successfully
+          ansible.builtin.assert:
+            that:
+              - tf_run is successful
+              - tf_run.workspace == (module_workspace | default(result_workspace))
+          when: error_message is undefined
+      
+      always:
+        - name: Delete temporary directory
+          ansible.builtin.file:
+            state: absent
+            path: "{{ tfdir.path }}"
+          ignore_errors: true
