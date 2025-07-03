@@ -4,7 +4,10 @@ import pytest
 from ansible.module_utils.compat.version import LooseVersion
 from ansible_collections.cloud.terraform.plugins.module_utils.terraform_commands import (
     TerraformCommands,
+    TerraformError,
+    TerraformWarning,
     WorkspaceCommand,
+    _capture_error_message,
 )
 
 
@@ -78,6 +81,37 @@ class TestTerraformCommands:
             upgrade=True,
             plugin_paths=["/plugin/path"],
         )
+
+        expected_cmd = [
+            "init",
+            "-input=false",
+            "-no-color",
+            "-backend-config",
+            "test_val=test",
+            "-backend-config",
+            "config_file",
+            "-reconfigure",
+            "-upgrade",
+            "-plugin-dir",
+            "/plugin/path",
+        ]
+
+        self.mock.assert_called_with(*expected_cmd, check_rc=False)
+
+    def test_init_failure(self):
+        self.tf._run = self.mock
+        rc = 1
+        stderr = "Error: terraform init has failed"
+        stdout = ""
+        self.mock.return_value = (rc, stdout, stderr)
+        with pytest.raises(TerraformError):
+            self.tf.init(
+                backend_config={"test_val": "test"},
+                backend_config_files=["config_file"],
+                reconfigure=True,
+                upgrade=True,
+                plugin_paths=["/plugin/path"],
+            )
 
         expected_cmd = [
             "init",
@@ -182,3 +216,42 @@ class TestTerraformCommands:
         self.tf.workspace_list()
         expected_cmd = ["workspace", "list", "-no-color"]
         self.mock.assert_called_with(*expected_cmd, check_rc=False)
+
+    def test_workspace_show(self):
+        self.mock.return_value = (self.rc, self.stdout, self.stderr)
+        self.tf._run = self.mock
+        self.tf.workspace_show()
+        expected_cmd = ["workspace", "show", "-no-color"]
+        self.mock.assert_called_with(*expected_cmd, check_rc=False)
+
+    def test_workspace_show_failure(self):
+        stderr = "terraform show has failed"
+        self.mock.return_value = (1, self.stdout, stderr)
+        self.tf._run = self.mock
+        with pytest.raises(TerraformWarning) as exc:
+            self.tf.workspace_show()
+        assert exc.value.message == f"Failed to show Terraform current workspace:\n{stderr}"
+        expected_cmd = ["workspace", "show", "-no-color"]
+        self.mock.assert_called_with(*expected_cmd, check_rc=False)
+
+    @pytest.mark.parametrize("exists", [True, False])
+    def test_is_initialized(self, tmp_path, exists):
+        self.tf.project_path = tmp_path
+        if exists:
+            terraform_d = tmp_path / ".terraform"
+            terraform_d.mkdir()
+            terraform_state = terraform_d / "terraform.tfstate"
+            terraform_state.write_text("This state file exists")
+            assert self.tf.is_initialized() is True
+        else:
+            assert self.tf.is_initialized() is False
+
+    @pytest.mark.parametrize(
+        "stderr, expected",
+        [
+            ("Error: This is my error\nanother text message", "This is my error"),
+            ("No error message found", ""),
+        ],
+    )
+    def test__capture_error_message(self, stderr, expected):
+        assert _capture_error_message(stderr) == expected
