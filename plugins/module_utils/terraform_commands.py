@@ -1,5 +1,6 @@
 import enum
 import json
+import os
 from typing import Dict, List, Optional, Tuple, cast
 
 from ansible.module_utils.compat.version import LooseVersion
@@ -19,15 +20,35 @@ class WorkspaceCommand(enum.Enum):
     DELETE = "delete"
 
 
+def _capture_error_message(stderr: str) -> str:
+    err = ""
+    error_flag = "Error: "
+    for line in stderr.splitlines():
+        if line.startswith(error_flag):
+            err = line.split(" ", maxsplit=1)[1]
+    return err
+
+
 class TerraformCommands:
-    def __init__(self, run_command_fp: AnsibleRunCommandType, project_path: str, binary_path: str, check_mode: bool):
+    def __init__(
+        self,
+        run_command_fp: AnsibleRunCommandType,
+        project_path: str,
+        binary_path: str,
+        check_mode: bool,
+        workspace: Optional[str] = None,
+    ):
         self.run_command_fp = run_command_fp
         self.project_path = project_path
         self.binary_path = binary_path
         self.check_mode = check_mode
+        self.tfworkspace = workspace
 
     def _run(self, *args: str, check_rc: bool) -> Tuple[int, str, str]:
-        return self.run_command_fp([self.binary_path] + list(args), cwd=self.project_path, check_rc=check_rc)
+        params = {}
+        if self.tfworkspace:
+            params = {"environ_update": {"TF_WORKSPACE": self.tfworkspace}}
+        return self.run_command_fp([self.binary_path] + list(args), cwd=self.project_path, check_rc=check_rc, **params)
 
     def apply_plan(
         self,
@@ -100,7 +121,9 @@ class TerraformCommands:
         if plugin_paths:
             for plugin_path in plugin_paths:
                 command.extend(["-plugin-dir", plugin_path])
-        self._run(*command, check_rc=True)
+        rc, stdout, stderr = self._run(*command, check_rc=False)
+        if rc != 0:
+            raise TerraformError(_capture_error_message(stderr))
 
     def plan(
         self,
@@ -267,3 +290,16 @@ class TerraformCommands:
             else:
                 all_workspaces.append(stripped_item)
         return TerraformWorkspaceContext(current=current_workspace, all=all_workspaces)
+
+    def workspace_show(self) -> str:
+        """Show the current workspace"""
+        rc, out, err = self._run("workspace", "show", "-no-color", check_rc=False)
+        if rc != 0:
+            raise TerraformWarning("Failed to show Terraform current workspace:\n{0}".format(err))
+        return out.rstrip("\n")
+
+    def is_initialized(self) -> bool:
+        """Determines whether the project has been initialized or not
+        `terraform init` executed on the project path
+        """
+        return os.path.isfile(os.path.join(self.project_path, ".terraform", "terraform.tfstate"))

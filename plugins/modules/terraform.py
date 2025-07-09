@@ -50,8 +50,13 @@ options:
   workspace:
     description:
       - The terraform workspace to work with.
+      - A new logic to identify the workspace has been developed, added in version 4.0.0.
+      - When O(workspace) is provided, then this is the value that will be used. The module will raise an error
+        if this value differs from the value set into the cloud block from the terraform config.
+      - When O(workspace) is not provided, then the module will use workspace from the cloud block in the terraform config if defined,
+        or the default workspace behavior of the CLI will be applied.
+      - The default value of the workspace will be the current workspace. added in version 4.0.0.
     type: str
-    default: default
     version_added: 1.0.0
   purge_workspace:
     description:
@@ -284,6 +289,21 @@ command:
   description: Full C(terraform) command built by this module, in case you want to re-run the command outside the module or debug a problem.
   returned: always
   sample: terraform apply ...
+workspace:
+  type: str
+  description: The terraform  workspace used to deploy resources.
+  returned: always
+  sample: 'default'
+state:
+  type: str
+  description: The computed state.
+  returned: always
+  sample: 'present'
+stderr:
+  type: str
+  description: The terraform apply command standard error.
+  returned: always
+  sample: ''
 """
 
 import dataclasses
@@ -433,7 +453,7 @@ def main() -> None:
             project_path=dict(required=True, type="path"),
             binary_path=dict(type="path"),
             plugin_paths=dict(type="list", elements="path"),
-            workspace=dict(type="str", default="default"),
+            workspace=dict(type="str"),
             purge_workspace=dict(type="bool", default=False),
             state=dict(default="present", choices=["present", "absent", "planned"]),
             variables=dict(type="dict"),
@@ -493,19 +513,18 @@ def main() -> None:
     else:
         terraform_binary = module.get_bin_path("terraform", required=True)
 
-    terraform = TerraformCommands(module.run_command, project_path, terraform_binary, computed_check_mode)
+    terraform = TerraformCommands(module.run_command, project_path, terraform_binary, computed_check_mode, workspace)
 
     checked_version = terraform.version()
 
-    if force_init:
-        if overwrite_init or not os.path.isfile(os.path.join(project_path, ".terraform", "terraform.tfstate")):
-            terraform.init(
-                backend_config or {},
-                backend_config_files or [],
-                init_reconfigure,
-                provider_upgrade,
-                plugin_paths or [],
-            )
+    if force_init and (overwrite_init or not terraform.is_initialized()):
+        terraform.init(
+            backend_config or {},
+            backend_config_files or [],
+            init_reconfigure,
+            provider_upgrade,
+            plugin_paths or [],
+        )
 
     out = None
     err = None
@@ -519,6 +538,8 @@ def main() -> None:
             module.warn(e.message)
             initial_state = None
 
+        if not workspace:
+            workspace = terraform.workspace_show()
         try:
             workspace_ctx = terraform.workspace_list()
         except TerraformWarning as e:
