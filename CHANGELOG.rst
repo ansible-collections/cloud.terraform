@@ -4,6 +4,31 @@ The cloud.terraform collection Release Notes
 
 .. contents:: Topics
 
+v4.0.0
+======
+
+Release Summary
+---------------
+
+This major release updates the workspace logic for the Terraform module and adds some bug fixes.
+
+Breaking Changes / Porting Guide
+--------------------------------
+
+- terraform - The default value `default` for the `workspace` argument has been removed (https://github.com/ansible-collections/cloud.terraform/pull/200).
+
+Minor Changes
+-------------
+
+- inventory/terraform_state - Support for custom Terraform providers (https://github.com/ansible-collections/cloud.terraform/pull/146).
+- terraform - Update module logic to determine workspace (https://github.com/ansible-collections/cloud.terraform/pull/200).
+
+Bugfixes
+--------
+
+- inventory/terraform_state - Add support for remote/cloud backends (https://github.com/ansible-collections/cloud.terraform/issues/150).
+- inventory/terraform_state - use ``terraform pull`` instead of ``terraform show`` to parse raw state file to avoid provider versioning constraints (https://github.com/ansible-collections/cloud.terraform/issues/151).
+
 v3.1.0
 ======
 
@@ -44,7 +69,7 @@ v2.1.0
 Release Summary
 ---------------
 
-The cloud.terraform 2.1.0 release includes a new module to ``plan_stash`` and a new inventory plugin ``terraform_state``.
+The cloud.terraform 2.1.0 release includes a new module to plan_stash and a new inventory plugin terraform_state
 
 New Plugins
 -----------
