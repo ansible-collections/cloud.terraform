@@ -185,4 +185,4 @@ releases:
     - 20240731-terraform_state-support-remote-cloud-backend.yml
     - 20250630-terraform-review-workspace-logic.yaml
     - release_summary.yml
-    release_date: '2025-07-09'
+    release_date: '2025-07-11'
