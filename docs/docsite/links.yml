@@ -1,7 +1,7 @@
 ---
 edit_on_github:
   repository: ansible-collections/cloud.terraform
-  branch: main
+  branch: stable-4
   path_prefix: ''
 
 extra_links:

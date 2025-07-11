@@ -165,3 +165,24 @@ releases:
     - 3_1_0.yml
     - readme_template_update.yml
     release_date: '2025-04-30'
+  4.0.0:
+    changes:
+      breaking_changes:
+      - terraform - The default value `default` for the `workspace` argument has been
+        removed (https://github.com/ansible-collections/cloud.terraform/pull/200).
+      bugfixes:
+      - inventory/terraform_state - Add support for remote/cloud backends (https://github.com/ansible-collections/cloud.terraform/issues/150).
+      - inventory/terraform_state - use ``terraform pull`` instead of ``terraform
+        show`` to parse raw state file to avoid provider versioning constraints (https://github.com/ansible-collections/cloud.terraform/issues/151).
+      minor_changes:
+      - inventory/terraform_state - Support for custom Terraform providers (https://github.com/ansible-collections/cloud.terraform/pull/146).
+      - terraform - Update module logic to determine workspace (https://github.com/ansible-collections/cloud.terraform/pull/200).
+      release_summary: This major release updates the workspace logic for the Terraform
+        module and adds some bug fixes.
+    fragments:
+    - 20240620-inventory-terraform_state-fix-issue-with-terraform-show.yaml
+    - 20240628-inventory-terraform_state-custom-providers.yaml
+    - 20240731-terraform_state-support-remote-cloud-backend.yml
+    - 20250630-terraform-review-workspace-logic.yaml
+    - release_summary.yml
+    release_date: '2025-07-11'

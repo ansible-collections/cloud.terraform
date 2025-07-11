@@ -17,20 +17,20 @@ This collection requires Ansible Core 2.15 or later and thus Python 3.9 or later
 ### Inventory plugins
 Name | Description
 --- | ---
-[cloud.terraform.terraform_provider](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_provider_inventory.rst)|Builds an inventory from Terraform state file.
-[cloud.terraform.terraform_state](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_state_inventory.rst)|Builds an inventory from resources created by cloud providers.
+[cloud.terraform.terraform_provider](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/docs/cloud.terraform.terraform_provider_inventory.rst)|Builds an inventory from Terraform state file.
+[cloud.terraform.terraform_state](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/docs/cloud.terraform.terraform_state_inventory.rst)|Builds an inventory from resources created by cloud providers.
 
 ### Lookup plugins
 Name | Description
 --- | ---
-[cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
+[cloud.terraform.tf_output](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/docs/cloud.terraform.tf_output_lookup.rst)|Reads state file outputs.
 
 ### Modules
 Name | Description
 --- | ---
-[cloud.terraform.plan_stash](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.plan_stash_module.rst)|Handle the base64 encoding or decoding of a terraform plan file
-[cloud.terraform.terraform](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_module.rst)|Manages a Terraform deployment (and plans)
-[cloud.terraform.terraform_output](https://github.com/ansible-collections/cloud.terraform/blob/main/docs/cloud.terraform.terraform_output_module.rst)|Returns Terraform module outputs.
+[cloud.terraform.plan_stash](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/docs/cloud.terraform.plan_stash_module.rst)|Handle the base64 encoding or decoding of a terraform plan file
+[cloud.terraform.terraform](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/docs/cloud.terraform.terraform_module.rst)|Manages a Terraform deployment (and plans)
+[cloud.terraform.terraform_output](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/docs/cloud.terraform.terraform_output_module.rst)|Returns Terraform module outputs.
 
 <!--end collection content-->
 
@@ -54,7 +54,7 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: cloud.terraform
-    version: 1.1.0
+    version: 4.0.0
 ```
 
 ## Use Cases
@@ -162,7 +162,7 @@ ansible-doc --list | grep cloud.terraform | cut -d " " -f 1 | xargs -I {} antsib
 ## Contributing to this collection
 
 We welcome community contributions to this collection. If you find problems, please open an issue or create a PR against this collection repository.
-See [CONTRIBUTING.md](https://github.com/ansible-collections/cloud.terraform/blob/main/CONTRIBUTING.md) for more details.
+See [CONTRIBUTING.md](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/CONTRIBUTING.md) for more details.
 
 ## Support
 
@@ -173,7 +173,7 @@ If you encounter issues or have questions, you can submit a support request thro
 
 ## Release Notes
 
-See the [raw generated changelog](https://github.com/ansible-collections/cloud.terraform/blob/main/CHANGELOG.rst).
+See the [raw generated changelog](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/CHANGELOG.rst).
 
 
 ## Related Information
@@ -185,5 +185,5 @@ See the [raw generated changelog](https://github.com/ansible-collections/cloud.t
 
 GNU General Public License v3.0 or later.
 
-See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/main/LICENSE) to see the full text.
+See [LICENSE](https://github.com/ansible-collections/cloud.terraform/blob/stable-4/LICENSE) to see the full text.
 
