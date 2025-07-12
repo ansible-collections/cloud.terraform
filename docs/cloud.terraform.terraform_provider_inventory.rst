@@ -57,6 +57,52 @@ Parameters
             <tr>
                 <td colspan="1">
                     <div class="ansibleOptionAnchor" id="parameter-"></div>
+                    <b>exclude_modules</b>
+                    <a class="ansibleOptionLink" href="#parameter-" title="Permalink to this option"></a>
+                    <div style="font-size: small">
+                        <span style="color: purple">list</span>
+                         / <span style="color: purple">elements=string</span>
+                    </div>
+                    <div style="font-style: italic; font-size: small; color: darkgreen">added in 4.0.0</div>
+                </td>
+                <td>
+                </td>
+                    <td>
+                    </td>
+                <td>
+                        <div>List of child module names to exclude from the inventory.</div>
+                        <div>If not specified, no modules are excluded.</div>
+                        <div>Filters based on module name extracted from resource address.</div>
+                        <div>Cannot be used together with <em>include_modules</em>.</div>
+                        <div>Only applies when <em>search_child_modules</em> is true.</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="1">
+                    <div class="ansibleOptionAnchor" id="parameter-"></div>
+                    <b>include_modules</b>
+                    <a class="ansibleOptionLink" href="#parameter-" title="Permalink to this option"></a>
+                    <div style="font-size: small">
+                        <span style="color: purple">list</span>
+                         / <span style="color: purple">elements=string</span>
+                    </div>
+                    <div style="font-style: italic; font-size: small; color: darkgreen">added in 4.0.0</div>
+                </td>
+                <td>
+                </td>
+                    <td>
+                    </td>
+                <td>
+                        <div>List of child module names to include in the inventory.</div>
+                        <div>If not specified, all modules are included.</div>
+                        <div>Filters based on module name extracted from resource address.</div>
+                        <div>Cannot be used together with <em>exclude_modules</em>.</div>
+                        <div>Only applies when <em>search_child_modules</em> is true.</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="1">
+                    <div class="ansibleOptionAnchor" id="parameter-"></div>
                     <b>plugin</b>
                     <a class="ansibleOptionLink" href="#parameter-" title="Permalink to this option"></a>
                     <div style="font-size: small">
@@ -110,8 +156,8 @@ Parameters
                 </td>
                 <td>
                         <ul style="margin: 0; padding: 0"><b>Choices:</b>
-                                    <li><div style="color: blue"><b>no</b>&nbsp;&larr;</div></li>
-                                    <li>yes</li>
+                                    <li>no</li>
+                                    <li><div style="color: blue"><b>yes</b>&nbsp;&larr;</div></li>
                         </ul>
                 </td>
                     <td>
@@ -199,6 +245,32 @@ Examples
       plugin: cloud.terraform.terraform_provider
       project_path: some/project/path
       state_file: mycustomstate.tfstate
+
+    - name: Create an inventory including only specific modules
+      plugin: cloud.terraform.terraform_provider
+      project_path: some/project/path
+      include_modules:
+        - web_servers
+        - database
+
+    - name: Create an inventory excluding specific modules
+      plugin: cloud.terraform.terraform_provider
+      project_path: some/project/path
+      exclude_modules:
+        - development
+        - testing
+
+    - name: Create an inventory with nested module filtering
+      plugin: cloud.terraform.terraform_provider
+      project_path: some/project/path
+      include_modules:
+        - production.frontend
+        - production.backend
+
+    - name: Create an inventory with child modules disabled
+      plugin: cloud.terraform.terraform_provider
+      project_path: some/project/path
+      search_child_modules: false
 
 
 
