@@ -43,13 +43,35 @@ options:
     description:
       - Whether to include ansible_host and ansible_group resources from Terraform child modules.
     type: bool
-    default: false
+    default: true
     version_added: 1.2.0
   binary_path:
     description:
       - The path of a terraform binary to use.
     type: path
     version_added: 1.1.0
+  include_modules:
+    description:
+      - List of child module names to include in the inventory.
+      - If not specified, all modules are included.
+      - Filters based on module name extracted from resource address.
+      - Cannot be used together with I(exclude_modules).
+      - Only applies when I(search_child_modules) is true.
+    type: list
+    elements: str
+    required: false
+    version_added: 4.0.0
+  exclude_modules:
+    description:
+      - List of child module names to exclude from the inventory.
+      - If not specified, no modules are excluded.
+      - Filters based on module name extracted from resource address.
+      - Cannot be used together with I(include_modules).
+      - Only applies when I(search_child_modules) is true.
+    type: list
+    elements: str
+    required: false
+    version_added: 4.0.0
 """
 
 EXAMPLES = r"""
@@ -101,6 +123,32 @@ EXAMPLES = r"""
   plugin: cloud.terraform.terraform_provider
   project_path: some/project/path
   state_file: mycustomstate.tfstate
+
+- name: Create an inventory including only specific modules
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  include_modules:
+    - web_servers
+    - database
+
+- name: Create an inventory excluding specific modules
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  exclude_modules:
+    - development
+    - testing
+
+- name: Create an inventory with nested module filtering
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  include_modules:
+    - production.frontend
+    - production.backend
+
+- name: Create an inventory with child modules disabled
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  search_child_modules: false
 """
 
 
