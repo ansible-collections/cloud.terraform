@@ -209,74 +209,73 @@ class InventoryModule(TerraformInventoryPluginBase):
         if attributes.variables:
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
-    
+
     def _extract_module_name(self, resource: TerraformModuleResource) -> Optional[str]:
-        address = getattr(resource, 'address', '')
-        resource_type = getattr(resource, 'type', '')
-        
+        address = getattr(resource, "address", "")
+        resource_type = getattr(resource, "type", "")
+
         if not address or not resource_type:
             return None
-        
-        parts = address.split('.')
+
+        parts = address.split(".")
 
         # Child resources needs to be at least module.name.type.resource_name
-        if len(parts) >= 4:     
+        if len(parts) >= 4:
             # Checks if resource.address starts with data.module or module
-            if 'module' in parts[:2]: 
+            if "module" in parts[:2]:
                 # Find the resource type in the address to determine module boundary
                 try:
                     resource_type_index = parts.index(resource_type)
                 except ValueError:
                     # Resource type not found in address, should not happen in normal cases
                     return None
-                
+
                 # Everything before the resource type could be module path
                 module_parts = parts[:resource_type_index]
 
                 # Remove 'data' prefix if present
-                if module_parts and module_parts[0] == 'data':
+                if module_parts and module_parts[0] == "data":
                     module_parts = module_parts[1:]
 
                 # Remove 'module' prefix if present and extract module name
                 if module_parts:
                     module_parts = module_parts[1:]
-                    return '.'.join(module_parts)
+                    return ".".join(module_parts)
 
         # Not in a module (root module)
         return None
 
     def _should_include_resource(
-        self, 
-        resource: TerraformModuleResource, 
-        include_modules: Optional[List[str]], 
-        exclude_modules: Optional[List[str]]
+        self,
+        resource: TerraformModuleResource,
+        include_modules: Optional[List[str]],
+        exclude_modules: Optional[List[str]],
     ) -> bool:
-        
         module_name = self._extract_module_name(resource)
-        
+
         # If resource is in root module (module_name is None)
         if module_name is None and not include_modules:
             # Root module resources are always included unless include_modules is used
             return True
-        
+
         # Handle exclude_modules first (takes precedence)
         if exclude_modules is not None and module_name in exclude_modules:
             return False
-        
+
         # Handle include_modules
         if include_modules is not None:
             return module_name in include_modules
-        
+
         # Default: include everything
         return True
 
     def create_inventory(
-        self, 
-        inventory: Any, 
-        state_content: List[Optional[TerraformShow]], 
+        self,
+        inventory: Any,
+        state_content: List[Optional[TerraformShow]],
         search_child_modules: bool,
         include_modules: Optional[List[str]] = None,
-        exclude_modules: Optional[List[str]] = None
+        exclude_modules: Optional[List[str]] = None,
     ) -> None:
         for state in state_content:
             if state is None:
@@ -289,15 +288,15 @@ class InventoryModule(TerraformInventoryPluginBase):
 
             for resource in root_resources:
                 # Apply module filtering only if search_child_modules is enabled
-                if search_child_modules and not self._should_include_resource(resource, include_modules, exclude_modules):
+                if search_child_modules and not self._should_include_resource(
+                    resource, include_modules, exclude_modules
+                ):
                     continue
-                    
+
                 if resource.type == "ansible_group":
                     self._add_group(inventory, resource)
                 elif resource.type == "ansible_host":
                     self._add_host(inventory, resource)
-
-
 
     def parse(self, inventory, loader, path, cache=False):  # type: ignore  # mypy ignore
         super(InventoryModule, self).parse(inventory, loader, path)
