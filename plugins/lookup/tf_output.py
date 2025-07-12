@@ -80,6 +80,7 @@ import os
 import subprocess
 from typing import Dict, List, Optional, Tuple
 
+from ansible.errors import AnsibleLookupError
 from ansible.module_utils.common import process
 from ansible.plugins.lookup import LookupBase
 from ansible_collections.cloud.terraform.plugins.module_utils.types import AnyJsonType
@@ -111,7 +112,10 @@ class LookupModule(LookupBase):  # type: ignore  # cannot subclass without avail
         if bin_path is not None:
             terraform_binary = bin_path
         else:
-            terraform_binary = process.get_bin_path("terraform", required=True)
+            try:
+                terraform_binary = process.get_bin_path("terraform")
+            except ValueError:
+                raise AnsibleLookupError("Unable to find 'terraform' binary in the path")
 
         output: List[AnyJsonType] = []
         if not terms:
