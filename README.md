@@ -54,7 +54,7 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: cloud.terraform
-    version: 1.1.0
+    version: 4.0.0
 ```
 
 ## Use Cases
@@ -166,10 +166,8 @@ See [CONTRIBUTING.md](https://github.com/ansible-collections/cloud.terraform/blo
 
 ## Support
 
-For the latest supported versions, refer to the release notes below.
-
-If you encounter issues or have questions, you can submit a support request through the following channels:
- - GitHub Issues: Report bugs, request features, or ask questions by opening an issue in the [GitHub repository](https://github.com/ansible-collections/cloud.terraform).
+As Red Hat Ansible Certified Content, this collection is entitled to support through the Ansible Automation Platform (AAP) using the **Create issue** button on the top right corner.
+If a support case cannot be opened with Red Hat and the collection has been obtained either from Galaxy or GitHub, there may community help available on the [Ansible Forum](https://forum.ansible.com/).
 
 ## Release Notes
 
