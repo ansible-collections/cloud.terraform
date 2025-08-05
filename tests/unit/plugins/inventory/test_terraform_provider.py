@@ -17,7 +17,8 @@ from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformShowValues,
 )
 
-from plugins.module_utils.errors import TerraformWarning
+# Fix this import - it should be from ansible_collections, not plugins
+from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 
 
 @pytest.fixture
@@ -159,7 +160,595 @@ class TestInventoryModuleAddGroup:
         assert groups["group_name"].vars["group_var2"] == "2"
 
 
+class TestExtractModuleName:
+    def test_extract_module_name_root_resource(self, inventory_plugin):
+        """Test extraction for root module resource"""
+        resource = TerraformRootModuleResource(
+            address="ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._extract_module_name(resource) is None
+
+    def test_extract_module_name_simple_module(self, inventory_plugin):
+        """Test extraction for simple module resource"""
+        resource = TerraformChildModuleResource(
+            address="module.web_servers.ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._extract_module_name(resource) == "web_servers"
+
+    def test_extract_module_name_nested_module(self, inventory_plugin):
+        """Test extraction for nested module resource"""
+        resource = TerraformChildModuleResource(
+            address="module.production.frontend.ansible_host.web1",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._extract_module_name(resource) == "production.frontend"
+
+    def test_extract_module_name_data_resource(self, inventory_plugin):
+        """Test extraction for data resource in module"""
+        resource = TerraformChildModuleResource(
+            address="data.module.database.ansible_host.db1",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._extract_module_name(resource) == "database"
+
+    def test_extract_module_name_complex_nested(self, inventory_plugin):
+        """Test extraction for complex nested module"""
+        resource = TerraformChildModuleResource(
+            address="module.environment.production.services.web.ansible_host.server1",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._extract_module_name(resource) == "environment.production.services.web"
+
+    def test_extract_module_name_invalid_address(self, inventory_plugin):
+        """Test extraction with invalid or empty address"""
+        resource = TerraformRootModuleResource(
+            address="",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._extract_module_name(resource) is None
+
+    def test_extract_module_name_missing_resource_type(self, inventory_plugin):
+        """Test extraction when resource type is not found in address"""
+        resource = TerraformChildModuleResource(
+            address="module.web_servers.something.else",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._extract_module_name(resource) is None
+
+
+class TestShouldIncludeResource:
+    def test_should_include_root_resource_no_filters(self, inventory_plugin):
+        """Root resource should be included when no filters are specified"""
+        resource = TerraformRootModuleResource(
+            address="ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._should_include_resource(resource, None, None) is True
+
+    def test_should_include_root_resource_with_include_modules(self, inventory_plugin):
+        """Root resource should be excluded when include_modules is specified"""
+        resource = TerraformRootModuleResource(
+            address="ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._should_include_resource(resource, ["web_servers"], None) is False
+
+    def test_should_include_module_resource_in_include_list(self, inventory_plugin):
+        """Module resource should be included when in include_modules list"""
+        resource = TerraformChildModuleResource(
+            address="module.web_servers.ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._should_include_resource(resource, ["web_servers", "database"], None) is True
+
+    def test_should_exclude_module_resource_not_in_include_list(self, inventory_plugin):
+        """Module resource should be excluded when not in include_modules list"""
+        resource = TerraformChildModuleResource(
+            address="module.api_servers.ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._should_include_resource(resource, ["web_servers", "database"], None) is False
+
+    def test_should_exclude_module_resource_in_exclude_list(self, inventory_plugin):
+        """Module resource should be excluded when in exclude_modules list"""
+        resource = TerraformChildModuleResource(
+            address="module.development.ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._should_include_resource(resource, None, ["development", "testing"]) is False
+
+    def test_should_include_module_resource_not_in_exclude_list(self, inventory_plugin):
+        """Module resource should be included when not in exclude_modules list"""
+        resource = TerraformChildModuleResource(
+            address="module.production.ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._should_include_resource(resource, None, ["development", "testing"]) is True
+
+    def test_exclude_takes_precedence_over_include(self, inventory_plugin):
+        """exclude_modules should take precedence over include_modules"""
+        resource = TerraformChildModuleResource(
+            address="module.web_servers.ansible_host.example",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        # Even though web_servers is in include list, it's also in exclude list
+        assert inventory_plugin._should_include_resource(resource, ["web_servers"], ["web_servers"]) is False
+
+    def test_nested_module_filtering(self, inventory_plugin):
+        """Test filtering with nested module names"""
+        resource = TerraformChildModuleResource(
+            address="module.production.frontend.ansible_host.web1",
+            type="ansible_host",
+            mode=None,
+            name=None,
+            provider_name=None,
+            schema_version=None,
+            values={},
+            sensitive_values={},
+            depends_on=[],
+        )
+        assert inventory_plugin._should_include_resource(resource, ["production.frontend"], None) is True
+        assert inventory_plugin._should_include_resource(resource, ["production.backend"], None) is False
+
+
 class TestCreateInventory:
+    def test_create_inventory_with_include_modules(self, inventory_plugin):
+        """Test inventory creation with include_modules filtering"""
+        state_content = [
+            TerraformShow(
+                format_version="1.0",
+                terraform_version="1.3.6",
+                values=TerraformShowValues(
+                    outputs={},
+                    root_module=TerraformRootModule(
+                        resources=[
+                            TerraformRootModuleResource(
+                                address="ansible_host.roothost",
+                                mode="managed",
+                                type="ansible_host",
+                                name="roothost",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "groups": ["somegroup"],
+                                    "name": "roothost",
+                                    "id": "roothost",
+                                    "variables": {"host_hello": "from root!"},
+                                },
+                                sensitive_values={"groups": [False], "variables": {}},
+                                depends_on=[],
+                            ),
+                        ],
+                        child_modules=[
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="module.web_servers.ansible_host.webhost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="webhost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "webhost",
+                                            "id": "webhost",
+                                            "variables": {"host_hello": "from web!"},
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                    TerraformChildModuleResource(
+                                        address="module.database.ansible_host.dbhost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="dbhost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "dbhost",
+                                            "id": "dbhost",
+                                            "variables": {"host_hello": "from db!"},
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ),
+            )
+        ]
+
+        inventory_plugin.inventory = InventoryData()
+        # Only include web_servers module
+        inventory_plugin.create_inventory(
+            inventory_plugin.inventory, state_content, True, include_modules=["web_servers"]
+        )
+
+        hosts = inventory_plugin.inventory.hosts
+        # Should only have webhost, not roothost or dbhost
+        assert len(hosts) == 1
+        assert "webhost" in hosts
+        assert "roothost" not in hosts
+        assert "dbhost" not in hosts
+
+    def test_create_inventory_with_exclude_modules(self, inventory_plugin):
+        """Test inventory creation with exclude_modules filtering"""
+        state_content = [
+            TerraformShow(
+                format_version="1.0",
+                terraform_version="1.3.6",
+                values=TerraformShowValues(
+                    outputs={},
+                    root_module=TerraformRootModule(
+                        resources=[
+                            TerraformRootModuleResource(
+                                address="ansible_host.roothost",
+                                mode="managed",
+                                type="ansible_host",
+                                name="roothost",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "groups": ["somegroup"],
+                                    "name": "roothost",
+                                    "id": "roothost",
+                                    "variables": {"host_hello": "from root!"},
+                                },
+                                sensitive_values={"groups": [False], "variables": {}},
+                                depends_on=[],
+                            ),
+                        ],
+                        child_modules=[
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="module.web_servers.ansible_host.webhost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="webhost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "webhost",
+                                            "id": "webhost",
+                                            "variables": {"host_hello": "from web!"},
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                    TerraformChildModuleResource(
+                                        address="module.database.ansible_host.dbhost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="dbhost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "dbhost",
+                                            "id": "dbhost",
+                                            "variables": {"host_hello": "from db!"},
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ),
+            )
+        ]
+
+        inventory_plugin.inventory = InventoryData()
+        # Exclude database module
+        inventory_plugin.create_inventory(inventory_plugin.inventory, state_content, True, exclude_modules=["database"])
+
+        hosts = inventory_plugin.inventory.hosts
+        # Should have roothost and webhost, but not dbhost
+        assert len(hosts) == 2
+        assert "roothost" in hosts
+        assert "webhost" in hosts
+        assert "dbhost" not in hosts
+
+    def test_create_inventory_search_child_modules_false(self, inventory_plugin):
+        """Test that module filtering is ignored when search_child_modules is False"""
+        state_content = [
+            TerraformShow(
+                format_version="1.0",
+                terraform_version="1.3.6",
+                values=TerraformShowValues(
+                    outputs={},
+                    root_module=TerraformRootModule(
+                        resources=[
+                            TerraformRootModuleResource(
+                                address="ansible_host.roothost",
+                                mode="managed",
+                                type="ansible_host",
+                                name="roothost",
+                                provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                schema_version=0,
+                                values={
+                                    "groups": ["somegroup"],
+                                    "name": "roothost",
+                                    "id": "roothost",
+                                    "variables": {"host_hello": "from root!"},
+                                },
+                                sensitive_values={"groups": [False], "variables": {}},
+                                depends_on=[],
+                            ),
+                        ],
+                        child_modules=[
+                            TerraformChildModule(
+                                resources=[
+                                    TerraformChildModuleResource(
+                                        address="module.web_servers.ansible_host.webhost",
+                                        mode="managed",
+                                        type="ansible_host",
+                                        name="webhost",
+                                        provider_name="terraform-ansible.com/ansibleprovider/ansible",
+                                        schema_version=0,
+                                        values={
+                                            "groups": None,
+                                            "name": "webhost",
+                                            "id": "webhost",
+                                            "variables": {"host_hello": "from web!"},
+                                        },
+                                        sensitive_values={},
+                                        depends_on=[],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                ),
+            )
+        ]
+
+        inventory_plugin.inventory = InventoryData()
+        # search_child_modules=False should ignore module filtering
+        inventory_plugin.create_inventory(
+            inventory_plugin.inventory,
+            state_content,
+            False,  # search_child_modules=False
+            include_modules=["web_servers"],
+        )
+
+        hosts = inventory_plugin.inventory.hosts
+        # Should only have roothost (child modules ignored regardless of filtering)
+        assert len(hosts) == 1
+        assert "roothost" in hosts
+        assert "webhost" not in hosts
+
+
+class TestParseMethod:
+    def test_parse_mutually_exclusive_options(self, inventory_plugin, mocker):
+        """Test that mutually exclusive include_modules and exclude_modules raise an error"""
+
+        # Mock the _read_config_data to return the config with both options
+        mocker.patch.object(inventory_plugin, "_read_config_data").return_value = {
+            "project_path": "/test/path",
+            "state_file": "",
+            "search_child_modules": True,
+            "binary_path": None,
+            "include_modules": ["web_servers"],
+            "exclude_modules": ["database"],
+        }
+
+        # Mock the super().parse() call to avoid calling the parent class
+        mocker.patch("ansible_collections.cloud.terraform.plugins.plugin_utils.base.TerraformInventoryPluginBase.parse")
+
+        # Test that the error is raised with the correct message
+        with pytest.raises(TerraformError, match="mutually exclusive"):
+            inventory_plugin.parse(None, None, "/fake/path")
+
+    def test_parse_with_valid_config(self, inventory_plugin, mocker):
+        """Test parse method with valid configuration"""
+
+        # Mock dependencies
+        mocker.patch.object(inventory_plugin, "_read_config_data").return_value = {
+            "project_path": "/test/path",
+            "state_file": "",
+            "search_child_modules": True,
+            "binary_path": None,
+            "include_modules": ["web_servers"],
+            "exclude_modules": None,
+        }
+
+        # Mock the super().parse() call
+        mocker.patch("ansible_collections.cloud.terraform.plugins.plugin_utils.base.TerraformInventoryPluginBase.parse")
+
+        mock_terraform_commands = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformCommands"
+        )
+        mock_terraform_instance = mocker.Mock()
+        mock_terraform_commands.return_value = mock_terraform_instance
+        mock_terraform_instance.show.return_value = None
+
+        mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.process.get_bin_path"
+        ).return_value = "/usr/bin/terraform"
+
+        mocker.patch.object(inventory_plugin, "create_inventory")
+
+        # Should not raise an exception
+        inventory_plugin.parse(None, None, "/fake/path")
+
+        # Verify create_inventory was called with the right parameters
+        inventory_plugin.create_inventory.assert_called_once()
+        call_args = inventory_plugin.create_inventory.call_args
+        assert call_args[0][2] is True  # search_child_modules
+        assert call_args[0][3] == ["web_servers"]  # include_modules
+        assert call_args[0][4] is None  # exclude_modules
+
+    def test_parse_include_modules_only(self, inventory_plugin, mocker):
+        """Test parse method with only include_modules (should work)"""
+
+        mocker.patch.object(inventory_plugin, "_read_config_data").return_value = {
+            "project_path": "/test/path",
+            "state_file": "",
+            "search_child_modules": True,
+            "binary_path": None,
+            "include_modules": ["web_servers"],
+            "exclude_modules": None,
+        }
+
+        mocker.patch("ansible_collections.cloud.terraform.plugins.plugin_utils.base.TerraformInventoryPluginBase.parse")
+
+        mock_terraform_commands = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformCommands"
+        )
+        mock_terraform_instance = mocker.Mock()
+        mock_terraform_commands.return_value = mock_terraform_instance
+        mock_terraform_instance.show.return_value = None
+
+        mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.process.get_bin_path"
+        ).return_value = "/usr/bin/terraform"
+
+        mocker.patch.object(inventory_plugin, "create_inventory")
+
+        # Should not raise an exception
+        inventory_plugin.parse(None, None, "/fake/path")
+
+    def test_parse_exclude_modules_only(self, inventory_plugin, mocker):
+        """Test parse method with only exclude_modules (should work)"""
+
+        mocker.patch.object(inventory_plugin, "_read_config_data").return_value = {
+            "project_path": "/test/path",
+            "state_file": "",
+            "search_child_modules": True,
+            "binary_path": None,
+            "include_modules": None,
+            "exclude_modules": ["database"],
+        }
+
+        mocker.patch("ansible_collections.cloud.terraform.plugins.plugin_utils.base.TerraformInventoryPluginBase.parse")
+
+        mock_terraform_commands = mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.TerraformCommands"
+        )
+        mock_terraform_instance = mocker.Mock()
+        mock_terraform_commands.return_value = mock_terraform_instance
+        mock_terraform_instance.show.return_value = None
+
+        mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_provider.process.get_bin_path"
+        ).return_value = "/usr/bin/terraform"
+
+        mocker.patch.object(inventory_plugin, "create_inventory")
+
+        # Should not raise an exception
+        inventory_plugin.parse(None, None, "/fake/path")
+
+
+# Keep the existing tests for backward compatibility
+class TestCreateInventoryLegacy:
     def test_create_inventory(self, inventory_plugin):
         state_content = [
             TerraformShow(

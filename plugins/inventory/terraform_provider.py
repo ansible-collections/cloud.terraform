@@ -43,13 +43,35 @@ options:
     description:
       - Whether to include ansible_host and ansible_group resources from Terraform child modules.
     type: bool
-    default: false
+    default: true
     version_added: 1.2.0
   binary_path:
     description:
       - The path of a terraform binary to use.
     type: path
     version_added: 1.1.0
+  include_modules:
+    description:
+      - List of child module names to include in the inventory.
+      - If not specified, all modules are included.
+      - Filters based on module name extracted from resource address.
+      - Cannot be used together with I(exclude_modules).
+      - Only applies when I(search_child_modules) is true.
+    type: list
+    elements: str
+    required: false
+    version_added: 4.0.0
+  exclude_modules:
+    description:
+      - List of child module names to exclude from the inventory.
+      - If not specified, no modules are excluded.
+      - Filters based on module name extracted from resource address.
+      - Cannot be used together with I(include_modules).
+      - Only applies when I(search_child_modules) is true.
+    type: list
+    elements: str
+    required: false
+    version_added: 4.0.0
 """
 
 EXAMPLES = r"""
@@ -101,6 +123,32 @@ EXAMPLES = r"""
   plugin: cloud.terraform.terraform_provider
   project_path: some/project/path
   state_file: mycustomstate.tfstate
+
+- name: Create an inventory including only specific modules
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  include_modules:
+    - web_servers
+    - database
+
+- name: Create an inventory excluding specific modules
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  exclude_modules:
+    - development
+    - testing
+
+- name: Create an inventory with nested module filtering
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  include_modules:
+    - production.frontend
+    - production.backend
+
+- name: Create an inventory with child modules disabled
+  plugin: cloud.terraform.terraform_provider
+  project_path: some/project/path
+  search_child_modules: false
 """
 
 
@@ -162,8 +210,72 @@ class InventoryModule(TerraformInventoryPluginBase):
             for key, value in attributes.variables.items():
                 inventory.set_variable(attributes.name, key, value)
 
+    def _extract_module_name(self, resource: TerraformModuleResource) -> Optional[str]:
+        address = getattr(resource, "address", "")
+        resource_type = getattr(resource, "type", "")
+
+        if not address or not resource_type:
+            return None
+
+        parts = address.split(".")
+
+        # Child resources needs to be at least module.name.type.resource_name
+        if len(parts) >= 4:
+            # Checks if resource.address starts with data.module or module
+            if "module" in parts[:2]:
+                # Find the resource type in the address to determine module boundary
+                try:
+                    resource_type_index = parts.index(resource_type)
+                except ValueError:
+                    # Resource type not found in address, should not happen in normal cases
+                    return None
+
+                # Everything before the resource type could be module path
+                module_parts = parts[:resource_type_index]
+
+                # Remove 'data' prefix if present
+                if module_parts and module_parts[0] == "data":
+                    module_parts = module_parts[1:]
+
+                # Remove 'module' prefix if present and extract module name
+                if module_parts:
+                    module_parts = module_parts[1:]
+                    return ".".join(module_parts)
+
+        # Not in a module (root module)
+        return None
+
+    def _should_include_resource(
+        self,
+        resource: TerraformModuleResource,
+        include_modules: Optional[List[str]],
+        exclude_modules: Optional[List[str]],
+    ) -> bool:
+        module_name = self._extract_module_name(resource)
+
+        # If resource is in root module (module_name is None)
+        if module_name is None and not include_modules:
+            # Root module resources are always included unless include_modules is used
+            return True
+
+        # Handle exclude_modules first (takes precedence)
+        if exclude_modules is not None and module_name in exclude_modules:
+            return False
+
+        # Handle include_modules
+        if include_modules is not None:
+            return module_name in include_modules
+
+        # Default: include everything
+        return True
+
     def create_inventory(
-        self, inventory: Any, state_content: List[Optional[TerraformShow]], search_child_modules: bool
+        self,
+        inventory: Any,
+        state_content: List[Optional[TerraformShow]],
+        search_child_modules: bool,
+        include_modules: Optional[List[str]] = None,
+        exclude_modules: Optional[List[str]] = None,
     ) -> None:
         for state in state_content:
             if state is None:
@@ -173,7 +285,14 @@ class InventoryModule(TerraformInventoryPluginBase):
                 if not search_child_modules
                 else state.values.root_module.flatten_resources()
             )
+
             for resource in root_resources:
+                # Apply module filtering only if search_child_modules is enabled
+                if search_child_modules and not self._should_include_resource(
+                    resource, include_modules, exclude_modules
+                ):
+                    continue
+
                 if resource.type == "ansible_group":
                     self._add_group(inventory, resource)
                 elif resource.type == "ansible_host":
@@ -188,6 +307,13 @@ class InventoryModule(TerraformInventoryPluginBase):
         state_file = cfg.get("state_file", "")
         search_child_modules = cfg.get("search_child_modules", True)
         terraform_binary = cfg.get("binary_path", None)
+        include_modules = cfg.get("include_modules", None)
+        exclude_modules = cfg.get("exclude_modules", None)
+
+        # Validate mutually exclusive options
+        if include_modules and exclude_modules:
+            raise TerraformError("Options 'include_modules' and 'exclude_modules' are mutually exclusive")
+
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:
@@ -205,4 +331,4 @@ class InventoryModule(TerraformInventoryPluginBase):
                 raise TerraformError(e.message)
 
         if state_content:  # to avoid mypy error: Item "None" of "Optional[TerraformShow]" has no attribute "values"
-            self.create_inventory(inventory, state_content, search_child_modules)
+            self.create_inventory(inventory, state_content, search_child_modules, include_modules, exclude_modules)
