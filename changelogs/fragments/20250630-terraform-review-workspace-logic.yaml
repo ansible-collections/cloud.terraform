@@ -1,5 +1,0 @@
----
-breaking_changes:
-  - terraform - The default value `default` for the `workspace` argument has been removed (https://github.com/ansible-collections/cloud.terraform/pull/200).
-minor_changes:
-  - terraform - Update module logic to determine workspace (https://github.com/ansible-collections/cloud.terraform/pull/200).
