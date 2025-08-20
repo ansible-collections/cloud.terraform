@@ -113,6 +113,14 @@ options:
     type: bool
     default: false
     version_added: 1.0.0
+  excludes:
+    description:
+      - A list of specific resources to exclude in this plan/application. The
+        resources selected here will also auto-exclude any dependencies.
+    type: list
+    default: []
+    elements: str
+    version_added: 1.0.0
   targets:
     description:
       - A list of specific resources to target in this plan/application. The
@@ -462,6 +470,7 @@ def main() -> None:
             plan_file=dict(type="path"),
             state_file=dict(type="path"),
             targets=dict(type="list", elements="str", default=[]),
+            excludes=dict(type='list', elements='str', default=[]),
             lock=dict(type="bool", default=True),
             lock_timeout=dict(type="int"),
             force_init=dict(type="bool", default=False),
@@ -475,6 +484,8 @@ def main() -> None:
         ),
         required_if=[("state", "planned", ["plan_file"])],
         supports_check_mode=True,
+        mutually_exclusive=[ ['targets', 'excludes'] ],
+
     )
 
     project_path = module.params.get("project_path")
@@ -591,6 +602,7 @@ def main() -> None:
             plan_result_changed, plan_result_any_destroyed, plan_stdout, plan_stderr = terraform.plan(
                 target_plan_file_path=plan_file_to_apply,
                 targets=module.params.get("targets"),
+                excludes=module.params.get("excludes"),
                 destroy=state == "absent",
                 state_args=get_state_args(state_file),
                 variables_args=variables_args,
@@ -625,6 +637,7 @@ def main() -> None:
                 lock=module.params.get("lock", False),
                 lock_timeout=module.params.get("lock_timeout"),
                 targets=module.params.get("targets") or [],
+                excludes=module.params.get("excludes") or [],
                 needs_application=plan_file_needs_application,
             )
         except TerraformError as e:
