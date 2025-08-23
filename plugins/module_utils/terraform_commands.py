@@ -130,6 +130,7 @@ class TerraformCommands:
         target_plan_file_path: str,
         targets: List[str],
         destroy: bool,
+        refresh: bool,
         state_args: List[str],
         variables_args: List[str],
     ) -> Tuple[bool, bool, str, str]:
@@ -146,6 +147,7 @@ class TerraformCommands:
             command.extend(["-target", t])
         if destroy:
             command.append("-destroy")
+        command.append(f"-refresh={refresh}")
         command.extend(state_args)
         command.extend(variables_args)
 
