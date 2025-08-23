@@ -573,6 +573,8 @@ def main() -> None:
             for f in variables_files:
                 variables_args.extend(["-var-file", f])
 
+        preflight_validation(terraform, terraform_binary, project_path, checked_version, variables_args)
+
         # only use an existing plan file if we're not in the deprecated "planned" mode
         # or if check_mode is set to False
         if plan_file and not computed_check_mode:
@@ -605,8 +607,6 @@ def main() -> None:
             plan_file_needs_application = plan_result_changed
             out = plan_stdout
             err = plan_stderr
-
-        preflight_validation(terraform, terraform_binary, project_path, checked_version, variables_args)
 
         try:
             planned_state = terraform.show(plan_file_to_apply)
