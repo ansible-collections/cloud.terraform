@@ -185,9 +185,24 @@ class InventoryModule(TerraformInventoryPluginBase):
         cfg = self._read_config_data(path)
 
         project_path = cfg.get("project_path", os.getcwd())
+        try:
+            project_path = self.templar.template(project_path, fail_on_undefined=False)
+        except Exception as exc:
+            self.warn(f"Failed to template 'project_path': {exc}")
+
         state_file = cfg.get("state_file", "")
+        try:
+            state_file = self.templar.template(state_file, fail_on_undefined=False)
+        except Exception as exc:
+            self.warn(f"Failed to template 'state_file': {exc}")
+
         search_child_modules = cfg.get("search_child_modules", True)
         terraform_binary = cfg.get("binary_path", None)
+        if terraform_binary is not None:
+            try:
+                terraform_binary = self.templar.template(terraform_binary, fail_on_undefined=False)
+            except Exception as exc:
+                self.warn(f"Failed to template 'binary_path': {exc}")
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:

@@ -738,10 +738,39 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
         cfg = self._read_config_data(path)
 
         backend_config = cfg.get("backend_config")
+        if backend_config is not None:
+            try:
+                backend_config = self.templar.template(backend_config, fail_on_undefined=False)
+            except Exception as exc:
+                self.warn(f"Failed to template 'backend_config': {exc}")
+
         backend_config_files = cfg.get("backend_config_files")
+        if backend_config_files is not None:
+            try:
+                backend_config_files = self.templar.template(backend_config_files, fail_on_undefined=False)
+            except Exception as exc:
+                self.warn(f"Failed to template 'backend_config_files': {exc}")
+
         backend_type = cfg.get("backend_type")
+        if backend_type is not None:
+            try:
+                backend_type = self.templar.template(backend_type, fail_on_undefined=False)
+            except Exception as exc:
+                self.warn(f"Failed to template 'backend_type': {exc}")
+
         provider_mapping = cfg.get("provider_mapping", [])
+        if provider_mapping:
+            try:
+                provider_mapping = self.templar.template(provider_mapping, fail_on_undefined=False)
+            except Exception as exc:
+                self.warn(f"Failed to template 'provider_mapping': {exc}")
+
         terraform_binary = cfg.get("binary_path")
+        if terraform_binary is not None:
+            try:
+                terraform_binary = self.templar.template(terraform_binary, fail_on_undefined=False)
+            except Exception as exc:
+                self.warn(f"Failed to template 'binary_path': {exc}")
         search_child_modules = cfg.get("search_child_modules", False)
 
         if not backend_type:
