@@ -16,6 +16,12 @@ description:
 version_added: 1.1.0
 seealso: []
 options:
+  ignore_uninitialized:
+    description:
+      - Whether to skip over Terraform projects that are not initialized.
+    type: bool
+    default: false
+    version_added: 4.0.1
   plugin:
     description:
       - The name of the Inventory Plugin.
@@ -184,6 +190,7 @@ class InventoryModule(TerraformInventoryPluginBase):
 
         cfg = self._read_config_data(path)
 
+        ignore_uninitialized = cfg.get("ignore_uninitialized", False)
         project_path = cfg.get("project_path", os.getcwd())
         state_file = cfg.get("state_file", "")
         search_child_modules = cfg.get("search_child_modules", True)
@@ -199,6 +206,10 @@ class InventoryModule(TerraformInventoryPluginBase):
             project_path = [project_path]
         for path in project_path:
             terraform = TerraformCommands(module_run_command, path, terraform_binary, False)
+
+            if ignore_uninitialized and not terraform.is_initialized():
+                continue
+
             try:
                 state_content.append(terraform.show(state_file))
             except TerraformWarning as e:
