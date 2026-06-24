@@ -107,6 +107,7 @@ EXAMPLES = r"""
 import os
 from typing import Any, List, Optional
 
+from ansible.errors import AnsibleError
 from ansible.module_utils.common import process
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
@@ -191,7 +192,10 @@ class InventoryModule(TerraformInventoryPluginBase):
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:
-            terraform_binary = process.get_bin_path("terraform", required=True)
+            try:
+                terraform_binary = process.get_bin_path("terraform")
+            except ValueError:
+                raise AnsibleError("Unable to find 'terraform' binary in the path")
 
         # TODO: remove when ansible provider is available
         state_content = []
