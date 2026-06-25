@@ -308,11 +308,11 @@ stderr:
 
 import dataclasses
 import os
+import sys
 import tempfile
 from typing import List
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.six import integer_types
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformModuleResource,
@@ -330,6 +330,13 @@ from ansible_collections.cloud.terraform.plugins.module_utils.utils import (
     get_state_args,
     preflight_validation,
 )
+
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    integer_types = (int,)
+else:
+    integer_types = (int, long)  # noqa: F821 pylint: disable=undefined-variable
 
 
 def is_attribute_sensitive_in_providers_schema(
@@ -426,7 +433,7 @@ def process_complex_args(terraform_variables: AnyJsonType) -> str:
             else:
                 # only to handle anything unforeseen
                 raise TerraformError(
-                    "Supported types are, dictionaries, lists, strings, integer_types, boolean and float."
+                    "Supported types are: dictionaries, lists, strings, integer_types, boolean and float."
                 )
     if isinstance(terraform_variables, list):
         l_out = []
@@ -440,7 +447,7 @@ def process_complex_args(terraform_variables: AnyJsonType) -> str:
             else:
                 # only to handle anything unforeseen
                 raise TerraformError(
-                    "Supported types are, dictionaries, lists, strings, integer_types, boolean and float."
+                    "Supported types are: dictionaries, lists, strings, integer_types, boolean and float."
                 )
 
         ret_out.append("[{0}]".format(",".join(l_out)))

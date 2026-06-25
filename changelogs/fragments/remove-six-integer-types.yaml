@@ -1,0 +1,2 @@
+minor_changes:
+  - terraform - Remove dependency on ``six.integer_types``, use native ``int`` type instead (https://github.com/ansible-collections/cloud.terraform/pull/215).
