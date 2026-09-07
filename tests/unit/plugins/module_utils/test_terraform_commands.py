@@ -157,6 +157,36 @@ class TestTerraformCommands:
 
         self.mock.assert_called_with(*expected_cmd, check_rc=False)
 
+    def test_plan_lock_false(self):
+        self.mock.return_value = (self.rc, self.stdout, self.stderr)
+        self.tf._run = self.mock
+        self.tf.plan(
+            target_plan_file_path="/target/plan/file",
+            targets=["target_file"],
+            destroy=False,
+            state_args=["state_arg"],
+            variables_args=["var_arg"],
+            lock=False,
+            lock_timeout=30,
+        )
+
+        expected_cmd = [
+            "plan",
+            "-lock=false",
+            "-input=false",
+            "-no-color",
+            "-detailed-exitcode",
+            "-lock-timeout=30s",
+            "-out",
+            "/target/plan/file",
+            "-target",
+            "target_file",
+            "state_arg",
+            "var_arg",
+        ]
+
+        self.mock.assert_called_with(*expected_cmd, check_rc=False)
+
     def test_providers_schema(self):
         self.stdout = '{"format_version":"1.0"}'
         self.mock.return_value = (self.rc, self.stdout, self.stderr)
