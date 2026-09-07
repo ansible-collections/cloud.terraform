@@ -125,6 +125,8 @@ options:
     description:
       - Enable statefile locking, if you use a service that accepts locks (such
         as S3+DynamoDB) to store your statefile.
+      - This option is honored for both C(terraform plan) (including when
+        running with C(check_mode=true)) and C(terraform apply).
     type: bool
     default: true
     version_added: 1.0.0
@@ -594,6 +596,8 @@ def main() -> None:
                 destroy=state == "absent",
                 state_args=get_state_args(state_file),
                 variables_args=variables_args,
+                lock=module.params.get("lock", True),
+                lock_timeout=module.params.get("lock_timeout"),
             )
 
             if computed_state == "present" and plan_result_any_destroyed and check_destroy:
