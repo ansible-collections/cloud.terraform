@@ -13,10 +13,17 @@ description:
   - This plugin works with an existing state file to create an inventory from resources created by cloud providers.
   - The plugin accepts a Terraform backend config to an existing state file or a path to an existing state file.
   - Uses a YAML configuration file that ends with terraform_state.(yml|yaml).
-  - Does not support caching.
+  - Supports caching. The cache holds the name, type and instance attributes of the resources selected from the state file,
+    not the state file itself. The attributes are the hosts' variables, and include any the state marks sensitive,
+    so keep a persistent cache, such as the one O(cache_connection) points to, where only trusted users can read it.
+  - The cache key is the inventory file's path alone. After changing which state or resources the file selects,
+    through the backend options, O(binary_path), O(search_child_modules), O(provider_mapping) or the environment they read,
+    refresh the cache with C(--flush-cache). O(hostnames) and the constructed options apply to cached resources too,
+    so they need no refresh.
   - The Terraform providers for AWS, Azure and Google Cloud are supported by Red Hat Ansible. Other providers are supported by the community.
 extends_documentation_fragment:
   - constructed
+  - inventory_cache
 version_added: 2.1.0
 options:
   plugin:
@@ -485,6 +492,19 @@ EXAMPLES = r"""
     organization: redhat
     workspaces:
       name: ansible
+
+# Example caching the selected resources for an hour, so that inventory loads skip init and state pull
+- name: Using the inventory cache
+  plugin: cloud.terraform.terraform_state
+  backend_type: s3
+  backend_config:
+    region: us-east-1
+    key: terraform/state
+    bucket: my-sample-bucket
+  cache: true
+  cache_plugin: ansible.builtin.jsonfile
+  cache_connection: ~/.cache/ansible/terraform_state
+  cache_timeout: 3600
 """
 
 
@@ -497,7 +517,7 @@ from typing import Any, Dict, List, Optional
 
 from ansible.module_utils._text import to_text
 from ansible.module_utils.common import process
-from ansible.plugins.inventory import Constructable
+from ansible.plugins.inventory import Cacheable, Constructable
 from ansible_collections.cloud.terraform.plugins.module_utils.errors import TerraformError, TerraformWarning
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
     TerraformStateResource,
@@ -649,7 +669,17 @@ def purge_backend_config(backend_config: Dict[str, Any], path: str) -> bool:
     return bool(m_keys)
 
 
-class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ignore  # mypy ignore
+def resources_to_cache(resources: List[TerraformStateResource]) -> List[Dict[str, Any]]:
+    """Keep only what create_inventory reads from each resource, in the state file's own JSON layout,
+    so that TerraformStateResource.from_json can rebuild the resources and the cache holds no other state data.
+    """
+    return [
+        {"name": r.name, "type": r.type, "instances": [{"attributes": i.attributes} for i in r.instances]}
+        for r in resources
+    ]
+
+
+class InventoryModule(TerraformInventoryPluginBase, Constructable, Cacheable):  # type: ignore  # mypy ignore
     NAME = "cloud.terraform.terraform_state"
 
     def verify_file(self, path):  # type: ignore  # mypy ignore
@@ -765,14 +795,32 @@ class InventoryModule(TerraformInventoryPluginBase, Constructable):  # type: ign
             TerraformProviderInstance(provider_name=p["provider_name"], types=p["types"]) for p in provider_mapping
         ]
 
-        instances = self._query(
-            terraform_binary,
-            backend_type,
-            backend_config,
-            backend_config_files,
-            search_child_modules,
-            conf_providers,
-        )
+        cache_key = self.get_cache_key(path)
+        # cache is False when --flush-cache is given: then read the state and refresh the cache
+        attempt_to_read_cache = self.get_option("cache") and cache
+        cache_needs_update = self.get_option("cache") and not cache
+
+        instances: Optional[List[TerraformStateResource]] = None
+        if attempt_to_read_cache:
+            try:
+                instances = [TerraformStateResource.from_json(r) for r in self._cache[cache_key]]
+            except KeyError:
+                # missing or expired
+                cache_needs_update = True
+
+        if instances is None:
+            instances = self._query(
+                terraform_binary,
+                backend_type,
+                backend_config,
+                backend_config_files,
+                search_child_modules,
+                conf_providers,
+            )
+
+        if cache_needs_update:
+            self._cache[cache_key] = resources_to_cache(instances)
+
         self.create_inventory(
             instances,
             cfg.get("hostnames"),

@@ -1,0 +1,3 @@
+---
+minor_changes:
+  - inventory/terraform_state - Support inventory caching through the ``cache`` options, so that a cached inventory load skips ``terraform init`` and ``terraform state pull``. The cache holds the names, types and instance attributes of the selected resources, not the state file. Caching takes effect where ``cache`` is already enabled for inventory plugins in general, for example through ``ANSIBLE_INVENTORY_CACHE`` or ``[inventory] cache`` (https://github.com/ansible-collections/cloud.terraform/issues/219).

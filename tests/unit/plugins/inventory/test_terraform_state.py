@@ -4,14 +4,18 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
+import json
+import os
 import random
 import string
+import time
 from typing import Any, Dict, Optional
 from unittest.mock import ANY, MagicMock, call
 
 import pytest
 from ansible.inventory.data import InventoryData
 from ansible.module_utils._text import to_text
+from ansible.plugins.cache import CachePluginAdjudicator
 from ansible.template import Templar
 from ansible_collections.cloud.terraform.plugins.inventory.terraform_state import (
     PROVIDERS_CONFIG,
@@ -23,6 +27,7 @@ from ansible_collections.cloud.terraform.plugins.inventory.terraform_state impor
     get_tag_hostname,
     parse_provider_from_state_file_resource,
     purge_backend_config,
+    resources_to_cache,
     write_terraform_config,
 )
 from ansible_collections.cloud.terraform.plugins.module_utils.models import (
@@ -549,6 +554,13 @@ class TestInventoryModuleQuery:
 class TestInventoryModuleParse:
     mockers = {}
 
+    @pytest.fixture(autouse=True)
+    def cache_disabled(self, mocker):
+        # _read_config_data is mocked, so the cache option from the inventory_cache doc fragment is never set
+        mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.get_option"
+        ).side_effect = {"cache": False}.__getitem__
+
     def get_mock(self, name):
         if name not in self.mockers:
             self.mockers[name] = MagicMock(name=name)
@@ -726,3 +738,145 @@ class TestInventoryModuleParse:
         validate_bin_patch.assert_not_called()
 
         self.assert_calls(config, super_parse_patch, read_config_data_patch)
+
+
+def create_cacheable_resource(name: str) -> TerraformStateResource:
+    return TerraformStateResource(
+        name=name,
+        mode="managed",
+        module="module.servers",
+        type="aws_instance",
+        provider='module.servers.provider["registry.terraform.io/hashicorp/aws"]',
+        instances=[
+            TerraformStateResourceInstance(
+                schema_version=1,
+                attributes={"id": f"i-{name}", "tags": {"Name": name}, "private_ip": "10.0.0.1"},
+                sensitive_attributes=[[{"type": "get_attr", "value": "password"}]],
+                private="eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+                dependencies=["module.servers.aws_subnet.main"],
+            )
+        ],
+    )
+
+
+class TestResourcesToCache:
+    def test_round_trip(self):
+        resources = [create_cacheable_resource("web"), create_cacheable_resource("db")]
+        rebuilt = [TerraformStateResource.from_json(r) for r in json.loads(json.dumps(resources_to_cache(resources)))]
+
+        assert [(r.name, r.type, [i.attributes for i in r.instances]) for r in rebuilt] == [
+            (r.name, r.type, [i.attributes for i in r.instances]) for r in resources
+        ]
+
+    def test_keeps_only_what_create_inventory_reads(self):
+        cached = resources_to_cache([create_cacheable_resource("web")])
+
+        assert set(cached[0]) == {"name", "type", "instances"}
+        assert set(cached[0]["instances"][0]) == {"attributes"}
+
+
+class TestInventoryModuleParseCache:
+    path = "inventory.terraform_state.yml"
+
+    @pytest.fixture
+    def plugin(self, inventory_plugin, mocker):
+        mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule._read_config_data"
+        ).side_effect = lambda _: {"backend_type": "s3", "backend_config": {"bucket": "b"}, "binary_path": "terraform"}
+        mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.TerraformInventoryPluginBase.parse"
+        )
+        mocker.patch("ansible_collections.cloud.terraform.plugins.inventory.terraform_state.validate_bin_path")
+        inventory_plugin._query = MagicMock()
+        inventory_plugin.create_inventory = MagicMock()
+        inventory_plugin._cache = {}
+        return inventory_plugin
+
+    def set_cache_option(self, mocker, enabled):
+        mocker.patch(
+            "ansible_collections.cloud.terraform.plugins.inventory.terraform_state.InventoryModule.get_option"
+        ).side_effect = {"cache": enabled}.__getitem__
+
+    def parse(self, plugin, cache, path=None):
+        plugin.parse(MagicMock(), MagicMock(), path or self.path, cache=cache)
+        return plugin.create_inventory.call_args[0][0]
+
+    @pytest.mark.parametrize("cache", [True, False])
+    def test_cache_disabled(self, plugin, mocker, cache):
+        self.set_cache_option(mocker, False)
+        plugin._query.return_value = [create_cacheable_resource("web")]
+
+        assert self.parse(plugin, cache) == plugin._query.return_value
+        plugin._query.assert_called_once()
+        assert plugin._cache == {}
+
+    def test_cache_miss(self, plugin, mocker):
+        self.set_cache_option(mocker, True)
+        plugin._query.return_value = [create_cacheable_resource("web")]
+
+        assert self.parse(plugin, cache=True) == plugin._query.return_value
+        plugin._query.assert_called_once()
+        assert plugin._cache == {plugin.get_cache_key(self.path): resources_to_cache(plugin._query.return_value)}
+
+    def test_cache_hit(self, plugin, mocker):
+        self.set_cache_option(mocker, True)
+        resource = create_cacheable_resource("web")
+        plugin._cache[plugin.get_cache_key(self.path)] = resources_to_cache([resource])
+
+        (cached,) = self.parse(plugin, cache=True)
+        plugin._query.assert_not_called()
+        assert (cached.name, cached.type, cached.instances[0].attributes) == (
+            resource.name,
+            resource.type,
+            resource.instances[0].attributes,
+        )
+
+    def test_flush_cache(self, plugin, mocker):
+        # --flush-cache passes cache=False: read the state even though the cache holds the source
+        self.set_cache_option(mocker, True)
+        key = plugin.get_cache_key(self.path)
+        plugin._cache[key] = resources_to_cache([create_cacheable_resource("stale")])
+        plugin._query.return_value = [create_cacheable_resource("fresh")]
+
+        assert self.parse(plugin, cache=False) == plugin._query.return_value
+        plugin._query.assert_called_once()
+        assert plugin._cache[key] == resources_to_cache(plugin._query.return_value)
+
+    def test_sources_use_separate_keys(self, plugin, mocker):
+        self.set_cache_option(mocker, True)
+        paths = ["one.terraform_state.yml", "two.terraform_state.yml"]
+        plugin._query.side_effect = [[create_cacheable_resource("first")], [create_cacheable_resource("second")]]
+        for path in paths:
+            self.parse(plugin, cache=True, path=path)
+        assert len(plugin._cache) == 2
+
+        plugin._query.reset_mock()
+        assert [[r.name for r in self.parse(plugin, cache=True, path=path)] for path in paths] == [
+            ["first"],
+            ["second"],
+        ]
+        plugin._query.assert_not_called()
+
+    def test_jsonfile_cache_expires(self, plugin, mocker, tmp_path):
+        self.set_cache_option(mocker, True)
+        plugin._query.return_value = [create_cacheable_resource("web")]
+
+        def new_cache():
+            return CachePluginAdjudicator(plugin_name="jsonfile", _uri=str(tmp_path), _timeout=3600)
+
+        def load_inventory():
+            # As for every inventory load: a fresh cache, saved after parsing
+            plugin._cache = new_cache()
+            self.parse(plugin, cache=True)
+            plugin.update_cache_if_changed()
+
+        load_inventory()
+        load_inventory()
+        assert plugin._query.call_count == 1
+        assert new_cache()[plugin.get_cache_key(self.path)] == resources_to_cache(plugin._query.return_value)
+
+        (cache_file,) = tmp_path.iterdir()
+        expired = time.time() - 7200
+        os.utime(cache_file, (expired, expired))
+        load_inventory()
+        assert plugin._query.call_count == 2
