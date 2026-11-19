@@ -1,33 +1,20 @@
 name: Integration tests
 
 on:
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - reopened
-      - labeled
-      - unlabeled
       - synchronize
     branches:
       - main
       - stable-*
 
 jobs:
-  safe-to-test:
-    if: ${{ github.event.label.name == 'safe to test' }} || ${{ github.event.action != 'labeled' }}
-    uses: ansible-network/github_actions/.github/workflows/safe-to-test.yml@main
-
   integration-tests:
-    needs:
-      - safe-to-test
     runs-on: ubuntu-latest
     env:
-      source: "./"
-      amazon_aws: "./amazon_aws"
-      azure: "./azure"
-      google_cloud: "./google_cloud"
-      community_aws: "./community_aws"
-      python_version: "3.12"
+      python_version: "3.14"
     strategy:
       fail-fast: false
       matrix:
@@ -36,91 +23,18 @@ jobs:
           - devel
     name: "integration-tests-${{ matrix.ansible-version }}"
     steps:
-      - name: Checkout collection
-        uses: actions/checkout@v4
-        with:
-          path: ${{ env.source }}
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Set up Python ${{ env.python_version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.python_version }}
-
-      - name: Install ansible-core (${{ matrix.ansible-version }})
-        run: >-
-          python3 -m pip install
-          https://github.com/ansible/ansible/archive/${{ matrix.ansible-version }}.tar.gz
-        shell: bash
-
-      # Install dependencies (collection and python librairies)
-      # ansible-collections/amazon.aws
-      - name: Install amazon.aws collection
-        uses: ./.github/actions/install_collection
-        with:
-          path: ${{ env.amazon_aws }}
-          repository: ansible-collections/amazon.aws
-
-      # ansible-collections/community.aws
-      - name: Install community.aws collection
-        uses: ./.github/actions/install_collection
-        with:
-          path: ${{ env.community_aws }}
-          repository: ansible-collections/community.aws
-
-      # ansible-collections/azure
-      - name: Install azure collection
-        uses: ./.github/actions/install_collection
-        with:
-          path: ${{ env.azure }}
-          repository: ansible-collections/azure
-          ref: dev
-
-      # ansible-collections/google.cloud
-      - name: Install google.cloud collection
-        uses: ./.github/actions/install_collection
-        with:
-          path: ${{ env.google_cloud }}
-          repository: ansible-collections/google.cloud
-          ref: master
-
-      # Install the source collection
-      - name: Build and install collection
-        id: install-collection
-        uses: ansible-network/github_actions/.github/actions/build_install_collection@main
-        with:
-          install_python_dependencies: true
-          source_path: ${{ env.source }}
-
-      - name: Install Terraform binary
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-          terraform_version: "1.6.3"
-
-      - name: Create AWS/sts session credentials
-        uses: ansible-network/github_actions/.github/actions/ansible_aws_test_provider@main
-        with:
-          collection_path: ${{ steps.install-collection.outputs.collection_path }}
-          ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}
-
-      - name: Create AzureRM session credentials
-        uses: ansible-network/github_actions/.github/actions/ansible_azure_test_provider@main
-        with:
-          collection_path: ${{ steps.install-collection.outputs.collection_path }}
-          ansible_core_ci_key: ${{ secrets.ANSIBLE_CORE_CI_KEY }}
-
-      # we use raw git to create a repository in the tests
-      # this fails if the committer doesn't have a name and an email set
-      - name: Set up git
-        run: |
-          git config --global user.email gha@localhost
-          git config --global user.name "Github Actions"
-        shell: bash
+      - uses: ansible/ansible-test-auth@008750a5bf07124c3ab86d30d73d7319d7518f36
 
       - name: Run integration tests
-        uses: ansible-network/github_actions/.github/actions/ansible_test_integration@main
+        uses: ansible-community/ansible-test-gh-action@d3a8ec7a59694e25e210fcd44738910149537f0e  # v1.17.0, committed on Aug 6, 2025
         with:
-          collection_path: ${{ steps.install-collection.outputs.collection_path }}
-          python_version: "${{ env.python_version }}"
-          ansible_version: "${{ matrix.ansible-version }}"
+          ansible-core-version: ${{ matrix.ansible-version }}
+          origin-python-version: ${{ env.python_version }}
+          testing-type: integration
+          target-python-version: ${{ env.python_version }}
+          test-deps: >-
+            git+https://github.com/ansible-collections/amazon.aws.git,main
+            git+https://github.com/ansible-collections/community.aws.git,main
+            google.cloud
+            azure.azcollection
+          pre-test-cmd: python -m pip install -r tests/integration/requirements.txt

@@ -41,17 +41,15 @@
               cidr-block: "{{ vpc_cidr_block }}"
           register: subnet_info
 
-        - name: Assert that there are {{ number_of_subnets }} Subnets
+        - name: Assert that there are {{ number_of_subnets | default(0) }} Subnets
           assert:
             that:
-              - (subnet_info.subnets | length) == number_of_subnets
+              - (subnet_info.subnets | length) == (number_of_subnets | default(0))
         - name: Assert that Subnet  is present and the info matches
           assert:
             that:
               - subnet_info.subnets[0].cidr_block == vpc_cidr_block
-          when: number_of_subnets == 1
-      vars:
-        number_of_subnets: 0
+          when: number_of_subnets | default(0) == 1
 
     - name: Terraform in present check mode
       cloud.terraform.terraform:

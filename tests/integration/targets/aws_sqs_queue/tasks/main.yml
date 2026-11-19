@@ -34,15 +34,13 @@
           assert:
             that:
               - tf_result.outputs == {}
-          when: number_of_roles == 0
+          when: number_of_roles | default(0) == 0
         - name: Assert returned output tags are set
           assert:
             that:
               - tf_result.outputs.aws_sqs_queue_tags.value.Name == resource_id
               - tf_result.outputs.aws_sqs_role_tags.value.Name == resource_id
-          when: number_of_roles == 1
-      vars:
-        number_of_roles: 0
+          when: number_of_roles | default(0) == 1
 
     - name: Terraform in present check mode
       cloud.terraform.terraform:

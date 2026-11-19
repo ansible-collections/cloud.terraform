@@ -191,7 +191,7 @@ class InventoryModule(TerraformInventoryPluginBase):
         if terraform_binary is not None:
             validate_bin_path(terraform_binary)
         else:
-            terraform_binary = process.get_bin_path("terraform", required=True)
+            terraform_binary = process.get_bin_path("terraform")
 
         # TODO: remove when ansible provider is available
         state_content = []

@@ -1,0 +1,36 @@
+---
+- name: Check for existing terraform binary
+  ansible.builtin.command: terraform version
+  register: _tf
+  failed_when: false
+  changed_when: false
+
+- when: _tf.rc != 0
+  block:
+    - name: Download terraform
+      ansible.builtin.get_url:
+        url: "https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_{{ tf_os }}_{{ tf_arch }}.zip"
+        dest: /tmp/terraform.zip
+        mode: "0644"
+
+    # ansible.builtin.unarchive cannot be used here: the ansible-test default
+    # container ships no unzip/zipinfo binary. The stdlib zipfile CLI is always
+    # available, since the target necessarily has a python interpreter.
+    - name: Extract terraform to /usr/local/bin
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_facts.python.executable | default('python3') }}"
+          - -m
+          - zipfile
+          - -e
+          - /tmp/terraform.zip
+          - /usr/local/bin
+        creates: /usr/local/bin/terraform
+      become: "{{ ansible_user_id != 'root' }}"
+
+    # zipfile does not preserve the executable bit stored in the archive.
+    - name: Ensure terraform is executable
+      ansible.builtin.file:
+        path: /usr/local/bin/terraform
+        mode: "0755"
+      become: "{{ ansible_user_id != 'root' }}"
