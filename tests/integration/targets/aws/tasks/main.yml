@@ -30,18 +30,17 @@
               "cidr": "{{ vpc_cidr_block }}"
           register: vpc_info
 
-        - name: Assert that there are {{ number_of_vpcs }} VPCs with tag:Name={{ resource_id }} and cidr={{ vpc_cidr_block }}'
+        - name: Assert that there are {{ number_of_vpcs | default(0) }} VPCs with tag:Name={{ resource_id }} and cidr={{ vpc_cidr_block }}
           assert:
             that:
-              - (vpc_info.vpcs | length) == number_of_vpcs
+              - (vpc_info.vpcs | length) == (number_of_vpcs | default(0))
+
         - name: Assert that VPC {{ resource_id }} is present and the info matches
           assert:
             that:
-              - vpc_info.vpcs[0].cidr_block == "{{ vpc_cidr_block }}"
-              - vpc_info.vpcs[0].tags.Name == "{{ resource_id }}"
-          when: number_of_vpcs == 1
-      vars:
-        number_of_vpcs: 0
+              - vpc_info.vpcs[0].cidr_block == vpc_cidr_block
+              - vpc_info.vpcs[0].tags.Name == resource_id
+          when: (number_of_vpcs | default(0)) == 1
 
     - name: Terraform in present check mode
       cloud.terraform.terraform:

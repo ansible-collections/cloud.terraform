@@ -1,0 +1,9 @@
+---
+# Single source of truth for integration test collection dependencies.
+# Installed directly via `ansible-galaxy collection install -r` in
+# .github/workflows/integration-tests.yaml .
+collections:
+  - amazon.aws
+  - community.aws
+  - google.cloud
+  - azure.azcollection

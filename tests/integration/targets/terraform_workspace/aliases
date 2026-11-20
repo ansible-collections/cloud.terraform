@@ -1,1 +1,2 @@
 disabled # Requires HCP terraform / Terraform Entreprise credentials
+setup/once/setup_terraform
