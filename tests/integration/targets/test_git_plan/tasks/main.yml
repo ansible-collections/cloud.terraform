@@ -26,7 +26,9 @@
     git init
     echo ".terraform*" > .gitignore
     git add .
-    git commit -m "Initial commit."
+    # The test container has no git identity configured, so set one for this
+    # commit only rather than relying on the environment providing it.
+    git -c user.name="Ansible Test" -c user.email="ansible-test@example.com" commit -m "Initial commit."
     git branch targetbranch
 
 - &stat

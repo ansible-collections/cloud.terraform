@@ -28,14 +28,17 @@
   hosts: localhost
   gather_facts: false
   tasks:
+    # Current versions of the ansible/ansible provider (tested with 1.5.1) type
+    # the "variables" attribute as an object rather than map(string), so numbers
+    # reach the inventory as integers instead of strings.
     - ansible.builtin.assert:
         that:
           - hostvars["somehost"].host_hello == "from host!"
-          - hostvars["somehost"].host_variable == "7"
+          - hostvars["somehost"].host_variable == 7
           - hostvars["somehost"].group_hello == "from group!"
-          - hostvars["somehost"].group_variable == "11"
+          - hostvars["somehost"].group_variable == 11
           - hostvars["anotherhost"].host_hello == "from anotherhost!"
-          - hostvars["anotherhost"].host_variable == "5"
+          - hostvars["anotherhost"].host_variable == 5
 
 - name: Test asigning hosts to groups
   hosts: localhost
