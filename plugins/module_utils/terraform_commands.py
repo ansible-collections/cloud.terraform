@@ -132,16 +132,19 @@ class TerraformCommands:
         destroy: bool,
         state_args: List[str],
         variables_args: List[str],
+        lock: bool = True,
+        lock_timeout: Optional[int] = None,
     ) -> Tuple[bool, bool, str, str]:
         command = [
             "plan",
-            "-lock=true",
+            "-lock={0}".format("true" if lock else "false"),
             "-input=false",
             "-no-color",
             "-detailed-exitcode",
-            "-out",
-            target_plan_file_path,
         ]
+        if lock_timeout is not None:
+            command.append("-lock-timeout={0}s".format(lock_timeout))
+        command.extend(["-out", target_plan_file_path])
         for t in targets:
             command.extend(["-target", t])
         if destroy:

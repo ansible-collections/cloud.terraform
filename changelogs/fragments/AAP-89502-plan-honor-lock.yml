@@ -1,0 +1,2 @@
+bugfixes:
+  - terraform - honor ``lock`` and ``lock_timeout`` during ``terraform plan`` / check mode instead of always passing ``-lock=true``.
