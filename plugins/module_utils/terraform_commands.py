@@ -58,6 +58,7 @@ class TerraformCommands:
         lock: bool,
         lock_timeout: Optional[int],
         targets: List[str],
+        excludes: List[str],
         needs_application: bool,
     ) -> Tuple[str, str, str]:
         command = ["apply", "-no-color", "-input=false"]
@@ -75,6 +76,8 @@ class TerraformCommands:
 
         for t in targets:
             command.extend(["-target", t])
+        for e in excludes:
+            command.extend(["-exclude", e])
 
         command.append(plan_file_path)
 
@@ -129,6 +132,7 @@ class TerraformCommands:
         self,
         target_plan_file_path: str,
         targets: List[str],
+        excludes: List[str],
         destroy: bool,
         state_args: List[str],
         variables_args: List[str],
@@ -144,6 +148,8 @@ class TerraformCommands:
         ]
         for t in targets:
             command.extend(["-target", t])
+        for e in excludes:
+            command.extend(["-exclude", e])
         if destroy:
             command.append("-destroy")
         command.extend(state_args)
