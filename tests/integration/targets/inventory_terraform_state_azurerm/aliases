@@ -1,1 +1,4 @@
+# Unable to provision azure credential using ansible core ci
+disabled
 cloud/azure
+setup/once/setup_terraform

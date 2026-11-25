@@ -1,0 +1,20 @@
+---
+terraform_version: '1.6.3'
+
+# Map ansible_architecture onto the architecture names used by the
+# terraform release archives (https://releases.hashicorp.com/terraform/).
+tf_arch_map:
+  x86_64: amd64
+  amd64: amd64
+  aarch64: arm64
+  arm64: arm64
+  armv7l: arm
+  armv6l: arm
+  i386: '386'
+  i686: '386'
+
+tf_arch: "{{ tf_arch_map[ansible_architecture] | default('amd64') }}"
+
+# ansible_system maps directly onto the OS names used by the release
+# archives: Linux -> linux, Darwin -> darwin, FreeBSD -> freebsd, ...
+tf_os: "{{ ansible_system | lower }}"

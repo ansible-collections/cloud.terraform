@@ -111,7 +111,7 @@ class LookupModule(LookupBase):  # type: ignore  # cannot subclass without avail
         if bin_path is not None:
             terraform_binary = bin_path
         else:
-            terraform_binary = process.get_bin_path("terraform", required=True)
+            terraform_binary = process.get_bin_path("terraform")
 
         output: List[AnyJsonType] = []
         if not terms:

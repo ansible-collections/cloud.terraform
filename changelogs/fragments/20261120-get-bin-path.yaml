@@ -1,0 +1,4 @@
+---
+minor_changes:
+  - Remove usage of the required argument from ``get_bin_path()`` calls in the tf_output lookup plugin, and the terraform_provider and
+    terraform_state inventory plugins (https://github.com/ansible-collections/cloud.terraform/pull/221).
