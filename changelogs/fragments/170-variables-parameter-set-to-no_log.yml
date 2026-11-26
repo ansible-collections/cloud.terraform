@@ -1,0 +1,2 @@
+minor_changes:
+  - Made the `variables` parameter defaults to `no_log=true` to that sensitive information won't be exposed and so that a `no_log=true` on the task level isn't needed.
